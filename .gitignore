@@ -1,0 +1,31 @@
+# Dependências
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+.env
+.env.local
+
+# Build e logs
+dist/
+build/
+*.log
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Outros
+*.swp
+*.swo
+*~
+# Arquivos de download/zip
+*.zip
+*.zip:*
+*.tar.gz
+*.rar
+
+# Windows metadata
+*:Zone.Identifier
+*:SmartScreen
