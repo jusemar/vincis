@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navigation from './components/Navigation';
-import Hero from './sections/Hero';
+//import Hero from './sections/Hero';
 import ChatDemo from './sections/ChatDemo';
 import ServicesHub from './sections/ServicesHub';
 import Models from './sections/Models';
