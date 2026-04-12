@@ -152,7 +152,7 @@ const HomePage = () => {
   return (
     <>
       <main>
-        <Hero />
+      {/*   <Hero />  */}
         <ChatDemo />
         <ServicesHub />
         <Models />
