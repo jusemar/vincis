@@ -11,7 +11,6 @@ import {
   FileText,
   TrendingUp,
   Landmark,
-  HeadphonesIcon,
   type LucideIcon
 } from 'lucide-react';
 
@@ -24,6 +23,9 @@ interface Service {
   position: { top: string; left?: string; right?: string };
 }
 
+// ============================================
+// APENAS 8 CARDS (removidos: suporte e cível)
+// ============================================
 const services: Service[] = [
   {
     id: 'contabilidade',
@@ -58,14 +60,6 @@ const services: Service[] = [
     position: { top: '75%', left: '5%' },
   },
   {
-    id: 'suporte',
-    icon: HeadphonesIcon,
-    title: 'Suporte Contábil',
-    subtitle: 'Atendimento 24/7',
-    color: 'teal',
-    position: { top: '95%', left: '15%' },
-  },
-  {
     id: 'juridico',
     icon: Scale,
     title: 'Assistência Jurídica',
@@ -97,14 +91,6 @@ const services: Service[] = [
     color: 'indigo',
     position: { top: '75%', right: '5%' },
   },
-  {
-    id: 'civel',
-    icon: Shield,
-    title: 'Direito Civil',
-    subtitle: 'Proteção Patrimonial',
-    color: 'pink',
-    position: { top: '95%', right: '15%' },
-  },
 ];
 
 interface ColorClass {
@@ -119,12 +105,10 @@ const colorClasses: Record<string, ColorClass> = {
   cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', hex: '#06B6D4' },
   purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', hex: '#A855F7' },
   emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', hex: '#10B981' },
-  teal: { bg: 'bg-teal-500/20', text: 'text-teal-400', border: 'border-teal-500/30', hex: '#14B8A6' },
   amber: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', hex: '#EAB308' },
   orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', hex: '#F97316' },
   rose: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', hex: '#F43F5E' },
   indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', hex: '#6366F1' },
-  pink: { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/30', hex: '#EC4899' },
 };
 
 // Central Hub (Client)

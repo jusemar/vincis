@@ -1,413 +1,145 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Zap, Shield } from 'lucide-react';
+import { useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
+import { 
+  Calculator, Scale, Briefcase, Shield, Users,
+  Building2, FileText, TrendingUp, Landmark, type LucideIcon
+} from 'lucide-react';
 
-const ServicesHub: React.FC = () => {
-  // ============================================
-  // 1. CONFIGURAÇÕES
-  // ============================================
-  const centerX = 440;
-  const centerY = 340;
-  const radius = 290;
+// ============================================
+// CONFIGURAÇÕES DE POSICIONAMENTO
+// ============================================
+const centerX = 475; 
+const centerY = 350; 
 
-  // Cores dos cards (baseadas no seu arquivo)
-  const colorClasses: Record<string, { bg: string; text: string; border: string; hex: string }> = {
-    blue: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', hex: '#3B82F6' },
-    cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', hex: '#06B6D4' },
-    purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', hex: '#A855F7' },
-    emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', hex: '#10B981' },
-    amber: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', hex: '#F59E0B' },
-    orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', hex: '#F97316' },
-    rose: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', hex: '#F43F5E' },
-    indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', hex: '#6366F1' },
+// >>> ALTERE AQUI PARA AUMENTAR A DISTÂNCIA:
+const radius = 320; // Aumentei de 290 para 320. Quanto maior, mais longe do centro.
+
+const getPosition = (angleDeg: number) => {
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return {
+    x: centerX + radius * Math.cos(angleRad),
+    y: centerY + radius * Math.sin(angleRad)
   };
+};
 
-  const services = [
-    { nome1: 'Consulta', nome2: 'Fiscal', angle: 0, color: 'blue', icon: '📊' },
-    { nome1: 'Consultas', nome2: 'Móvel', angle: 45, color: 'cyan', icon: '📱' },
-    { nome1: 'Abertas de', nome2: 'Empresas', angle: 90, color: 'emerald', icon: '🏢' },
-    { nome1: 'Seguinte', nome2: 'Contador', angle: 135, color: 'purple', icon: '👨‍💼' },
-    { nome1: 'Asistencia', nome2: 'de Bebé', angle: 180, color: 'amber', icon: '👶' },
-    { nome1: 'Desko', nome2: 'Tributário', angle: 225, color: 'orange', icon: '⚖️' },
-    { nome1: 'Direito', nome2: 'Empresarial', angle: 270, color: 'indigo', icon: '🏛️' },
-    { nome1: 'Todos', nome2: 'os serviços', angle: 315, color: 'rose', icon: '🌟' },
-  ];
+const services = [
+  { id: 'contabilidade', icon: Calculator, title: 'Contabilidade', subtitle: 'MEI ao Lucro Real', color: 'blue', angle: 0 },
+  { id: 'fiscal', icon: FileText, title: 'Consultoria Fiscal', subtitle: 'Planejamento Tributário', color: 'cyan', angle: 45 },
+  { id: 'rh', icon: Users, title: 'Gestão de RH', subtitle: 'Folha e Departamento', color: 'purple', angle: 90 },
+  { id: 'abertura', icon: Building2, title: 'Abertura de Empresa', subtitle: 'CNPJ e Alvarás', color: 'emerald', angle: 135 },
+  { id: 'juridico', icon: Scale, title: 'Assistência Jurídica', subtitle: 'Consultas e Contratos', color: 'amber', angle: 180 },
+  { id: 'trabalhista', icon: Briefcase, title: 'Direito Trabalhista', subtitle: 'Defesa e Consultoria', color: 'orange', angle: 225 },
+  { id: 'tributario', icon: Landmark, title: 'Direito Tributário', subtitle: 'Contencioso e Consultivo', color: 'rose', angle: 270 },
+  { id: 'empresarial', icon: TrendingUp, title: 'Direito Empresarial', subtitle: 'Societário e Contratos', color: 'indigo', angle: 315 },
+];
 
-  const getPosition = (angleDeg: number) => {
-    const angleRad = (angleDeg * Math.PI) / 180;
-    return {
-      x: centerX + radius * Math.cos(angleRad),
-      y: centerY + radius * Math.sin(angleRad)
-    };
-  };
+const colorClasses: Record<string, any> = {
+  blue: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', hex: '#3B82F6' },
+  cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', hex: '#06B6D4' },
+  purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', hex: '#A855F7' },
+  emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', hex: '#10B981' },
+  amber: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', hex: '#EAB308' },
+  orange: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', hex: '#F97316' },
+  rose: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', hex: '#F43F5E' },
+  indigo: { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', hex: '#6366F1' },
+};
+
+export default function ServicesHub() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true });
 
   return (
-    <section className="relative py-20 md:py-32 overflow-hidden bg-gradient-to-br from-slate-900 via-navy-900 to-slate-900">
-      {/* Fundo com efeitos */}
-      <div className="absolute inset-0 bg-grid opacity-30" />
-      <div className="absolute inset-0 bg-radial" />
-      
-      {/* Glows laterais */}
-      <div className="absolute top-1/2 -translate-y-1/2 -left-32 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 -translate-y-1/2 -right-32 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl" />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative py-20 bg-background overflow-hidden">
+      <div className="relative z-10 max-w-7xl mx-auto px-4">
         
-        {/* CABEÇALHO */}
-        <div className="text-center mb-12 md:mb-16">
-          <motion.div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Shield className="w-4 h-4 text-amber-400" />
-            <span className="text-sm text-slate-400">Nossos Serviços</span>
-          </motion.div>
-
-          <motion.h2
-            className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            Tudo Conectado a{' '}
-            <span className="bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
-              Você
-            </span>
-          </motion.h2>
-
-          <motion.p
-            className="text-lg text-slate-400 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            Nossa plataforma conecta você a todos os serviços que seu negócio precisa,
-            em um só lugar, com suporte contínuo.
-          </motion.p>
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-6xl font-bold text-foreground">
+            Tudo Conectado ao <span className="text-gradient-gold">Seu Negócio</span>
+          </h2>
+          <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
+            Nossa plataforma conecta você a todos os serviços que seu negócio precisa.
+          </p>
         </div>
 
-        {/* SVG PRINCIPAL */}
-        <div className="relative flex justify-center items-center">
-          <svg width="900" height="650" viewBox="0 0 900 650" className="mx-auto">
-            
-            <defs>
-              {/* Gradiente central */}
-              <radialGradient id="centerGradient">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="1" />
-                <stop offset="100%" stopColor="#d97706" stopOpacity="0.8" />
-              </radialGradient>
-
-              {/* Filtro de brilho */}
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-
-              <filter id="lineGlow">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* ========================================
-                LINHAS DE CONEXÃO
-            ==========================================*/}
+        <div ref={containerRef} className="relative flex justify-center items-center">
+          
+          <svg width="950" height="700" viewBox="0 0 950 700" className="mx-auto overflow-visible">
+            {/* Linhas de Conexão com Animação de Fluxo */}
             {services.map((service, idx) => {
               const pos = getPosition(service.angle);
               const colors = colorClasses[service.color];
               return (
-                <g key={`line-group-${idx}`}>
-                  {/* Linha base */}
-                  <line
-                    x1={centerX} y1={centerY}
-                    x2={pos.x} y2={pos.y}
-                    stroke="#334155"
-                    strokeWidth="2"
-                    strokeDasharray="6 4"
-                    opacity="0.5"
-                  />
-                  {/* Linha colorida com glow */}
-                  <line
-                    x1={centerX} y1={centerY}
-                    x2={pos.x} y2={pos.y}
-                    stroke={colors.hex}
-                    strokeWidth="1.5"
-                    strokeDasharray="6 4"
-                    opacity="0.6"
-                    filter="url(#lineGlow)"
-                  />
-                </g>
-              );
-            })}
-
-            {/* ========================================
-                PARTÍCULAS ANIMADAS NAS LINHAS
-            ==========================================*/}
-            {services.map((service, idx) => {
-              const pos = getPosition(service.angle);
-              const colors = colorClasses[service.color];
-              return (
-                <motion.circle
-                  key={`particle-${idx}`}
-                  r="4"
-                  fill={colors.hex}
-                  filter="url(#lineGlow)"
-                  animate={{
-                    cx: [centerX, pos.x],
-                    cy: [centerY, pos.y],
-                    opacity: [0, 1, 0]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    delay: idx * 0.15,
-                    ease: "linear"
-                  }}
+                <motion.line 
+                  key={idx} x1={centerX} y1={centerY} x2={pos.x} y2={pos.y}
+                  stroke={colors.hex} strokeWidth="1.5" strokeDasharray="8 6" opacity="0.4"
+                  initial={{ strokeDashoffset: 0 }}
+                  animate={{ strokeDashoffset: -100 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                 />
               );
             })}
 
-            {/* ========================================
-                CÍRCULOS PULSANTES NAS PONTAS
-            ==========================================*/}
-            {services.map((service, idx) => {
-              const pos = getPosition(service.angle);
-              const colors = colorClasses[service.color];
-              return (
-                <motion.circle
-                  key={`pulse-${idx}`}
-                  cx={pos.x} cy={pos.y}
-                  r="6"
-                  fill={colors.hex}
-                  animate={{ scale: [1, 1.8, 1], opacity: [0.8, 0.2, 0.8] }}
-                  transition={{ duration: 2, delay: idx * 0.15, repeat: Infinity }}
-                />
-              );
-            })}
+            {/* CARD CENTRAL "SEU NEGÓCIO" */}
+            <foreignObject x={centerX - 150} y={centerY - 150} width="300" height="300" className="overflow-visible">
+              <div className="w-full h-full flex flex-col items-center justify-center relative">
+                
+                {/* Anéis de Pulso */}
+                {[...Array(3)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute rounded-full border border-primary/20"
+                    style={{ width: 120 + i * 40, height: 120 + i * 40 }}
+                    animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
+                  />
+                ))}
 
-            {/* ========================================
-                CARD CENTRAL (VOCÊ) - COM ANIMAÇÕES
-            ==========================================*/}
-            
-            {/* Fundo para esconder as linhas */}
-            <circle cx={centerX} cy={centerY} r="75" fill="#0f172a" />
-            
-            {/* Anel giratório externo */}
-            <motion.circle
-              cx={centerX} cy={centerY} r="90"
-              fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="6 12"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: `${centerX}px ${centerY}px` }}
-            />
-            
-            {/* Anel giratório interno (sentido oposto) */}
-            <motion.circle
-              cx={centerX} cy={centerY} r="78"
-              fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="4 10"
-              animate={{ rotate: -360 }}
-              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: `${centerX}px ${centerY}px` }}
-            />
-            
-            {/* Efeito de pulsação de luz (glow) */}
-            <motion.circle
-              cx={centerX} cy={centerY} r="70"
-              fill="#f59e0b"
-              opacity="0.15"
-              animate={{ 
-                scale: [1, 1.3, 1],
-                opacity: [0.15, 0.05, 0.15]
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            
-            <motion.circle
-              cx={centerX} cy={centerY} r="85"
-              fill="#f59e0b"
-              opacity="0.08"
-              animate={{ 
-                scale: [1, 1.2, 1],
-                opacity: [0.08, 0.02, 0.08]
-              }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            />
-            
-            {/* Círculo principal com gradiente */}
-            <motion.circle
-              cx={centerX} cy={centerY} r="60"
-              fill="url(#centerGradient)" filter="url(#glow)"
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-            />
-            
-            {/* Ícone central (Zap) */}
-            <foreignObject x={centerX - 20} y={centerY - 20} width="40" height="40">
-              <div className="w-10 h-10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-white" />
+                {/* Hub Principal */}
+                <motion.div
+                  className="relative w-28 h-28 md:w-36 md:h-36 rounded-full glass border-2 border-primary/40 flex flex-col items-center justify-center bg-background z-20"
+                  animate={{ boxShadow: ['0 0 20px hsl(var(--primary)/0.2)', '0 0 50px hsl(var(--primary)/0.4)', '0 0 20px hsl(var(--primary)/0.2)'] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-gold flex items-center justify-center shadow-glow mb-1">
+                    <Building2 className="text-primary-foreground w-8 h-8 md:w-10 md:h-10" />
+                  </div>
+                </motion.div>
+                
+                {/* Label Única */}
+                <div className="absolute bottom-10 z-30 text-center">
+                   <span className="text-foreground font-bold text-lg block leading-none">Seu Negócio</span>
+                </div>
               </div>
             </foreignObject>
-            
-            {/* Texto "Você" abaixo do ícone */}
-            <text
-              x={centerX}
-              y={centerY + 30}
-              textAnchor="middle"
-              fill="#fff"
-              fontWeight="bold"
-              fontSize="14"
-              fontFamily="sans-serif"
-              letterSpacing="2"
-            >
-              VOCÊ
-            </text>
-            
-            {/* Subtítulo */}
-            <text
-              x={centerX}
-              y={centerY + 44}
-              textAnchor="middle"
-              fill="#f59e0b"
-              fontSize="9"
-              fontFamily="sans-serif"
-              opacity="0.8"
-            >
-              No Centro de Tudo
-            </text>
 
-            {/* ========================================
-                CARDS DOS SERVIÇOS (COM VISUAL DO SEU ARQUIVO)
-            ==========================================*/}
+            {/* Cards Periféricos */}
             {services.map((service, idx) => {
               const pos = getPosition(service.angle);
               const colors = colorClasses[service.color];
-              return (
-                <g key={`card-${idx}`}>
-                  {/* Card com efeito glass */}
-                  <motion.rect
-                    x={pos.x - 70}
-                    y={pos.y - 32}
-                    width="140"
-                    height="64"
-                    rx="12"
-                    fill="rgba(30, 41, 59, 0.9)"
-                    stroke={colors.hex}
-                    strokeWidth="1.5"
-                    strokeOpacity="0.4"
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.3 + idx * 0.05 }}
-                    whileHover={{ 
-                      scale: 1.05, 
-                      strokeWidth: 2,
-                      strokeOpacity: 1,
-                      fill: "rgba(30, 41, 59, 0.95)"
-                    }}
-                  />
-                  
-                  {/* Fundo de hover com cor do card */}
-                  <motion.rect
-                    x={pos.x - 70}
-                    y={pos.y - 32}
-                    width="140"
-                    height="64"
-                    rx="12"
-                    fill={colors.hex}
-                    fillOpacity="0"
-                    initial={{ opacity: 0 }}
-                    whileHover={{ opacity: 0.1 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  
-                  {/* Ícone (emoji simples, substitua por ícones Lucide se quiser) */}
-                  <text
-                    x={pos.x - 40}
-                    y={pos.y + 6}
-                    textAnchor="middle"
-                    fontSize="20"
-                    fontFamily="sans-serif"
-                  >
-                    {service.icon}
-                  </text>
-                  
-                  {/* Primeira linha do texto */}
-                  <motion.text
-                    x={pos.x + 5}
-                    y={pos.y - 5}
-                    textAnchor="middle"
-                    fill="#f1f5f9"
-                    fontSize="11"
-                    fontWeight="600"
-                    fontFamily="sans-serif"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.5 + idx * 0.05 }}
-                  >
-                    {service.nome1}
-                  </motion.text>
-                  
-                  {/* Segunda linha do texto */}
-                  <motion.text
-                    x={pos.x + 5}
-                    y={pos.y + 10}
-                    textAnchor="middle"
-                    fill={colors.hex}
-                    fontSize="10"
-                    fontWeight="500"
-                    fontFamily="sans-serif"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.6 + idx * 0.05 }}
-                  >
-                    {service.nome2}
-                  </motion.text>
+              const Icon = service.icon;
 
-                  {/* Indicador pulsante no canto do card */}
-                  <motion.circle
-                    cx={pos.x + 60}
-                    cy={pos.y - 22}
-                    r="3"
-                    fill={colors.hex}
-                    animate={{ scale: [1, 1.5, 1], opacity: [0.6, 1, 0.6] }}
-                    transition={{ duration: 2, delay: idx * 0.2, repeat: Infinity }}
-                  />
-                </g>
+              return (
+                <foreignObject key={service.id} x={pos.x - 100} y={pos.y - 40} width="200" height="80" className="overflow-visible">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                    transition={{ delay: idx * 0.05 }}
+                    className={`flex items-center gap-3 p-3 glass-card rounded-xl border ${colors.border} bg-background/90 shadow-lg group hover:scale-105 transition-transform`}
+                  >
+                    <div className={`p-2 rounded-lg ${colors.bg} ${colors.text} flex-shrink-0`}>
+                      <Icon size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-foreground font-bold text-xs md:text-sm truncate">{service.title}</h4>
+                      <p className="text-muted-foreground text-[10px] truncate">{service.subtitle}</p>
+                    </div>
+                  </motion.div>
+                </foreignObject>
               );
             })}
-            
           </svg>
         </div>
-
-        {/* BOTÃO CTA */}
-        <motion.div
-          className="mt-12 md:mt-16 text-center"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
-          <p className="text-slate-400 mb-4 md:mb-6 text-sm md:text-base">
-            Todos os serviços integrados em uma única plataforma
-          </p>
-          <motion.button
-            className="px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/25 text-sm md:text-base"
-            whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(245, 158, 11, 0.4)" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Explorar Todos os Serviços
-          </motion.button>
-        </motion.div>
-        
       </div>
     </section>
   );
-};
-
-export default ServicesHub;
+}
