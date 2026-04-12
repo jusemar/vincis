@@ -5,7 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Navigation from './components/Navigation';
 //import Hero from './sections/Hero';
 import ChatDemo from './sections/ChatDemo';
-import ServicesHub from './sections/ServicesHub';
+import ServicesHub from './sections/home/ServicesHub';
 import Models from './sections/Models';
 import HowItWorks from './sections/HowItWorks';
 import Pricing from './sections/Pricing';
@@ -153,7 +153,7 @@ const HomePage = () => {
     <>
       <main>
       {/*   <Hero />  */}
-        <ChatDemo />
+        <ChatDemo />        
         <ServicesHub />
         <Models />
         <HowItWorks />
