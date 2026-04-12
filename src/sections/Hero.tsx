@@ -197,8 +197,8 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Seuuuu Negócio{' '}
-              <span className="text-gradient-gold">Protegidoss</span>
+              Seu Negócio{' '}
+              <span className="text-gradient-gold">Protegidos</span>
               <br />
               e Organizado
             </motion.h1>
