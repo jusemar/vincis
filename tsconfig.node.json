@@ -23,6 +23,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["vite.config.ts"],
-  "noUnusedLocals": false,
-"noUnusedParameters": false
+ 
 }
