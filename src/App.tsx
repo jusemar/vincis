@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navigation from './components/Navigation';
 //import Hero from './sections/Hero';
-import ChatDemo from './sections/ChatDemo';
+import ChatDemo from './sections/home/ChatDemo';
 import ServicesHub from './sections/home/ServicesHub';
 import Models from './sections/Models';
 import HowItWorks from './sections/HowItWorks';
