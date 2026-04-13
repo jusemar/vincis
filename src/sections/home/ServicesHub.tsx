@@ -29,7 +29,7 @@ const services = [
   { id: 'abertura', icon: Building2, title: 'Abertura de Empresa', subtitle: 'CNPJ e Alvarás', color: 'emerald', angle: 135 },
   { id: 'juridico', icon: Scale, title: 'Assistência Jurídica', subtitle: 'Consultas e Contratos', color: 'amber', angle: 180 },
   { id: 'trabalhista', icon: Briefcase, title: 'Direito Trabalhista', subtitle: 'Defesa e Consultoria', color: 'orange', angle: 225 },
-  { id: 'tributario', icon: Landmark, title: 'Direito Tributário', subtitle: 'Contencioso e Consultivo', color: 'rose', angle: 270 },
+  { id: 'tributario', icon: Landmark, title: 'Direito Tributário', subtitle: 'Contencioso', color: 'rose', angle: 270 },
   { id: 'empresarial', icon: TrendingUp, title: 'Direito Empresarial', subtitle: 'Societário e Contratos', color: 'indigo', angle: 315 },
 ];
 
@@ -57,7 +57,8 @@ export default function ServicesHub() {
             Tudo Conectado ao <span className="text-gradient-gold">Seu Negócio</span>
           </h2>
           <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Nossa plataforma conecta você a todos os serviços que seu negócio precisa.
+           Nossa plataforma conecta você a todos os serviços que seu negócio precisa, 
+            em um só lugar, com suporte contínuo.
           </p>
         </div>
 
@@ -84,19 +85,33 @@ export default function ServicesHub() {
               <div className="w-full h-full flex flex-col items-center justify-center relative">
                 
                 {/* Anéis de Pulso */}
-                {[...Array(3)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute rounded-full border border-primary/20"
-                    style={{ width: 120 + i * 40, height: 120 + i * 40 }}
-                    animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
-                  />
-                ))}
-
-                {/* Hub Principal */}
+{[...Array(3)].map((_, i) => (
+  <motion.div
+    key={i}
+    className="absolute rounded-full bg-primary/20" // Reduzi de /50 para /20 (mais suave, menos "escuro")
+    style={{ 
+      width: 100, 
+      height: 100,
+      filter: 'blur(12px)', // Aumentei o blur para dispersar a cor melhor
+      willChange: 'transform, opacity'
+    }} 
+    initial={{ scale: 1, opacity: 0 }}
+    animate={{ 
+      scale: 2.0, 
+      // Começa em 0, sobe para 0.4 (suave) e desce gradualmente até 0
+      opacity: [0, 0.4, 0.2, 0] 
+    }}
+    transition={{ 
+      duration: 6,           // Aumentei para 5s para o clareamento ser mais lento
+      repeat: Infinity,      
+      delay: i * 1.6,        
+      ease: "easeInOut",     // EaseInOut torna a transição de cor menos "agressiva"
+      times: [0, 0.2, 0.8, 1] 
+    }}
+  />
+))}            {/* Hub Principal */}
                 <motion.div
-                  className="relative w-28 h-28 md:w-36 md:h-36 rounded-full glass border-2 border-primary/40 flex flex-col items-center justify-center bg-background z-20"
+                  className="relative w-24 h-24 md:w-28 md:h-28 rounded-full glass border-2 border-primary/40 flex flex-col items-center justify-center bg-background z-20"
                   animate={{ boxShadow: ['0 0 20px hsl(var(--primary)/0.2)', '0 0 50px hsl(var(--primary)/0.4)', '0 0 20px hsl(var(--primary)/0.2)'] }}
                   transition={{ duration: 3, repeat: Infinity }}
                 >
@@ -106,7 +121,7 @@ export default function ServicesHub() {
                 </motion.div>
                 
                 {/* Label Única */}
-                <div className="absolute bottom-10 z-30 text-center">
+                <div className="absolute bottom-16 z-30 text-center">
                    <span className="text-foreground font-bold text-lg block leading-none">Seu Negócio</span>
                 </div>
               </div>
@@ -119,7 +134,7 @@ export default function ServicesHub() {
               const Icon = service.icon;
 
               return (
-                <foreignObject key={service.id} x={pos.x - 100} y={pos.y - 40} width="200" height="80" className="overflow-visible">
+                <foreignObject key={service.id} x={pos.x - 120} y={pos.y - 40} width="240" height="80" className="overflow-visible">
                   <motion.div 
                     initial={{ opacity: 0, scale: 0 }}
                     animate={isInView ? { opacity: 1, scale: 1 } : {}}
@@ -130,8 +145,8 @@ export default function ServicesHub() {
                       <Icon size={20} />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-foreground font-bold text-xs md:text-sm truncate">{service.title}</h4>
-                      <p className="text-muted-foreground text-[10px] truncate">{service.subtitle}</p>
+                      <h4 className="text-foreground font-bold text-sm md:text-lg truncate">{service.title}</h4>
+                      <p className="text-muted-foreground text-sm truncate">{service.subtitle}</p>
                     </div>
                   </motion.div>
                 </foreignObject>
