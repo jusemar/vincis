@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Users, ArrowLeft, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Sparkles } from 'lucide-react';
 import ProfessionalCard, { type Professional } from '../components/professionals/ProfessionalCard';
 import FilterBar, { type FilterState } from '../components/professionals/FilterBar';
+import Footer from '../sections/Footer';
 
 // Mock data for professionals
 const mockProfessionals: Professional[] = [
@@ -235,33 +235,13 @@ export default function ProfessionalsPage() {
         <div className="absolute inset-0 bg-grid opacity-30" />
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back Button */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Link 
-              to="/"
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar para Home
-            </Link>
-          </motion.div>
-
-          {/* Title Section */}
+          {/* Title Section - sem o badge e sem stats */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-8"
+            className="text-center"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">Profissionais Verificados</span>
-            </div>
-            
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-4">
               Encontre seu{' '}
               <span className="text-gradient-gold">Profissional</span>
@@ -272,27 +252,6 @@ export default function ProfessionalsPage() {
               Todos verificados e prontos para ajudar seu negócio.
             </p>
           </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex justify-center gap-8 mb-8"
-          >
-            <div className="text-center">
-              <div className="text-3xl font-bold text-foreground">{filteredProfessionals.length}</div>
-              <div className="text-sm text-muted-foreground">Profissionais</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-400">{availableCount}</div>
-              <div className="text-sm text-muted-foreground">Disponíveis</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">4.8</div>
-              <div className="text-sm text-muted-foreground">Avaliação Média</div>
-            </div>
-          </motion.div>
         </div>
       </div>
 
@@ -300,7 +259,7 @@ export default function ProfessionalsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         <FilterBar filters={filters} onFilterChange={setFilters} />
 
-        {/* Results Count */}
+        {/* Results Count - simplificado */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -352,6 +311,9 @@ export default function ProfessionalsPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Footer - adicionado igual à página inicial */}
+      <Footer />
     </div>
   );
 }

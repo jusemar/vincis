@@ -296,11 +296,11 @@ const ChatInterface = ({
                 </div>
 
                 {/* Message Bubble */}
-                <div className={`relative px-4 py-2.5 rounded-2xl ${
-                  msg.sender === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-muted text-foreground rounded-bl-md'
-                }`}>
+              <div className={`relative px-4 py-2.5 rounded-2xl ${
+  msg.sender === 'user'
+    ? 'bg-[#1E3A8A] text-white rounded-br-md'
+    : 'bg-muted text-foreground rounded-bl-md'
+}`}>
                   {/* Sender Name */}
                   <p className="text-[11px] font-semibold mb-1 opacity-70">
                     {msg.sender === 'user' ? userName : companyName}
@@ -447,24 +447,16 @@ export default function ChatDemo() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <motion.div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-          >
-            <MessageCircle className="w-4 h-4 text-primary" />
-            <span className="text-sm text-muted-foreground">Atendimento 24/7</span>
-          </motion.div>
-
+          <div className="h-8 mb-6"></div>
+         
           <motion.h2
             className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6"
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Tire suas dúvidas em{' '}
-            <span className="text-gradient-gold">segundos</span>
+            Suporte que sua {' '}
+            <span className="text-gradient-gold">empresa</span>
           </motion.h2>
 
           <motion.p
@@ -473,8 +465,8 @@ export default function ChatDemo() {
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Nosso time de especialistas está disponível 24 horas por dia para 
-            ajudar você com qualquer questão contábil ou jurídica.
+            
+             precisa, seja naquestão contábil ou jurídica.
           </motion.p>
         </div>
 
