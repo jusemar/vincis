@@ -295,10 +295,10 @@ const ChatInterface = ({
                   )}
                 </div>
 
-                {/* Message Bubble */}
-              <div className={`relative px-4 py-2.5 rounded-2xl ${
+{/* Message Bubble */}
+<div className={`relative px-4 py-2.5 rounded-2xl ${
   msg.sender === 'user'
-    ? 'bg-[#1E3A8A] text-white rounded-br-md'
+    ? 'bg-primary text-primary-foreground dark:bg-[#1E3A8A] dark:text-white rounded-br-md'
     : 'bg-muted text-foreground rounded-bl-md'
 }`}>
                   {/* Sender Name */}
