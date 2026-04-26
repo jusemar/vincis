@@ -102,10 +102,10 @@ const recentActivity = [
 ];
 
 const quickStats = [
-  { label: 'Avaliação Média', value: '4.8', icon: Star, color: 'text-warning' },
-  { label: 'Total de Avaliações', value: '124', icon: Crown, color: 'text-warning' },
-  { label: 'Tickets Abertos', value: '3', icon: Ticket, color: 'text-destructive' },
-  { label: 'Agendamentos Hoje', value: '2', icon: Calendar, color: 'text-info' },
+  { label: 'Avaliação Média', value: '4.8', icon: Star, color: 'text-amber-500' },
+  { label: 'Total de Avaliações', value: '124', icon: Crown, color: 'text-amber-500' },
+  { label: 'Tickets Abertos', value: '3', icon: Ticket, color: 'text-red-500' },
+  { label: 'Agendamentos Hoje', value: '2', icon: Calendar, color: 'text-green-500' },
 ];
 
 const chartData = [
@@ -147,7 +147,8 @@ export default function DashboardHome() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="bg-gradient-to-r from-amber-500/10 via-primary/10 to-amber-500/10 rounded-xl p-5 border border-primary/20"
+        className="bg-gradient-to-r from-amber-500/20 via-amber-500/15 to-amber-500/20 rounded-xl p-5 border border-amber-500/30"
+        style={{ boxShadow: '0 0 30px rgba(240, 165, 0, 0.15)' }}
       >
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
@@ -156,7 +157,7 @@ export default function DashboardHome() {
             </div>
             <div>
               <p className="font-semibold text-lg">
-                Faltam <span className="text-primary font-bold">R$ 3.250</span> para bater sua meta mensal!
+                Faltam <span className="text-amber-500 font-bold">R$ 3.250</span> para bater sua meta mensal!
               </p>
               <p className="text-sm text-muted-foreground">
                 Você está a apenas 2 serviços de atingir seu objetivo. Que tal oferecer um serviço avulso hoje?

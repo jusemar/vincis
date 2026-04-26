@@ -276,12 +276,12 @@ export default function ReviewsPage() {
                   <div
                     key={position}
                     className={`flex items-center gap-3 p-3 rounded-lg ${
-                      position === 1 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-muted/50'
+                      position === 1 ? 'bg-gradient-to-r from-green-500/20 to-green-500/5 border border-green-500/30' : 'bg-muted/50'
                     }`}
                   >
                     <span className="text-2xl font-bold w-8">{position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position}</span>
                     <div className="flex-1">
-                      <p className={`font-medium ${position === 1 ? 'text-amber-500' : ''}`}>
+                      <p className={`font-medium ${position === 1 ? 'text-green-500' : ''}`}>
                         {position === 1 ? 'Ana Silva (Você)' : `Profissional ${position}`}
                       </p>
                       <p className="text-xs text-muted-foreground">{position === 1 ? '4.8 ★' : `${(4.8 - position * 0.1).toFixed(1)} ★`}</p>

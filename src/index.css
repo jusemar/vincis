@@ -202,22 +202,22 @@
 
 .admin-dark .bg-card,
 .admin-dark [class*="bg-card"] {
-  background: rgba(50, 55, 70, 0.55) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(65, 70, 90, 0.45) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
 }
 
 .admin-dark .text-muted-foreground {
-  color: #b0b0c0 !important;
+  color: #a0a0b8 !important;
 }
 
 .admin-dark svg {
-  color: #d0d0e0 !important;
+  color: #c0c0d0 !important;
 }
 
 /* Ícones coloridos nos cards */
-.admin-dark .text-amber-500,
-.admin-dark .text-warning,
-.admin-dark .text-yellow-500 {
+.admin-dark .text-amber-500 {
   color: #f0a500 !important;
 }
 
@@ -243,38 +243,74 @@ html[data-theme="dark"] .admin-dashboard * {
 }
 
 html[data-theme="dark"] .admin-dashboard .bg-card {
-  background: rgba(50, 55, 70, 0.55) !important;
+  background: rgba(65, 70, 90, 0.45) !important;
+  backdrop-filter: blur(12px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 html[data-theme="dark"] .admin-dashboard .text-muted-foreground {
-  color: #b0b0c0 !important;
+  color: #a0a0b8 !important;
 }
 
 html[data-theme="dark"] .admin-dashboard svg {
-  color: #d0d0e0 !important;
+  color: #c0c0d0 !important;
 }
 
-html[data-theme="dark"] .admin-dashboard .text-amber-500,
-html[data-theme="dark"] .admin-dashboard .text-warning {
+html[data-theme="dark"] .admin-dashboard .text-amber-500 {
   color: #f0a500 !important;
 }
 
-html[data-theme="dark"] .admin-dashboard .text-green-500,
-html[data-theme="dark"] .admin-dashboard .text-success {
+html[data-theme="dark"] .admin-dashboard .text-green-500 {
   color: #22c55e !important;
 }
 
-html[data-theme="dark"] .admin-dashboard .text-blue-500,
-html[data-theme="dark"] .admin-dashboard .text-info {
+html[data-theme="dark"] .admin-dashboard .text-blue-500 {
   color: #3b82f6 !important;
 }
 
-html[data-theme="dark"] .admin-dashboard .text-red-500,
-html[data-theme="dark"] .admin-dashboard .text-destructive {
+html[data-theme="dark"] .admin-dashboard .text-red-500 {
   color: #ef4444 !important;
 }
 
-/* RESPONSIVE SIDEBAR */
+/* Card Glassmorphism especial */
+html[data-theme="dark"] .admin-dashboard .glass-card,
+html[data-theme="dark"] .admin-dashboard [class*="from-amber"],
+html[data-theme="dark"] .admin-dashboard [class*="gradient-gold"] {
+  background: rgba(240, 165, 0, 0.12) !important;
+  border-color: rgba(240, 165, 0, 0.25) !important;
+  box-shadow: 0 0 30px rgba(240, 165, 0, 0.15) !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .glass-card *,
+html[data-theme="dark"] .admin-dashboard [class*="from-amber"] * {
+  color: #f0f0f5 !important;
+}
+
+.admin-dark .rank-green {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+}
+
+/* Card glassmorphism especial */
+.admin-dark .glass-card {
+  background: rgba(240, 165, 0, 0.12) !important;
+  border-color: rgba(240, 165, 0, 0.25) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 30px rgba(240, 165, 0, 0.15) !important;
+}
+
+/* RESPONSIVE SIDEBAR - Desktop hover + Mobile hamburger */
+@media (min-width: 769px) {
+  .admin-dashboard aside {
+    position: relative !important;
+    transform: none !important;
+  }
+  
+  .admin-dashboard aside:hover {
+    width: 260px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .admin-dashboard aside {
     position: fixed !important;
