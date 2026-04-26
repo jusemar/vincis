@@ -12,6 +12,7 @@ import Pricing from './sections/Pricing';
 import CTA from './sections/CTA';
 import Footer from './sections/Footer';
 import ProfessionalsPage from './pages/ProfessionalsPage';
+import AdminDashboard from './admin/AdminDashboard';
 import './App.css';
 
 // Loading Screen Component
@@ -169,6 +170,7 @@ const HomePage = () => {
 function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   // Scroll to top on route change
   useEffect(() => {
@@ -190,15 +192,17 @@ function AppContent() {
           transition={{ duration: 0.5 }}
           className="min-h-screen bg-background"
         >
-          <ScrollProgress />
-          <Navigation />
+          {!isAdminPage && <ScrollProgress />}
+          {!isAdminPage && <Navigation />}
           
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/profissionais" element={<ProfessionalsPage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/:page" element={<AdminDashboard />} />
           </Routes>
           
-          {location.pathname !== '/profissionais' && <BackToTop />}
+          {!isAdminPage && location.pathname !== '/profissionais' && <BackToTop />}
         </motion.div>
       )}
     </>

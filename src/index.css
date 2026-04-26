@@ -26,10 +26,25 @@
     --ring: 37 92% 50%;
     --radius: 0.75rem;
     
+    /* Status colors - temas claros (precisam de cores mais escuras) */
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 40%;
+    --warning-foreground: 24 9% 10%;
+    --info: 217 91% 50%;
+    --info-foreground: 0 0% 100%;
+    --success-bg: 142 71% 90%;
+    --warning-bg: 38 92% 90%;
+    --info-bg: 217 91% 90%;
+    
     --navy-900: 222 47% 11%;
     --navy-800: 217 33% 17%;
     --navy-700: 215 25% 27%;
     --navy-600: 215 20% 35%;
+    
+    /* Texto em elementos com fundo primário/dourado */
+    --on-primary: 222 47% 11%;
+    --on-gradient: 222 47% 11%;
     
     --amber-500: 37 92% 50%;
     --amber-400: 43 96% 56%;
@@ -40,16 +55,16 @@
     --gradient-gold: linear-gradient(135deg, hsl(37 92% 50%), hsl(43 96% 56%));
   }
 
-  /* TEMA ESCURO */
-   [data-theme="dark"],
+  /* TEMA ESCURO - Navy + Amber/Gold */
+  [data-theme="dark"],
   .dark {
-    --background: 222 47% 11%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
+    --primary: 45 93% 47%;
     --primary-foreground: 222 47% 11%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -61,10 +76,32 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 224 76% 48%;
+    --ring: 45 93% 47%;
+    
+    /* Status colors - temas escuros (precisam de cores mais claras) */
+    --success: 142 76% 60%;
+    --success-foreground: 222 47% 11%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 222 47% 11%;
+    --info: 217 91% 70%;
+    --info-foreground: 222 47% 11%;
+    --success-bg: 142 76% 20%;
+    --warning-bg: 38 92% 20%;
+    --info-bg: 217 91% 20%;
+    
+    --gradient-hero: linear-gradient(135deg, hsl(45 93% 47% / 0.15), hsl(37 92% 50% / 0.08));
+    --gradient-card: linear-gradient(135deg, hsl(222 47% 11%), hsl(217 33% 17%));
+    --shadow-elevated: 0 20px 40px -8px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(0, 0, 0, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --grid-opacity: 0.03;
     
     --shadow-glow: 0 0 60px hsl(var(--primary) / 0.25);
-    --gradient-gold: linear-gradient(135deg, #f59e0b, #eab308);
+    --gradient-gold: linear-gradient(135deg, hsl(45 93% 47%), hsl(37 92% 50%));
+    
+    /* Texto em elementos com fundo primário/dourado */
+    --on-primary: 222 47% 11%;
+    --on-gradient: 222 47% 11%;
   }
 }
 
@@ -76,9 +113,14 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
   
-  .dark .glass {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  .dark .glass, [data-theme="dark"] .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+  
+  .light .glass {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
   
   .glass-card {
@@ -106,5 +148,138 @@
     background-image: linear-gradient(to right, hsl(var(--border) / 0.1) 1px, transparent 1px),
       linear-gradient(to bottom, hsl(var(--border) / 0.1) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+  
+  /* Status badges com cores adaptáveis */
+  .badge-success {
+    background-color: hsl(var(--success-bg));
+    color: hsl(var(--success));
+    border: 1px solid hsl(var(--success) / 0.3);
+  }
+  
+  .badge-warning {
+    background-color: hsl(var(--warning-bg));
+    color: hsl(var(--warning));
+    border: 1px solid hsl(var(--warning) / 0.3);
+  }
+  
+  .badge-info {
+    background-color: hsl(var(--info-bg));
+    color: hsl(var(--info));
+    border: 1px solid hsl(var(--info) / 0.3);
+  }
+  
+  /* Texto em elementos com gradiente/fundo primário */
+  .text-on-primary, 
+  .text-on-gradient,
+  .text-navy-900 {
+    color: var(--on-primary);
+  }
+  
+  /* Backgrounds com gradiente dourado sempre usam texto escuro */
+  .bg-gradient-gold,
+  .bg-gradient-gold *,
+  [class*="gradient-gold"] {
+    color: var(--on-gradient) !important;
+  }
+}
+
+/* ADMIN DARK THEME - Glassmorphism + Navy + Amber */
+/* ATENÇÃO: Estas regras são应用 APENAS quando o tema escuro está ativo E estamos no admin */
+[data-theme="dark"] .admin-dashboard {
+  .bg-card {
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+  
+  .border {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+  }
+  
+  .text-foreground {
+    color: hsl(210 40% 98%) !important;
+  }
+  
+  .text-primary {
+    color: hsl(45 93% 47%) !important;
+  }
+  
+  .bg-primary\/10 {
+    background-color: hsl(45 93% 47% / 0.15) !important;
+  }
+  
+  .text-muted-foreground {
+    color: hsl(215 20% 65%) !important;
+  }
+  
+  .bg-muted {
+    background-color: hsl(217 33% 17%) !important;
+  }
+  
+  .bg-muted\/50 {
+    background-color: hsl(217 33% 17% / 0.5) !important;
+  }
+  
+  .bg-background {
+    background-color: hsl(222 47% 6%) !important;
+  }
+  
+  .bg-secondary {
+    background-color: hsl(217 33% 17%) !important;
+  }
+  
+  .bg-accent {
+    background-color: hsl(217 33% 17%) !important;
+  }
+  
+  .hover\:bg-accent:hover {
+    background-color: hsl(217 33% 25%) !important;
+  }
+  
+  .border-transparent {
+    border-color: transparent !important;
+  }
+  
+  input, select, textarea {
+    background-color: hsl(222 47% 11%) !important;
+    border-color: hsl(217 33% 17%) !important;
+    color: hsl(210 40% 98%) !important;
+  }
+  
+  input::placeholder {
+    color: hsl(215 20% 65%) !important;
+  }
+  
+  table {
+    color: hsl(210 40% 98%) !important;
+  }
+  
+  th {
+    color: hsl(215 20% 65%) !important;
+  }
+  
+  td {
+    color: hsl(210 40% 98%) !important;
+  }
+  
+  .hover\:bg-muted\/30:hover {
+    background-color: hsl(217 33% 17% / 0.3) !important;
+  }
+  
+  .hover\:bg-muted\/50:hover {
+    background-color: hsl(217 33% 17% / 0.5) !important;
+  }
+  
+  .border-b {
+    border-color: hsl(217 33% 17%) !important;
+  }
+  
+  .border-t {
+    border-color: hsl(217 33% 17%) !important;
+  }
+  
+  .border-r {
+    border-color: hsl(217 33% 17%) !important;
   }
 }

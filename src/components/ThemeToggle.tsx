@@ -9,7 +9,7 @@ export default function ThemeToggle() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="relative w-12 h-12 rounded-xl glass border border-white/10 flex items-center justify-center overflow-hidden group"
+      className="relative w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden group"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
@@ -33,7 +33,7 @@ export default function ThemeToggle() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="absolute"
       >
-        <Sun className="w-5 h-5 text-amber-500" />
+        <Sun className={`w-5 h-5 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />
       </motion.div>
 
       {/* Moon icon */}
@@ -47,12 +47,12 @@ export default function ThemeToggle() {
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="absolute"
       >
-        <Moon className="w-5 h-5 text-slate-300" />
+        <Moon className="w-5 h-5 text-primary" />
       </motion.div>
 
       {/* Shine effect on hover */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500"
+        className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ${isDark ? 'dark:via-white/10' : 'via-black/5'}`}
       />
     </motion.button>
   );

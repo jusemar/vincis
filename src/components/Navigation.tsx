@@ -125,7 +125,7 @@ export default function Navigation() {
               {/* Botão Entrar */}
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  to="/entrar"
+                  to="/admin"
                   className="px-4 py-2 text-sm font-semibold text-foreground border border-border rounded-lg hover:bg-muted/50 transition-all flex items-center gap-2"
                 >
                   <LogIn className="w-4 h-4" />
@@ -218,7 +218,7 @@ export default function Navigation() {
                   className="mt-4 flex flex-col gap-2"
                 >
                   <Link
-                    to="/entrar"
+                    to="/admin"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="w-full px-5 py-3 text-sm font-semibold text-foreground border border-border rounded-lg flex items-center justify-center gap-2 hover:bg-muted/50 transition-all"
                   >
