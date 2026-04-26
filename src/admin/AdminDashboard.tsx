@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Menu, X } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
@@ -29,26 +29,12 @@ const pageTitles: Record<string, string> = {
 
 export default function AdminDashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPage = location.pathname.split('/admin/')[1] || 'dashboard';
   const { theme } = useTheme();
 
-  const handleMenuClick = () => {
-    if (window.innerWidth < 769) {
-      setSidebarOpen(!sidebarOpen);
-    } else {
-      setIsSidebarCollapsed(!isSidebarCollapsed);
-    }
-  };
-
-  const handleOverlayClick = () => {
-    setSidebarOpen(false);
-  };
-
-  const handleNavClick = () => {
-    setSidebarOpen(false);
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   const renderPage = () => {
@@ -77,33 +63,24 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className={`admin-dashboard flex h-screen bg-background overflow-hidden ${theme === 'dark' ? 'admin-dark' : ''}`}>
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleOverlayClick}
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed lg:relative lg:translate-x-0 z-50 transition-transform duration-300 lg:transition-none`}>
-        <AdminSidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggle={handleMenuClick}
-        />
-      </div>
+    <div 
+      className="admin-dashboard flex h-screen bg-background overflow-hidden"
+      data-theme={theme}
+    >
+      {/* Sidebar */}
+      <AdminSidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggle={toggleSidebar}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile hamburger - only show on small screens */}
         <div className="lg:hidden flex items-center px-4 py-3 border-b bg-card">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={toggleSidebar}
             className="p-2 rounded-lg hover:bg-accent"
           >
-            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isSidebarCollapsed ? <Menu className="w-6 h-6" /> : <X className="w-6 h-6" />}
           </button>
         </div>
         <AdminHeader />

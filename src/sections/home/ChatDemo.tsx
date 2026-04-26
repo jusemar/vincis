@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, Bot, User, Clock, Check, CheckCheck, Pause, Play } from 'lucide-react';
+import { MessageCircle, Send, Sparkles, Bot, User, Clock, Check, CheckCheck, Pause, Play, ArrowRight, Shield, Users, Zap, Award } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -80,24 +80,29 @@ const chatConversation: ChatMessage[] = [
   },
 ];
 
-// Typing effect component (agora com velocidade ajustável)
-const TypingText = ({ text, onComplete, speed = 30 }: { text: string; onComplete: () => void; speed?: number }) => {
-  const [displayedText, setDisplayedText] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
+const TypingText = ({ text, onComplete, speed = 1000 }: { text: string; onComplete: () => void; speed?: number }) => {
+  const words = text.split(', ');
+  const [currentWord, setCurrentWord] = useState(0);
+  const [displayedWords, setDisplayedWords] = useState<string[]>([]);
 
   useEffect(() => {
-    if (currentIndex < text.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
+    if (currentWord < words.length) {
+      const timer = setTimeout(() => {
+        setDisplayedWords(prev => [...prev, words[currentWord]]);
+        setCurrentWord(prev => prev + 1);
       }, speed);
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(timer);
     } else {
       onComplete();
     }
-  }, [currentIndex, text, speed, onComplete]);
+  }, [currentWord, words, speed, onComplete]);
 
-  return <span>{displayedText}<span className="animate-pulse">|</span></span>;
+  return (
+    <span className="text-primary font-medium">
+      {displayedWords.join(', ')}
+      {currentWord < words.length && <span className="animate-pulse">|</span>}
+    </span>
+  );
 };
 
 // 3D Notebook Component com tela maior
@@ -449,24 +454,24 @@ export default function ChatDemo() {
         <div className="text-center mb-16">
           <div className="h-8 mb-6"></div>
          
-          <motion.h2
+<motion.h2
             className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6"
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Suporte que sua {' '}
-            <span className="text-gradient-gold">empresa</span>
+            Orientação <span className="text-primary">contábil</span> e <span className="text-primary">jurídica</span> online
           </motion.h2>
 
           <motion.p
-            className="text-lg text-muted-foreground max-w-2xl mx-auto"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            
-             precisa, seja naquestão contábil ou jurídica.
+            Única plataforma que conecta você a <span className="text-primary font-medium">contadores</span>
+             , <span className="text-primary font-medium">advogados </span>e 
+              <span className="text-primary font-medium"> profissionais da área</span>
           </motion.p>
         </div>
 

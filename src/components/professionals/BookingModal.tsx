@@ -245,7 +245,7 @@ export default function BookingModal({ professional, isOpen, onClose }: BookingM
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden glass-card rounded-3xl border border-border shadow-elevated"
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden glass-card rounded-2xl border border-border shadow-elevated"
           >
             {isConfirmed ? (
               // Success Screen

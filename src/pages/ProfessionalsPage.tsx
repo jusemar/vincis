@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Sparkles } from 'lucide-react';
 import ProfessionalCard, { type Professional } from '../components/professionals/ProfessionalCard';
+import BookingModal from '../components/professionals/BookingModal';
 import FilterBar, { type FilterState } from '../components/professionals/FilterBar';
 import Footer from '../sections/Footer';
 
@@ -173,6 +174,14 @@ export default function ProfessionalsPage() {
     maxPrice: 1000,
   });
 
+  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+  const handleOpenBooking = (professional: Professional) => {
+    setSelectedProfessional(professional);
+    setIsBookingOpen(true);
+  };
+
   const filteredProfessionals = useMemo(() => {
     return mockProfessionals.filter((prof) => {
       // Search filter
@@ -290,6 +299,7 @@ export default function ProfessionalsPage() {
                 key={professional.id} 
                 professional={professional} 
                 index={index}
+                onOpenBooking={() => handleOpenBooking(professional)}
               />
             ))}
           </div>
@@ -314,6 +324,18 @@ export default function ProfessionalsPage() {
 
       {/* Footer - adicionado igual à página inicial */}
       <Footer />
+
+      {/* Booking Modal - externo */}
+      {selectedProfessional && (
+        <BookingModal
+          professional={selectedProfessional}
+          isOpen={isBookingOpen}
+          onClose={() => {
+            setIsBookingOpen(false);
+            setSelectedProfessional(null);
+          }}
+        />
+      )}
     </div>
   );
 }
