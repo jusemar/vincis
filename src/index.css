@@ -102,6 +102,16 @@
     /* Texto em elementos com fundo primário/dourado */
     --on-primary: 222 47% 11%;
     --on-gradient: 222 47% 11%;
+    
+    /* Admin Dark Theme cores */
+    --text: #f0f0f5;
+    --text-2: #8888a0;
+    --text-3: #555568;
+    --gold: #f0a500;
+    --gold-dim: rgba(240, 165, 0, 0.12);
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --red: #ef4444;
   }
 }
 
@@ -185,101 +195,303 @@
 }
 
 /* ADMIN DARK THEME - Glassmorphism + Navy + Amber */
-/* ATENÇÃO: Estas regras são应用 APENAS quando o tema escuro está ativo E estamos no admin */
-[data-theme="dark"] .admin-dashboard {
-  .bg-card {
-    background: rgba(0, 0, 0, 0.4) !important;
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  }
-  
-  .border {
-    border-color: rgba(255, 255, 255, 0.06) !important;
-  }
-  
-  .text-foreground {
-    color: hsl(210 40% 98%) !important;
-  }
-  
-  .text-primary {
-    color: hsl(45 93% 47%) !important;
-  }
-  
-  .bg-primary\/10 {
-    background-color: hsl(45 93% 47% / 0.15) !important;
-  }
-  
-  .text-muted-foreground {
-    color: hsl(215 20% 65%) !important;
-  }
-  
-  .bg-muted {
-    background-color: hsl(217 33% 17%) !important;
-  }
-  
-  .bg-muted\/50 {
-    background-color: hsl(217 33% 17% / 0.5) !important;
-  }
-  
-  .bg-background {
-    background-color: hsl(222 47% 6%) !important;
-  }
-  
-  .bg-secondary {
-    background-color: hsl(217 33% 17%) !important;
-  }
-  
-  .bg-accent {
-    background-color: hsl(217 33% 17%) !important;
-  }
-  
-  .hover\:bg-accent:hover {
-    background-color: hsl(217 33% 25%) !important;
-  }
-  
-  .border-transparent {
-    border-color: transparent !important;
-  }
-  
-  input, select, textarea {
-    background-color: hsl(222 47% 11%) !important;
-    border-color: hsl(217 33% 17%) !important;
-    color: hsl(210 40% 98%) !important;
-  }
-  
-  input::placeholder {
-    color: hsl(215 20% 65%) !important;
-  }
-  
-  table {
-    color: hsl(210 40% 98%) !important;
-  }
-  
-  th {
-    color: hsl(215 20% 65%) !important;
-  }
-  
-  td {
-    color: hsl(210 40% 98%) !important;
-  }
-  
-  .hover\:bg-muted\/30:hover {
-    background-color: hsl(217 33% 17% / 0.3) !important;
-  }
-  
-  .hover\:bg-muted\/50:hover {
-    background-color: hsl(217 33% 17% / 0.5) !important;
-  }
-  
-  .border-b {
-    border-color: hsl(217 33% 17%) !important;
-  }
-  
-  .border-t {
-    border-color: hsl(217 33% 17%) !important;
-  }
-  
-  .border-r {
-    border-color: hsl(217 33% 17%) !important;
-  }
+html[data-theme="dark"] .admin-dashboard {
+  /* Todos os textos dentro do admin dashboard */
+  color: #f0f0f5 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard *,
+html[data-theme="dark"] .admin-dashboard *::before,
+html[data-theme="dark"] .admin-dashboard *::after {
+  color: #f0f0f5 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .bg-card {
+  background: rgba(40, 45, 60, 0.55) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f0f0f5 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .border {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .admin-dashboard h2,
+html[data-theme="dark"] .admin-dashboard h3,
+html[data-theme="dark"] .admin-dashboard h4,
+html[data-theme="dark"] .admin-dashboard p,
+html[data-theme="dark"] .admin-dashboard span:not([class*="text-"]) {
+  color: #f0f0f5 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-muted-foreground {
+  color: #b0b0c0 !important;
+}
+
+/* Textos dentro dos cards */
+[data-theme="dark"] .admin-dashboard .bg-card .text-foreground,
+[data-theme="dark"] .admin-dashboard .bg-card h2,
+[data-theme="dark"] .admin-dashboard .bg-card h3,
+[data-theme="dark"] .admin-dashboard .bg-card p,
+[data-theme="dark"] .admin-dashboard .bg-card span,
+[data-theme="dark"] .admin-dashboard .bg-card div {
+  color: #f0f0f5 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .bg-card .text-muted-foreground {
+  color: #b0b0c0 !important;
+}
+
+/* Ícones no admin dark */
+[data-theme="dark"] .admin-dashboard .text-info,
+[data-theme="dark"] .admin-dashboard .text-warning,
+[data-theme="dark"] .admin-dashboard .text-success,
+[data-theme="dark"] .admin-dashboard .text-destructive,
+[data-theme="dark"] .admin-dashboard svg {
+  color: #e0e0e8 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .bg-card .text-info,
+[data-theme="dark"] .admin-dashboard .bg-card .text-warning,
+[data-theme="dark"] .admin-dashboard .bg-card .text-success,
+[data-theme="dark"] .admin-dashboard .bg-card .text-destructive,
+[data-theme="dark"] .admin-dashboard .bg-card svg {
+  color: #e0e0e8 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .text-foreground,
+[data-theme="dark"] .admin-dashboard h2,
+[data-theme="dark"] .admin-dashboard h3,
+[data-theme="dark"] .admin-dashboard p,
+[data-theme="dark"] .admin-dashboard span {
+  color: #f0f0f5 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .text-primary {
+  color: hsl(45 93% 55%) !important;
+}
+
+[data-theme="dark"] .admin-dashboard .text-muted-foreground {
+  color: #a0a0b0 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .bg-muted,
+[data-theme="dark"] .admin-dashboard .bg-secondary,
+[data-theme="dark"] .admin-dashboard .bg-accent {
+  background-color: hsl(217 33% 18%) !important;
+}
+
+[data-theme="dark"] .admin-dashboard .bg-background {
+  background-color: hsl(222 47% 8%) !important;
+}
+
+[data-theme="dark"] .admin-dashboard input,
+[data-theme="dark"] .admin-dashboard select,
+[data-theme="dark"] .admin-dashboard textarea {
+  background-color: hsl(222 47% 14%) !important;
+  border-color: hsl(217 33% 20%) !important;
+  color: #f0f0f5 !important;
+}
+
+[data-theme="dark"] .admin-dashboard input::placeholder {
+  color: #808090 !important;
+}
+
+[data-theme="dark"] .admin-dashboard table {
+  color: #f0f0f5 !important;
+}
+
+[data-theme="dark"] .admin-dashboard th {
+  color: #a0a0b0 !important;
+}
+
+[data-theme="dark"] .admin-dashboard td {
+  color: #f0f0f5 !important;
+}
+
+[data-theme="dark"] .admin-dashboard .border-b,
+[data-theme="dark"] .admin-dashboard .border-t,
+[data-theme="dark"] .admin-dashboard .border-r,
+[data-theme="dark"] .admin-dashboard .border-l {
+  border-color: hsl(217 33% 18%) !important;
+}
+
+/* ===== ADMIN DARK THEME - DESIGN SYSTEM ===== */
+
+/* Badges */
+[data-theme="dark"] .admin-dashboard .badge-gold {
+  background: rgba(240, 165, 0, 0.12) !important;
+  color: #f0a500 !important;
+  border: 1px solid rgba(240, 165, 0, 0.2) !important;
+}
+[data-theme="dark"] .admin-dashboard .badge-green {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #22c55e !important;
+  border: 1px solid rgba(34, 197, 94, 0.2) !important;
+}
+[data-theme="dark"] .admin-dashboard .badge-red {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+[data-theme="dark"] .admin-dashboard .badge-blue {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #3b82f6 !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+[data-theme="dark"] .admin-dashboard .badge-gray {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #8888a0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Activity Items */
+[data-theme="dark"] .admin-dashboard .activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .admin-dashboard .activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+[data-theme="dark"] .admin-dashboard .activity-icon-ticket {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+[data-theme="dark"] .admin-dashboard .activity-icon-appointment {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+[data-theme="dark"] .admin-dashboard .activity-icon-payment {
+  background: rgba(240, 165, 0, 0.12);
+  color: #f0a500;
+}
+[data-theme="dark"] .admin-dashboard .activity-icon-review {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+[data-theme="dark"] .admin-dashboard .activity-title {
+  color: #f0f0f5 !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+[data-theme="dark"] .admin-dashboard .activity-time {
+  color: #555568 !important;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Profile Card */
+[data-theme="dark"] .admin-dashboard .profile-name {
+  color: #f0f0f5 !important;
+  font-size: 18px;
+  font-weight: 700;
+}
+[data-theme="dark"] .admin-dashboard .profile-role {
+  color: #8888a0 !important;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* Buttons */
+[data-theme="dark"] .admin-dashboard .btn-ghost {
+  background: transparent !important;
+  color: #8888a0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: all 0.2s;
+}
+[data-theme="dark"] .admin-dashboard .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f0f0f5 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="dark"] .admin-dashboard .btn-gold {
+  background: #f0a500 !important;
+  color: #000000 !important;
+  border: none !important;
+  font-weight: 600;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(240, 165, 0, 0.25);
+  transition: all 0.2s;
+}
+[data-theme="dark"] .admin-dashboard .btn-gold:hover {
+  background: #ffc845 !important;
+  box-shadow: 0 0 30px rgba(240, 165, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Sparkline Chart */
+[data-theme="dark"] .admin-dashboard .sparkbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 32px;
+}
+[data-theme="dark"] .admin-dashboard .sparkbar-item {
+  flex: 1;
+  background: rgba(240, 165, 0, 0.12);
+  border-radius: 3px 3px 0 0;
+  transition: background 0.2s;
+  min-width: 4px;
+}
+[data-theme="dark"] .admin-dashboard .sparkbar-item:hover {
+  background: #f0a500;
+}
+[data-theme="dark"] .admin-dashboard .sparkline-label {
+  font-size: 11px;
+  color: #555568;
+}
+[data-theme="dark"] .admin-dashboard .sparkline-value {
+  color: #22c55e;
+  font-size: 11px;
+}
+
+/* Chart bars in cards */
+[data-theme="dark"] .admin-dashboard .chart-bar,
+[data-theme="dark"] .admin-dashboard .revenue-bar {
+  background: rgba(240, 165, 0, 0.25) !important;
+}
+[data-theme="dark"] .admin-dashboard .chart-bar:hover,
+[data-theme="dark"] .admin-dashboard .revenue-bar:hover {
+  background: rgba(240, 165, 0, 0.5) !important;
+}
+
+/* Números grandes (métricas) */
+[data-theme="dark"] .admin-dashboard .text-3xl,
+[data-theme="dark"] .admin-dashboard .text-4xl,
+[data-theme="dark"] .admin-dashboard .text-2xl,
+[data-theme="dark"] .admin-dashboard .text-\[2\.25rem\],
+[data-theme="dark"] .admin-dashboard [class*="text-"][class*="font-bold"] {
+  color: #f0f0f5 !important;
+}
+
+/* Ícones coloridos - garantir visibilidade */
+[data-theme="dark"] .admin-dashboard .text-warning,
+[data-theme="dark"] .admin-dashboard .text-success,
+[data-theme="dark"] .admin-dashboard .text-info,
+[data-theme="dark"] .admin-dashboard .text-destructive {
+  color: inherit !important;
+  filter: brightness(1.1);
+}
+
+/* Grid de gráficos */
+[data-theme="dark"] .admin-dashboard .chart-grid {
+  opacity: 0.15;
+}
+[data-theme="dark"] .admin-dashboard .chart-line {
+  stroke: #f0a500 !important;
+}
+[data-theme="dark"] .admin-dashboard .chart-area {
+  fill: rgba(240, 165, 0, 0.15) !important;
 }

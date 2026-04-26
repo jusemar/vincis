@@ -10,15 +10,14 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     // Check for saved theme preference
     const savedTheme = localStorage.getItem('vincis-theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
+    const themeToApply = savedTheme || 'light';
+    setTheme(themeToApply);
+    document.documentElement.setAttribute('data-theme', themeToApply);
   }, []);
 
   const toggleTheme = () => {

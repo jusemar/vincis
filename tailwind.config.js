@@ -49,6 +49,15 @@ module.exports = {
           400: 'hsl(var(--amber-400))',
           300: 'hsl(var(--amber-300))',
         },
+        gold: {
+          DEFAULT: '#f0a500',
+          50: 'rgba(240, 165, 0, 0.05)',
+          100: 'rgba(240, 165, 0, 0.1)',
+          200: 'rgba(240, 165, 0, 0.2)',
+        },
+        success: '#22c55e',
+        info: '#3b82f6',
+        destructive: '#ef4444',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
