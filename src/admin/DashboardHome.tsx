@@ -226,12 +226,12 @@ export default function DashboardHome() {
                   transition={{ duration: 0.8, delay: index * 0.1 }}
                   className="flex-1 flex flex-col items-center gap-2"
                 >
-                  <div className="w-full bg-gradient-to-t from-primary/80 to-primary rounded-t-lg relative group">
+                  <div className="w-full h-full rounded-t-lg relative group">
                     <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: `${(data.revenue / 10000) * 100}%` }}
                       transition={{ duration: 0.8, delay: index * 0.1 }}
-                      className="w-full bg-gradient-to-t from-primary to-primary/60 rounded-t-lg absolute bottom-0"
+                      className="w-full bg-amber-500 absolute bottom-0 rounded-t-lg"
                     >
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-primary-foreground text-xs px-2 py-1 rounded whitespace-nowrap">
                         R$ {data.revenue.toLocaleString()}

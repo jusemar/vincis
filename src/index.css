@@ -194,70 +194,166 @@
   }
 }
 
-/* ADMIN DARK THEME - Glassmorphism + Navy + Amber */
-html[data-theme="dark"] .admin-dashboard {
-  /* Todos os textos dentro do admin dashboard */
+/* ADMIN DARK THEME - Using admin-dark class */
+.admin-dark,
+.admin-dark * {
   color: #f0f0f5 !important;
 }
 
-html[data-theme="dark"] .admin-dashboard *,
-html[data-theme="dark"] .admin-dashboard *::before,
-html[data-theme="dark"] .admin-dashboard *::after {
+.admin-dark .bg-card,
+.admin-dark [class*="bg-card"] {
+  background: rgba(50, 55, 70, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-dark .text-muted-foreground {
+  color: #b0b0c0 !important;
+}
+
+.admin-dark svg {
+  color: #d0d0e0 !important;
+}
+
+/* Ícones coloridos nos cards */
+.admin-dark .text-amber-500,
+.admin-dark .text-warning,
+.admin-dark .text-yellow-500 {
+  color: #f0a500 !important;
+}
+
+.admin-dark .text-green-500,
+.admin-dark .text-success {
+  color: #22c55e !important;
+}
+
+.admin-dark .text-blue-500,
+.admin-dark .text-info {
+  color: #3b82f6 !important;
+}
+
+.admin-dark .text-red-500,
+.admin-dark .text-destructive {
+  color: #ef4444 !important;
+}
+
+/* ADMIN DARK THEME - Using html attribute fallback */
+html[data-theme="dark"] .admin-dashboard,
+html[data-theme="dark"] .admin-dashboard * {
   color: #f0f0f5 !important;
 }
 
 html[data-theme="dark"] .admin-dashboard .bg-card {
-  background: rgba(40, 45, 60, 0.55) !important;
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #f0f0f5 !important;
-}
-
-html[data-theme="dark"] .admin-dashboard .border {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-html[data-theme="dark"] .admin-dashboard h2,
-html[data-theme="dark"] .admin-dashboard h3,
-html[data-theme="dark"] .admin-dashboard h4,
-html[data-theme="dark"] .admin-dashboard p,
-html[data-theme="dark"] .admin-dashboard span:not([class*="text-"]) {
-  color: #f0f0f5 !important;
+  background: rgba(50, 55, 70, 0.55) !important;
 }
 
 html[data-theme="dark"] .admin-dashboard .text-muted-foreground {
   color: #b0b0c0 !important;
 }
 
-/* Textos dentro dos cards */
-[data-theme="dark"] .admin-dashboard .bg-card .text-foreground,
-[data-theme="dark"] .admin-dashboard .bg-card h2,
-[data-theme="dark"] .admin-dashboard .bg-card h3,
-[data-theme="dark"] .admin-dashboard .bg-card p,
-[data-theme="dark"] .admin-dashboard .bg-card span,
-[data-theme="dark"] .admin-dashboard .bg-card div {
+html[data-theme="dark"] .admin-dashboard svg {
+  color: #d0d0e0 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-amber-500,
+html[data-theme="dark"] .admin-dashboard .text-warning {
+  color: #f0a500 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-green-500,
+html[data-theme="dark"] .admin-dashboard .text-success {
+  color: #22c55e !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-blue-500,
+html[data-theme="dark"] .admin-dashboard .text-info {
+  color: #3b82f6 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-red-500,
+html[data-theme="dark"] .admin-dashboard .text-destructive {
+  color: #ef4444 !important;
+}
+
+/* RESPONSIVE SIDEBAR */
+@media (max-width: 768px) {
+  .admin-dashboard aside {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    z-index: 50 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .admin-dashboard aside.expanded,
+  .admin-sidebar-open aside {
+    transform: translateX(0);
+  }
+}
+
+.admin-dark input,
+.admin-dark select,
+.admin-dark textarea {
+  background: hsl(222 47% 15%) !important;
   color: #f0f0f5 !important;
 }
 
-[data-theme="dark"] .admin-dashboard .bg-card .text-muted-foreground {
-  color: #b0b0c0 !important;
+/* Fallback: try with html[data-theme] */
+html[data-theme="dark"] .admin-dashboard {
+  color: #f0f0f5;
 }
 
-/* Ícones no admin dark */
-[data-theme="dark"] .admin-dashboard .text-info,
-[data-theme="dark"] .admin-dashboard .text-warning,
-[data-theme="dark"] .admin-dashboard .text-success,
-[data-theme="dark"] .admin-dashboard .text-destructive,
-[data-theme="dark"] .admin-dashboard svg {
+html[data-theme="dark"] .admin-dashboard h2,
+html[data-theme="dark"] .admin-dashboard h3,
+html[data-theme="dark"] .admin-dashboard h4,
+html[data-theme="dark"] .admin-dashboard p,
+html[data-theme="dark"] .admin-dashboard span,
+html[data-theme="dark"] .admin-dashboard div {
+  color: #f0f0f5 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .text-muted-foreground {
+  color: #a0a0b0 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .bg-card {
+  background: rgba(40, 45, 60, 0.6) !important;
+}
+
+html[data-theme="dark"] .admin-dashboard svg {
+  color: #d0d0e0 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard input,
+html[data-theme="dark"] .admin-dashboard select,
+html[data-theme="dark"] .admin-dashboard textarea {
+  background: hsl(222 47% 15%) !important;
+  color: #f0f0f5 !important;
+}
+
+/* DESIGN SYSTEM - BADGES */
+
+html[data-theme="dark"] .admin-dashboard .text-muted-foreground {
+  color: #a0a0b0 !important;
+}
+
+html[data-theme="dark"] .admin-dashboard .bg-card,
+html[data-theme="dark"] .admin-dashboard [class*="bg-card"] {
+  background: rgba(40, 45, 60, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .admin-dashboard svg,
+html[data-theme="dark"] .admin-dashboard [class*="lucide"] {
   color: #e0e0e8 !important;
 }
 
-[data-theme="dark"] .admin-dashboard .bg-card .text-info,
-[data-theme="dark"] .admin-dashboard .bg-card .text-warning,
-[data-theme="dark"] .admin-dashboard .bg-card .text-success,
-[data-theme="dark"] .admin-dashboard .bg-card .text-destructive,
-[data-theme="dark"] .admin-dashboard .bg-card svg {
-  color: #e0e0e8 !important;
+html[data-theme="dark"] .admin-dashboard input,
+html[data-theme="dark"] .admin-dashboard select,
+html[data-theme="dark"] .admin-dashboard textarea {
+  background: hsl(222 47% 14%) !important;
+  color: #f0f0f5 !important;
 }
 
 [data-theme="dark"] .admin-dashboard .text-foreground,

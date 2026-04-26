@@ -9,51 +9,28 @@ export default function ThemeToggle() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="relative w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden group"
+      className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden group"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
     >
-      {/* Background glow */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-amber-400/20 to-orange-400/20"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isDark ? 0 : 1 }}
-        transition={{ duration: 0.3 }}
-      />
+        initial={false}
+        animate={{ opacity: isDark ? 0 : 1, scale: isDark ? 0 : 1 }}
+        transition={{ duration: 0.2 }}
+        className="absolute"
+      >
+        <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+      </motion.div>
       
-      {/* Sun icon */}
       <motion.div
         initial={false}
-        animate={{
-          rotate: isDark ? -90 : 0,
-          scale: isDark ? 0 : 1,
-          opacity: isDark ? 0 : 1,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        animate={{ opacity: isDark ? 1 : 0, scale: isDark ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
         className="absolute"
       >
-        <Sun className={`w-5 h-5 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />
+        <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
       </motion.div>
-
-      {/* Moon icon */}
-      <motion.div
-        initial={false}
-        animate={{
-          rotate: isDark ? 0 : 90,
-          scale: isDark ? 1 : 0,
-          opacity: isDark ? 1 : 0,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="absolute"
-      >
-        <Moon className="w-5 h-5 text-primary" />
-      </motion.div>
-
-      {/* Shine effect on hover */}
-      <motion.div
-        className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ${isDark ? 'dark:via-white/10' : 'via-black/5'}`}
-      />
     </motion.button>
   );
 }
