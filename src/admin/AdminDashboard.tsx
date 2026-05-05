@@ -14,6 +14,7 @@ import FinancialPage from './FinancialPage';
 import ReviewsPage from './ReviewsPage';
 import ProfilePage from './ProfilePage';
 import AchievementsPage from './AchievementsPage';
+import AtendimentosPage from './AtendimentosPage';
 
 const pageTitles: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -21,6 +22,7 @@ const pageTitles: Record<string, string> = {
   services: 'Serviços',
   tickets: 'Mensagens',
   appointments: 'Agenda',
+  atendimentos: 'Atendimentos',
   financial: 'Financeiro',
   reviews: 'Avaliações',
   profile: 'Meu Perfil',
@@ -49,6 +51,8 @@ export default function AdminDashboard() {
         return <TicketsPage />;
       case 'appointments':
         return <AppointmentsPage />;
+      case 'atendimentos':
+        return <AtendimentosPage />;
       case 'financial':
         return <FinancialPage />;
       case 'reviews':

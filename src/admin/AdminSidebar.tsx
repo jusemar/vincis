@@ -11,6 +11,7 @@ import {
   LogOut,
   Award,
   Settings,
+  Headphones,
 } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 
@@ -25,6 +26,7 @@ const navItems = [
   { id: 'services', label: 'Serviços', icon: Package },
   { id: 'tickets', label: 'Mensagens', icon: Ticket, badge: 3 },
   { id: 'appointments', label: 'Agenda', icon: Calendar },
+  { id: 'atendimentos', label: 'Atendimentos', icon: Headphones },
   { id: 'financial', label: 'Financeiro', icon: DollarSign },
   { id: 'reviews', label: 'Avaliações', icon: Star },
   { id: 'profile', label: 'Meu Perfil', icon: User },
