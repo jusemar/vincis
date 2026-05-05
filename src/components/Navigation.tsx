@@ -9,7 +9,7 @@ const navLinks = [
   { name: 'Profissionais', href: '/profissionais', type: 'route' },
   { name: 'Serviços', href: '/#models', type: 'hash' },
   { name: 'Como Funciona', href: '/#how-it-works', type: 'hash' },
-  { name: 'Preços', href: '/#pricing', type: 'hash' },
+  { name: 'Preços', href: '/precos', type: 'route' },
 ];
 
 export default function Navigation() {

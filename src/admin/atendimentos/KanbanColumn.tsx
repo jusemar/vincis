@@ -16,7 +16,8 @@ interface Props {
 export const KanbanColumn = ({ column, protocols, activeId, onSelect, onDrop, draggingId, setDraggingId }: Props) => {
   return (
     <div
-      className="flex h-full w-[300px] shrink-0 flex-col rounded-2xl bg-secondary/60 p-3"
+      className="flex h-full w-[300px] shrink-0 flex-col rounded-2xl p-3"
+      style={{ background: 'hsl(45 93% 47% / 0.12)' }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();

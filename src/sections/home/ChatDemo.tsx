@@ -144,7 +144,7 @@ const Notebook3D = ({ children }: { children: React.ReactNode }) => {
           {/* Screen Bezel */}
           <div className="bg-slate-950 rounded-2xl p-4 overflow-hidden">
             {/* Screen Content - Altura aumentada para 650px */}
-            <div className="bg-background rounded-xl overflow-hidden h-[650px] flex flex-col">
+            <div className="bg-background rounded-xl overflow-hidden h-[550px] flex flex-col">
               {children}
             </div>
           </div>

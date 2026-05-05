@@ -5,10 +5,11 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Navigation from './components/Navigation';
 //import Hero from './sections/Hero';
 import ChatDemo from './sections/home/ChatDemo';
+import Banners from './components/Banners';
 import ServicesHub from './sections/home/ServicesHub';
 import Models from './sections/Models';
 import HowItWorks from './sections/HowItWorks';
-import Pricing from './sections/Pricing';
+import PricingPage from './pages/PricingPage';
 import CTA from './sections/CTA';
 import Footer from './sections/Footer';
 import ProfessionalsPage from './pages/ProfessionalsPage';
@@ -155,10 +156,10 @@ const HomePage = () => {
       <main>
       {/*   <Hero />  */}
         <ChatDemo />        
+        <Banners />
         <ServicesHub />
         <Models />
         <HowItWorks />
-        <Pricing />
         <CTA />
       </main>
       <Footer />
@@ -197,6 +198,7 @@ function AppContent() {
           
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/precos" element={<PricingPage />} />
             <Route path="/profissionais" element={<ProfessionalsPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/:page" element={<AdminDashboard />} />
