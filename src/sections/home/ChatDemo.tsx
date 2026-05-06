@@ -15,6 +15,7 @@ const chatConversation: ChatMessage[] = [
     id: '1',
     sender: 'user',
     text: 'Olá! Preciso de ajuda com a contabilidade da minha empresa.',
+    isTyping: true,
     timestamp: '09:41',
   },
   {
@@ -35,6 +36,7 @@ const chatConversation: ChatMessage[] = [
     id: '4',
     sender: 'user',
     text: 'É Simples Nacional. Quanto custa o plano mensal?',
+    isTyping: true,
     timestamp: '09:43',
   },
   {
@@ -55,6 +57,7 @@ const chatConversation: ChatMessage[] = [
     id: '7',
     sender: 'user',
     text: 'E se eu precisar de um advogado também?',
+    isTyping: true,
     timestamp: '09:45',
   },
   {
@@ -80,27 +83,24 @@ const chatConversation: ChatMessage[] = [
   },
 ];
 
-const TypingText = ({ text, onComplete, speed = 1000 }: { text: string; onComplete: () => void; speed?: number }) => {
-  const words = text.split(', ');
-  const [currentWord, setCurrentWord] = useState(0);
-  const [displayedWords, setDisplayedWords] = useState<string[]>([]);
+const TypingText = ({ text, onComplete, speed = 40, isUser = false }: { text: string; onComplete: () => void; speed?: number; isUser?: boolean }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (currentWord < words.length) {
+    if (currentIndex < text.length) {
       const timer = setTimeout(() => {
-        setDisplayedWords(prev => [...prev, words[currentWord]]);
-        setCurrentWord(prev => prev + 1);
+        setCurrentIndex(prev => prev + 1);
       }, speed);
       return () => clearTimeout(timer);
     } else {
       onComplete();
     }
-  }, [currentWord, words, speed, onComplete]);
+  }, [currentIndex, text, speed, onComplete]);
 
   return (
-    <span className="text-primary font-medium">
-      {displayedWords.join(', ')}
-      {currentWord < words.length && <span className="animate-pulse">|</span>}
+    <span className={isUser ? 'text-primary-foreground font-medium' : 'text-primary font-medium'}>
+      {text.slice(0, currentIndex)}
+      {currentIndex < text.length && <span className="animate-pulse">|</span>}
     </span>
   );
 };
@@ -144,7 +144,7 @@ const Notebook3D = ({ children }: { children: React.ReactNode }) => {
           {/* Screen Bezel */}
           <div className="bg-slate-950 rounded-2xl p-4 overflow-hidden">
             {/* Screen Content - Altura aumentada para 650px */}
-            <div className="bg-background rounded-xl overflow-hidden h-[550px] flex flex-col">
+            <div className="bg-background rounded-xl overflow-hidden h-[580px] flex flex-col">
               {children}
             </div>
           </div>
@@ -230,14 +230,14 @@ const ChatInterface = ({
       <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-gradient-gold flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary-foreground" />
+            <div className="w-12 h-12 rounded-full bg-gradient-gold flex items-center justify-center">
+              <Bot className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
           </div>
           <div>
-            <h4 className="font-semibold text-base text-foreground">{companyName}</h4>
-            <p className="text-xs text-green-400 flex items-center gap-1">
+            <h4 className="font-semibold text-lg text-foreground">{companyName}</h4>
+            <p className="text-sm text-green-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
               Online
             </p>
@@ -270,13 +270,13 @@ const ChatInterface = ({
       {/* Chat Messages - Scrollable Area */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto p-5 space-y-5"
         style={{ scrollBehavior: 'smooth' }}
       >
         {visibleMessages.map((msg, index) => {
           const isMessageTyping = typingStates[msg.id] && msg.isTyping;
-          // Velocidade de digitação: cliente mais rápido (20ms), empresa mais lento (40ms)
-          const typingSpeed = msg.sender === 'user' ? 20 : 45;
+          // Velocidade de digitação: cliente mais lento (55ms), empresa mais rápido (45ms)
+          const typingSpeed = msg.sender === 'user' ? 55 : 45;
           
           return (
             <motion.div
@@ -286,36 +286,37 @@ const ChatInterface = ({
               transition={{ duration: 0.3 }}
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`flex gap-3 max-w-[80%] ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex gap-4 max-w-[80%] ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
                   msg.sender === 'user' 
                     ? 'bg-primary/20' 
                     : 'bg-gradient-gold'
                 }`}>
                   {msg.sender === 'user' ? (
-                    <User className="w-4 h-4 text-primary" />
+                    <User className="w-5 h-5 text-primary" />
                   ) : (
-                    <Bot className="w-4 h-4 text-primary-foreground" />
+                    <Bot className="w-5 h-5 text-primary-foreground" />
                   )}
                 </div>
 
 {/* Message Bubble */}
-<div className={`relative px-4 py-2.5 rounded-2xl ${
+<div className={`relative px-4 py-3 rounded-2xl ${
   msg.sender === 'user'
     ? 'bg-primary text-primary-foreground dark:bg-[#1E3A8A] dark:text-white rounded-br-md'
     : 'bg-muted text-foreground rounded-bl-md'
 }`}>
                   {/* Sender Name */}
-                  <p className="text-[11px] font-semibold mb-1 opacity-70">
+                  <p className="text-xs font-semibold mb-1.5 opacity-70">
                     {msg.sender === 'user' ? userName : companyName}
                   </p>
-                  <p className="text-sm leading-relaxed">
+                  <p className="text-base leading-relaxed">
                     {index === currentMessageIndex && isMessageTyping ? (
                       <TypingText 
                         text={msg.text} 
                         onComplete={() => handleTypingCompleteForMessage(msg.id)}
                         speed={typingSpeed}
+                        isUser={msg.sender === 'user'}
                       />
                     ) : (
                       msg.text
@@ -340,17 +341,25 @@ const ChatInterface = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex justify-start"
+            className={`flex ${currentMessage.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-gold flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary-foreground" />
+            <div className="flex gap-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentMessage.sender === 'user' ? 'bg-primary/20' : 'bg-gradient-gold'
+              }`}>
+                {currentMessage.sender === 'user' ? (
+                  <User className="w-5 h-5 text-primary" />
+                ) : (
+                  <Bot className="w-5 h-5 text-primary-foreground" />
+                )}
               </div>
-              <div className="bg-muted px-4 py-2.5 rounded-2xl rounded-bl-md flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">{companyName} está digitando</span>
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-muted px-5 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {currentMessage.sender === 'user' ? userName : companyName} está digitando
+                </span>
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </motion.div>
@@ -405,20 +414,12 @@ export default function ChatDemo() {
     // Se está em modo de digitação, não avança até completar
     if (isTypingActive) return;
 
-    // Se a mensagem tem isTyping, ativa o modo digitação
-    if (currentMessage.isTyping) {
+    // Delay natural antes de começar a digitar (simulando tempo de resposta)
+    const delay = currentMessage.sender === 'user' ? 1500 : 800;
+    const timeout = setTimeout(() => {
       setIsTypingActive(true);
-      // O tempo de digitação será gerenciado pelo TypingText
-      return;
-    }
-
-    // Para mensagens sem digitação (usuário), avança após delay
-    if (!currentMessage.isTyping) {
-      const timeout = setTimeout(() => {
-        setCurrentMessageIndex(prev => prev + 1);
-      }, 1200);
-      return () => clearTimeout(timeout);
-    }
+    }, delay);
+    return () => clearTimeout(timeout);
   }, [currentMessageIndex, hasStarted, isPaused, isTypingActive]);
 
   const handleTypingComplete = () => {
