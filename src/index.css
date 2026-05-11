@@ -149,6 +149,34 @@
     background-clip: text;
     color: transparent;
   }
+
+  .text-gradient-amber {
+    background: linear-gradient(135deg, hsl(43 96% 56%), hsl(45 93% 47%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .glass-strong,
+  [data-theme="dark"] .glass-strong {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.25);
+  }
+
+  .ring-amber {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 0 30px -8px hsl(var(--primary) / 0.3);
+  }
   
   .bg-gradient-gold {
     background: var(--gradient-gold);

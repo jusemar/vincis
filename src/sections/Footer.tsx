@@ -26,6 +26,7 @@ const footerLinks = {
     { name: 'Blog', href: '#' },
     { name: 'Carreiras', href: '#' },
     { name: 'Contato', href: '#' },
+    { name: 'Parceiros', href: '/parceiros' },
   ],
   suporte: [
     { name: 'Central de Ajuda', href: '#' },

@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 const navLinks = [
   { name: 'Início', href: '/', type: 'route' },
   { name: 'Profissionais', href: '/profissionais', type: 'route' },
+  { name: 'Parceiros', href: '/parceiros', type: 'route' },
   { name: 'Serviços', href: '/#models', type: 'hash' },
   { name: 'Como Funciona', href: '/#how-it-works', type: 'hash' },
   { name: 'Preços', href: '/precos', type: 'route' },

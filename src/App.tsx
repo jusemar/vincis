@@ -13,6 +13,7 @@ import PricingPage from './pages/PricingPage';
 import CTA from './sections/CTA';
 import Footer from './sections/Footer';
 import ProfessionalsPage from './pages/ProfessionalsPage';
+import { PaginaParceiros } from './pages/PaginaParceiros';
 import AdminDashboard from './admin/AdminDashboard';
 import './App.css';
 
@@ -200,6 +201,7 @@ function AppContent() {
             <Route path="/" element={<HomePage />} />
             <Route path="/precos" element={<PricingPage />} />
             <Route path="/profissionais" element={<ProfessionalsPage />} />
+            <Route path="/parceiros" element={<PaginaParceiros />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/:page" element={<AdminDashboard />} />
           </Routes>
