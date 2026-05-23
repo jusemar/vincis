@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dra. Ana Carolina Silva — Advogada Empresarial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F5F3EE;
+      --surface: #FAFAF7;
+      --surface-2: #F0EDE6;
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.14);
+      --text: #1A1815;
+      --text-2: #6B6760;
+      --text-3: #9E9B96;
+      --gold: #E8A000;
+      --gold-light: #FFF3D6;
+      --gold-dark: #B87D00;
+      --blue: #2563EB;
+      --blue-light: #EFF6FF;
+      --green: #16A34A;
+      --green-light: #F0FDF4;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── BACK LINK ─── */
+    .back-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .back-btn:hover { background: var(--surface-2); }
+    .back-btn svg { width: 16px; height: 16px; }
+    .back-bar-title {
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      height: 280px;
+      overflow: hidden;
+    }
+    .hero-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      filter: brightness(0.75);
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 20%,
+        rgba(26,24,21,0.5) 70%,
+        rgba(26,24,21,0.85) 100%
+      );
+    }
+    .hero-badges {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      display: flex;
+      gap: 8px;
+    }
+    .hero-badge {
+      padding: 5px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      backdrop-filter: blur(8px);
+    }
+    .badge-cat { background: rgba(232,160,0,0.25); color: #FFD370; border: 1px solid rgba(232,160,0,0.4); }
+    .badge-avail { background: rgba(22,163,74,0.25); color: #86EFAC; border: 1px solid rgba(22,163,74,0.4); display: flex; align-items: center; gap: 5px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #86EFAC; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .hero-info {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+    }
+    .hero-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .hero-tag {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ─── LAYOUT ─── */
+    .layout {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 20px 80px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 700px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+
+    /* ─── CARDS GENÉRICOS ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title svg { width: 14px; height: 14px; color: var(--gold); }
+
+    /* ─── STATS ─── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-item {
+      background: var(--surface-2);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-value span { font-size: 13px; }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+
+    /* ─── RATING ─── */
+    .rating-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .rating-stars {
+      display: flex;
+      gap: 2px;
+    }
+    .star { width: 14px; height: 14px; fill: var(--gold); }
+    .star-empty { fill: var(--border-strong); }
+    .rating-num { font-weight: 600; font-size: 14px; color: var(--text); }
+    .rating-count { font-size: 12px; color: var(--text-3); }
+
+    /* ─── BIO ─── */
+    .bio-text {
+      font-size: 14px;
+      line-height: 1.75;
+      color: var(--text-2);
+      font-style: italic;
+      border-left: 2px solid var(--gold);
+      padding-left: 14px;
+    }
+
+    /* ─── SERVIÇOS ─── */
+    .service-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: var(--surface);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .service-item:hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(232,160,0,0.08);
+    }
+    .service-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .service-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .service-price-wrap { text-align: right; }
+    .service-from { font-size: 9px; color: var(--text-3); }
+    .service-price {
+      font-family: 'DM Serif Display', serif;
+      font-size: 18px;
+      color: var(--gold-dark);
+      line-height: 1;
+    }
+    .service-desc {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .service-includes {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .service-include {
+      font-size: 11px;
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .service-include svg { width: 12px; height: 12px; color: var(--green); flex-shrink: 0; }
+    .service-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      background: var(--gold-light);
+      color: var(--gold-dark);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ─── CAMPO DE DÚVIDA ─── */
+    .doubt-card {
+      background: linear-gradient(135deg, #FFF8E7 0%, #FFFDF5 100%);
+      border: 1px solid rgba(232,160,0,0.25);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .doubt-heading {
+      font-family: 'DM Serif Display', serif;
+      font-size: 18px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .doubt-sub {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-bottom: 14px;
+    }
+    .doubt-textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+    .doubt-textarea:focus { border-color: var(--gold); }
+    .doubt-textarea::placeholder { color: var(--text-3); }
+    .doubt-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .doubt-input {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .doubt-input:focus { border-color: var(--gold); }
+    .doubt-input::placeholder { color: var(--text-3); }
+    .doubt-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .doubt-btn:hover { background: var(--gold-dark); }
+    .doubt-btn svg { width: 16px; height: 16px; }
+
+    /* ─── AVALIAÇÕES ─── */
+    .review-item {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .review-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .reviewer { display: flex; align-items: center; gap: 8px; }
+    .reviewer-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+    .reviewer-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .reviewer-date { font-size: 11px; color: var(--text-3); }
+    .review-stars { display: flex; gap: 2px; }
+    .review-text {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+    .review-service {
+      font-size: 10px;
+      color: var(--text-3);
+      margin-top: 4px;
+    }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {}
+
+    .price-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      position: sticky;
+      top: 64px;
+    }
+    .price-label {
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .price-main {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .price-value {
+      font-family: 'DM Serif Display', serif;
+      font-size: 36px;
+      color: var(--gold-dark);
+    }
+    .price-unit { font-size: 13px; color: var(--text-3); }
+
+    .cta-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .cta-primary:hover { background: var(--gold-dark); }
+    .cta-primary svg { width: 16px; height: 16px; }
+
+    .cta-secondary {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .cta-secondary:hover { background: var(--surface-2); }
+    .cta-secondary svg { width: 16px; height: 16px; color: var(--text-3); }
+
+    .cta-ghost {
+      width: 100%;
+      padding: 12px;
+      background: var(--blue-light);
+      color: var(--blue);
+      border: 1px solid rgba(37,99,235,0.2);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .cta-ghost:hover { background: #DBEAFE; }
+    .cta-ghost svg { width: 16px; height: 16px; }
+
+    .cta-divider {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-3);
+      margin: 10px 0;
+    }
+
+    .info-list { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .info-row svg { width: 14px; height: 14px; color: var(--gold); flex-shrink: 0; }
+    .info-row span { font-size: 12px; color: var(--text-2); }
+
+    .discount-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .discount-gold { background: var(--gold-light); }
+    .discount-blue { background: var(--blue-light); }
+    .discount-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .discount-gold svg { color: var(--gold-dark); }
+    .discount-blue svg { color: var(--blue); }
+    .discount-text { font-size: 12px; color: var(--text-2); }
+    .discount-text strong { color: var(--text); }
+
+    /* ─── MODAL QUICK DOUBT ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+      transform: translateY(16px);
+      transition: transform 0.25s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+      color: var(--text);
+    }
+    .modal-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      padding: 4px;
+    }
+    .modal-close svg { width: 20px; height: 20px; }
+    .modal-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--surface-2);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    .modal-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--gold);
+    }
+    .modal-prof-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .modal-prof-spec { font-size: 11px; color: var(--text-3); }
+    .modal-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 10px;
+    }
+    .modal-textarea:focus { border-color: var(--gold); }
+    .modal-textarea::placeholder { color: var(--text-3); }
+    .modal-input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .modal-input {
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .modal-input:focus { border-color: var(--gold); }
+    .modal-input::placeholder { color: var(--text-3); }
+    .modal-send {
+      width: 100%;
+      padding: 12px;
+      background: var(--gold);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal-send:hover { background: var(--gold-dark); }
+
+    /* ─── ANIMATE IN ─── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.5s forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+
+  <!-- Back Bar -->
+  <div class="back-bar">
+    <button class="back-btn" onclick="history.back()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Voltar
+    </button>
+    <span class="back-bar-title">/ Advogados / Dra. Ana Carolina Silva</span>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <img class="hero-img" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1200&h=400&fit=crop" alt="Dra. Ana Carolina Silva">
+    <div class="hero-overlay"></div>
+    <div class="hero-badges">
+      <span class="hero-badge badge-cat">Advocacia</span>
+      <span class="hero-badge badge-avail"><span class="dot"></span>Disponível</span>
+    </div>
+    <div class="hero-info">
+      <h1 class="hero-name">Dra. Ana Carolina Silva</h1>
+      <div class="hero-tags">
+        <span class="hero-tag">Contratos</span>
+        <span class="hero-tag">M&A</span>
+        <span class="hero-tag">Compliance</span>
+        <span class="hero-tag">Startups</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <!-- Stats -->
+      <div class="fade-up">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">4.8<span>★</span></div>
+            <div class="stat-label">Avaliação</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">89</div>
+            <div class="stat-label">Avaliações</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">12<span>a</span></div>
+            <div class="stat-label">Experiência</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">230<span>+</span></div>
+            <div class="stat-label">Clientes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bio -->
+      <div class="card fade-up delay-1">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Sobre a profissional
+        </div>
+        <p class="bio-text">
+          "Advogada especializada em direito empresarial com foco em startups e empresas em crescimento. Experiência em operações de M&A, estruturação de contratos societários e programas de compliance. Bacharel em Direito pela UFRJ com especialização em Direito Empresarial pela FGV. Atendo 100% online por videochamada."
+        </p>
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <div class="info-row" style="margin:0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <span>Bacharel em Direito — UFRJ</span>
+          </div>
+          <div class="info-row" style="margin:0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Rio de Janeiro, RJ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Serviços -->
+      <div class="card fade-up delay-2">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Serviços e preços
+        </div>
+
+        <!-- Serviço 1 -->
+        <div class="service-item">
+          <div class="service-top">
+            <div>
+              <div class="service-name">Revisão de Contrato <span class="service-badge">Popular</span></div>
+            </div>
+            <div class="service-price-wrap">
+              <div class="service-from">a partir de</div>
+              <div class="service-price">R$ 280</div>
+            </div>
+          </div>
+          <div class="service-desc">Análise e revisão de contratos empresariais com parecer escrito e sugestões de alteração.</div>
+          <div class="service-includes">
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Contratos de até 20 páginas
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Parecer escrito incluso
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              1 rodada de ajustes
+            </div>
+          </div>
+        </div>
+
+        <!-- Serviço 2 -->
+        <div class="service-item">
+          <div class="service-top">
+            <div>
+              <div class="service-name">Contrato Social — Abertura de Empresa</div>
+            </div>
+            <div class="service-price-wrap">
+              <div class="service-from">a partir de</div>
+              <div class="service-price">R$ 600</div>
+            </div>
+          </div>
+          <div class="service-desc">Elaboração completa do contrato social para abertura de empresa Ltda ou Eireli.</div>
+          <div class="service-includes">
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Sociedade com até 3 sócios
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Inclui cláusulas de proteção
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              2 rodadas de revisão
+            </div>
+          </div>
+        </div>
+
+        <!-- Serviço 3 -->
+        <div class="service-item">
+          <div class="service-top">
+            <div>
+              <div class="service-name">Consultoria M&A</div>
+            </div>
+            <div class="service-price-wrap">
+              <div class="service-from">sob consulta</div>
+              <div class="service-price" style="font-size:14px; padding-top:2px;">Orçamento</div>
+            </div>
+          </div>
+          <div class="service-desc">Assessoria jurídica em processos de fusão, aquisição e reestruturação societária.</div>
+          <div class="service-includes">
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Due diligence jurídica
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Negociação e redação dos documentos
+            </div>
+            <div class="service-include">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Acompanhamento até o fechamento
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:12px; color:var(--text-3); margin-top:4px; text-align:center;">
+          Não encontrou o que precisa? Descreva sua necessidade abaixo ↓
+        </p>
+      </div>
+
+      <!-- Dúvida -->
+      <div class="doubt-card fade-up delay-3">
+        <div class="doubt-heading">Descreva sua necessidade</div>
+        <div class="doubt-sub">A Dra. Ana responde em até 24h, sem compromisso.</div>
+        <textarea class="doubt-textarea" placeholder="Ex: Preciso revisar um contrato de parceria com um fornecedor estrangeiro. Tenho dúvidas sobre cláusulas de exclusividade e rescisão..."></textarea>
+        <div class="doubt-row">
+          <input class="doubt-input" type="text" placeholder="Seu nome">
+          <input class="doubt-input" type="email" placeholder="Seu e-mail">
+        </div>
+        <button class="doubt-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar dúvida
+        </button>
+      </div>
+
+      <!-- Avaliações -->
+      <div class="card fade-up delay-4">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Avaliações
+        </div>
+        <div class="rating-bar" style="margin-bottom:16px">
+          <div class="rating-stars">
+            <svg class="star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <span class="rating-num">4.8</span>
+          <span class="rating-count">— 89 avaliações</span>
+        </div>
+
+        <div class="review-item">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">MF</div>
+              <div>
+                <div class="reviewer-name">Marcos Ferreira</div>
+                <div class="reviewer-date">há 2 semanas</div>
+              </div>
+            </div>
+            <div class="review-stars">
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          <p class="review-text">Excelente profissional. Revisou meu contrato com sócios em tempo recorde e encontrou cláusulas problemáticas que eu nem tinha percebido. Super recomendo.</p>
+          <p class="review-service">Serviço: Revisão de Contrato</p>
+        </div>
+
+        <div class="review-item">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">JP</div>
+              <div>
+                <div class="reviewer-name">Julia Pimentel</div>
+                <div class="reviewer-date">há 1 mês</div>
+              </div>
+            </div>
+            <div class="review-stars">
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          <p class="review-text">Contratei para abertura da minha empresa. Processo simples, ela explicou tudo com clareza e o contrato social ficou perfeito. Atendimento muito profissional.</p>
+          <p class="review-service">Serviço: Contrato Social — Abertura de Empresa</p>
+        </div>
+
+        <div class="review-item">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">RS</div>
+              <div>
+                <div class="reviewer-name">Rafael Souza</div>
+                <div class="reviewer-date">há 2 meses</div>
+              </div>
+            </div>
+            <div class="review-stars">
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg class="star star-empty" viewBox="0 0 24 24" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          <p class="review-text">Muito boa profissional. Apenas o prazo ficou um pouco acima do esperado, mas o trabalho em si foi impecável. Voltaria a contratar.</p>
+          <p class="review-service">Serviço: Revisão de Contrato</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="price-card fade-up delay-1">
+        <div class="price-label">Consulta por hora</div>
+        <div class="price-main">
+          <span class="price-value">R$ 350</span>
+          <span class="price-unit">/ hora</span>
+        </div>
+
+        <button class="cta-primary" onclick="document.querySelector('.modal-overlay').classList.add('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          Agendar Consulta
+        </button>
+
+        <div class="cta-divider">ou</div>
+
+        <button class="cta-secondary" onclick="document.querySelector('.doubt-card').scrollIntoView({behavior:'smooth'})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Enviar dúvida
+        </button>
+
+        <button class="cta-ghost" onclick="document.querySelector('.modal-overlay').classList.add('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.41a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Tirar dúvida rápida
+        </button>
+
+        <div class="info-list">
+          <div class="info-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="16" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+            <span>100% online — videochamada</span>
+          </div>
+          <div class="info-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Responde em até 24h</span>
+          </div>
+          <div class="info-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Pagamento seguro pela plataforma</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="discount-item discount-gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="discount-text"><strong>Já é cliente?</strong> Ganhe 10% extra</span>
+          </div>
+          <div class="discount-item discount-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="discount-text">Pack <strong>5h</strong> por R$ 1.488 <strong style="color:var(--green)">(-15%)</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal dúvida rápida -->
+  <div class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Dúvida rápida</div>
+          <div class="modal-sub">Sem compromisso — ela responde em até 24h</div>
+        </div>
+        <button class="modal-close" onclick="document.querySelector('.modal-overlay').classList.remove('open')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-profile">
+        <img class="modal-avatar" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop" alt="Ana Carolina Silva">
+        <div>
+          <div class="modal-prof-name">Dra. Ana Carolina Silva</div>
+          <div class="modal-prof-spec">Advocacia · Contratos · M&A</div>
+        </div>
+      </div>
+      <textarea class="modal-textarea" placeholder="Descreva brevemente sua dúvida ou necessidade..."></textarea>
+      <div class="modal-input-row">
+        <input class="modal-input" type="text" placeholder="Seu nome">
+        <input class="modal-input" type="email" placeholder="Seu e-mail">
+      </div>
+      <button class="modal-send">Enviar mensagem</button>
+    </div>
+  </div>
+
+</body>
+</html>
