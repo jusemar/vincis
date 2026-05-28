@@ -342,163 +342,195 @@ function PerfilProfissional() {
     <div className="relative min-h-screen bg-stone-50 dark:bg-navy-900">
       <div className="ambient-gold" />
 
-      <main className="relative z-10 pt-16">
+      <main className="relative z-10 pt-28 pb-32 px-6 lg:px-8 max-w-[1440px] mx-auto">
         {/* Hero */}
-        <section id="overview" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* ID Badge */}
+        <section id="overview" className="flex flex-col lg:flex-row gap-14 items-start mb-20">
+          {/* ID Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 40, rotate: -2 }}
+            animate={{ opacity: 1, y: 0, rotate: 0 }}
+            transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+            className="relative mx-auto lg:mx-0 group"
+          >
+            {/* Lanyard */}
+            <div className="absolute left-1/2 -top-20 -translate-x-1/2 flex flex-col items-center">
+              <div className="w-3 h-20 bg-gradient-to-b from-amber-500/80 to-amber-500 rounded-b-sm shadow-lg" />
+              <div className="size-7 rounded-md bg-zinc-300 border border-zinc-400/60 -mt-1 shadow-md" />
+            </div>
+            <div className="absolute -inset-2 bg-gradient-to-b from-amber-500/30 to-transparent rounded-[2rem] blur-2xl opacity-60 group-hover:opacity-90 transition-opacity" />
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="relative flex justify-center lg:justify-start"
+              whileHover={{ y: -4, rotate: 0.5 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
+              className="relative w-[320px] h-[500px] bg-white dark:bg-navy-800 rounded-[1.75rem] shadow-2xl flex flex-col p-0 overflow-hidden ring-1 ring-black/10 dark:ring-white/10"
             >
-              <div className="relative w-72">
-                <div className="absolute -inset-1 bg-gradient-to-b from-amber-400/30 to-transparent rounded-[2rem] blur-xl" />
-                <div className="relative bg-white dark:bg-navy-800 rounded-[2rem] shadow-xl border border-stone-200 dark:border-stone-700 overflow-hidden">
-                  <div className="h-3 bg-gradient-to-r from-amber-500 to-amber-300" />
-                  <div className="p-6 text-center">
-                    <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-amber-600 p-0.5 mb-4">
-                      <div className="w-full h-full rounded-full bg-stone-100 dark:bg-navy-700 flex items-center justify-center overflow-hidden">
-                        <Avatar className="w-full h-full">
-                          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-amber-400 to-amber-600 bg-clip-text text-transparent">
-                            RM
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    </div>
-                    <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">
-                      Ricardo Moura
-                    </h2>
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                      Contador Premium • CRC 1SP-123.456
-                    </p>
-                    <div className="flex items-center justify-center gap-1.5 mt-3">
-                      <BadgeCheck className="size-4 text-amber-500" />
-                      <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                        Verified Partner
-                      </span>
-                    </div>
+              <div className="w-full pt-12 px-7 flex flex-col items-center">
+                <div className="flex items-center gap-2 mb-7 self-start">
+                  <div className="size-6 border-2 border-amber-500 rounded-full flex items-center justify-center">
+                    <div className="size-2 bg-amber-500 rounded-full" />
                   </div>
-                  <div className="px-6 pb-6">
-                    <div className="flex items-center justify-center gap-4 text-xs text-stone-400 dark:text-stone-500 border-t border-stone-100 dark:border-stone-700 pt-4">
-                      <span>CRC-SP</span>
-                      <span className="w-1 h-1 rounded-full bg-stone-300" />
-                      <span>CFC</span>
-                      <span className="w-1 h-1 rounded-full bg-stone-300" />
-                      <span>SESCON</span>
-                    </div>
+                  <span className="text-[10px] font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-[0.18em]">
+                    Vincis Elite
+                  </span>
+                </div>
+
+                <div className="size-36 rounded-full border-4 border-amber-500 p-1 mb-5">
+                  <div className="w-full h-full rounded-full bg-stone-100 dark:bg-navy-700 flex items-center justify-center overflow-hidden">
+                    <span className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                      RM
+                    </span>
+                  </div>
+                </div>
+
+                <h2 className="text-zinc-900 dark:text-zinc-100 font-bold text-2xl tracking-tight">
+                  RICARDO MOURA
+                </h2>
+                <p className="text-amber-600 dark:text-amber-400 font-bold text-[10px] uppercase tracking-[0.22em] mt-1 mb-7">
+                  Sócio Sênior • Nível 4
+                </p>
+
+                <div className="w-full grid grid-cols-2 gap-4 border-t border-zinc-100 dark:border-zinc-700 pt-5">
+                  <div>
+                    <p className="text-[9px] text-stone-500 uppercase tracking-wider">CRC</p>
+                    <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">SP-294.102/O</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-stone-500 uppercase tracking-wider">Válido até</p>
+                    <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">12/2028</p>
                   </div>
                 </div>
               </div>
-            </motion.div>
 
-            {/* Hero Content */}
+              <div className="mt-auto w-full h-24 bg-amber-500 flex items-center justify-between px-6">
+                <div>
+                  <p className="text-[9px] font-bold text-navy-900/70 uppercase tracking-widest">
+                    Verified Partner
+                  </p>
+                  <p className="text-sm font-bold text-navy-900">vincis.com/ricardo</p>
+                </div>
+                <div className="size-14 bg-white p-1.5 rounded-sm">
+                  <div
+                    className="w-full h-full bg-stone-50"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(0deg,#09090b 0 2px,#fff 2px 4px),repeating-linear-gradient(90deg,#09090b 0 2px,#fff 2px 4px)",
+                      backgroundBlendMode: "multiply",
+                    }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Profile content */}
+          <div className="flex-1 space-y-9 w-full">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.7, delay: 0.15 }}
+              className="space-y-5"
             >
-              <Badge variant="outline" className="mb-4 text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5">
-                <Sparkles className="size-3 mr-1" />
-                Top 1% Profissionais
-              </Badge>
-              <h1 className="text-4xl lg:text-5xl font-bold text-stone-900 dark:text-stone-100 leading-tight">
-                Domínio fiscal,{" "}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                <div className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Top 1% • Parceiro de Escalabilidade
+              </div>
+              <h1 className="text-5xl lg:text-6xl font-bold text-stone-900 dark:text-stone-100 tracking-tight leading-[1.05]">
+                Domínio fiscal,
+                <br />
                 <span className="text-gradient-gold">crescimento composto.</span>
               </h1>
-              <p className="mt-4 text-lg text-stone-600 dark:text-stone-400 leading-relaxed max-w-xl">
-                Consultoria contábil premium para empresas que tratam finanças como vantagem competitiva. 
-                Estratégia fiscal, BPO financeiro e holding patrimonial.
+              <p className="text-stone-500 dark:text-stone-400 text-lg max-w-2xl leading-relaxed">
+                Ricardo é sócio estratégico especializado em gestão fiscal para SaaS de alto
+                crescimento. Pela plataforma Vincis, gerencia <strong className="text-stone-900 dark:text-stone-100">R$ 12,4M</strong> em
+                receita recorrente distribuída em <strong className="text-stone-900 dark:text-stone-100">14 portfólios</strong>{" "}
+                enterprise.
               </p>
-              <div className="flex flex-wrap gap-3 mt-8">
-                <Button size="lg" className="gap-2">
-                  Agendar Consultoria
-                  <ArrowUpRight className="size-4" />
-                </Button>
-                <Button variant="outline" size="lg" className="gap-2">
-                  Ver portfólio público
-                  <ChevronRight className="size-4" />
-                </Button>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button className="group flex items-center gap-2 px-6 py-3 bg-amber-500 text-navy-900 font-bold rounded-full hover:shadow-[0_0_30px_-5px_rgba(245,158,11,0.5)] transition-all">
+                  Agendar Consultoria Estratégica
+                  <ArrowUpRight className="size-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+                <button className="flex items-center gap-2 px-6 py-3 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-medium rounded-full hover:bg-stone-100/60 dark:hover:bg-stone-800/60 transition-colors">
+                  <Globe className="size-4" /> Ver portfólio público
+                </button>
               </div>
+            </motion.div>
+
+            {/* Metrics */}
+            <motion.div
+              id="metrics"
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: "-80px" }}
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
+              }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-5"
+            >
+              {[
+                {
+                  label: "Recorrência mensal",
+                  value: <AnimatedNumber prefix="R$ " value={42850} />,
+                  trend: "+12,4% vs mês anterior",
+                  trendColor: "text-emerald-600 dark:text-emerald-400",
+                  glow: true,
+                  icon: TrendingUp,
+                },
+                {
+                  label: "Portfólios ativos",
+                  value: <AnimatedNumber value={14} suffix=" entidades" />,
+                  trend: "Próxima abertura: Fev 2026",
+                  trendColor: "text-stone-500",
+                  icon: Users,
+                },
+                {
+                  label: "Trust score",
+                  value: <AnimatedNumber value={99.8} decimals={1} suffix="%" />,
+                  trend: "NPS 92 • 0 disputas em 36 meses",
+                  trendColor: "text-stone-500",
+                  icon: ShieldCheck,
+                  progress: 99.8,
+                },
+              ].map((m) => {
+                const Icon = m.icon;
+                return (
+                  <motion.div
+                    key={m.label}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+                    }}
+                    className={cn(
+                      "glass-card p-6 rounded-2xl",
+                      m.glow && "shadow-lg shadow-amber-500/10"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-stone-500 uppercase tracking-widest">{m.label}</p>
+                      <Icon className="size-4 text-amber-500/70" />
+                    </div>
+                    <p className="text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+                      {m.value}
+                    </p>
+                    {m.progress !== undefined ? (
+                      <div className="mt-4 w-full h-1.5 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          whileInView={{ width: `${m.progress}%` }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 1.4, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-amber-500 to-amber-300"
+                        />
+                      </div>
+                    ) : (
+                      <p className={cn("mt-4 text-sm font-medium", m.trendColor)}>{m.trend}</p>
+                    )}
+                  </motion.div>
+                );
+              })}
             </motion.div>
           </div>
         </section>
-
-        {/* Metrics */}
-        <motion.section
-          id="metrics"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12"
-        >
-          <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              {
-                label: "Recorrência mensal",
-                value: 42850,
-                prefix: "R$ ",
-                decimals: 0,
-                trend: "+12,4% vs mês anterior",
-                trendColor: "text-emerald-600 dark:text-emerald-400",
-                glow: true,
-                icon: TrendingUp,
-              },
-              {
-                label: "Portfólios ativos",
-                value: 14,
-                suffix: " entidades",
-                decimals: 0,
-                trend: "Próxima abertura: Fev 2026",
-                trendColor: "text-stone-500",
-                icon: Users,
-              },
-              {
-                label: "Trust score",
-                value: 99.8,
-                suffix: "%",
-                decimals: 1,
-                trend: "NPS 92 • 0 disputas em 36 meses",
-                trendColor: "text-stone-500",
-                icon: ShieldCheck,
-                progress: 99.8,
-              },
-            ].map((metric, i) => (
-              <motion.div
-                key={metric.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={cn(
-                  "rounded-2xl p-5 border",
-                  metric.glow
-                    ? "bg-white dark:bg-navy-800 border-amber-500/20 shadow-lg shadow-amber-500/5"
-                    : "glass-card"
-                )}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-sm font-medium text-stone-500 dark:text-stone-400">
-                    {metric.label}
-                  </span>
-                  <metric.icon className="size-4 text-amber-500" />
-                </div>
-                <div className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-                  <AnimatedNumber
-                    value={metric.value}
-                    prefix={metric.prefix || ""}
-                    suffix={metric.suffix || ""}
-                    decimals={metric.decimals}
-                  />
-                </div>
-                <p className={cn("text-xs mt-1.5", metric.trendColor)}>
-                  {metric.trend}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.section>
 
         {/* Portfolios */}
         <section id="portfolios" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

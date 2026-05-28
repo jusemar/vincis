@@ -1,14 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Star, 
   Clock, 
   GraduationCap, 
   Briefcase, 
   MapPin, 
-  Calendar,
-  Tag,
-  Users,
-  Video
+  Eye
 } from 'lucide-react';
 
 export interface Professional {
@@ -32,11 +30,11 @@ export interface Professional {
 interface ProfessionalCardProps {
   professional: Professional;
   index: number;
-  onOpenBooking?: () => void;
 }
 
-const ProfessionalCard = ({ professional, index, onOpenBooking }: ProfessionalCardProps) => {
+const ProfessionalCard = ({ professional, index }: ProfessionalCardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const navigate = useNavigate();
 
   const {
     id,
@@ -71,11 +69,6 @@ const ProfessionalCard = ({ professional, index, onOpenBooking }: ProfessionalCa
     if (profession === 'contador') return 'bg-green-500/20 text-green-400';
     return 'bg-primary/20 text-primary';
   };
-
-  const pricingTiers = [
-    { hours: 1, price: hourlyRate, discount: 0 },
-    { hours: 5, price: Math.round(hourlyRate * 0.85), discount: 15 },
-  ];
 
   return (
     <div 
@@ -216,63 +209,16 @@ const ProfessionalCard = ({ professional, index, onOpenBooking }: ProfessionalCa
               </div>
             )}
 
-            {/* Pricing tiers */}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                <Tag className="h-3.5 w-3.5" />
-                Preço por Quantidade
-              </div>
-              <div className="space-y-2">
-                {pricingTiers.map((tier) => (
-                  <div 
-                    key={tier.hours}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-xl"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium text-foreground">
-                        {tier.hours}h
-                      </span>
-                      {tier.discount > 0 && (
-                        <span className="text-[11px] font-bold text-green-500 bg-green-500/15 px-2 py-0.5 rounded-full">
-                          -{tier.discount}%
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm font-bold text-primary">
-                      R$ {tier.price * tier.hours}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Client discount + online info */}
-            <div className="flex flex-col gap-2 mt-3">
-              <div className="flex items-center gap-2 p-2.5 bg-primary/10 rounded-xl border border-primary/20">
-                <Users className="h-4 w-4 text-primary flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-primary">Já é cliente?</span> Ganhe 10% extra!
-                </p>
-              </div>
-              <div className="flex items-center gap-2 p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                <Video className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-blue-400">100% online</span> — videochamada
-                </p>
-              </div>
-            </div>
-
             {/* Action button */}
             <button 
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 mt-3"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 mt-auto"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenBooking?.();
+                navigate('/perfil-profissional');
               }}
             >
-              <Calendar className="h-4 w-4" />
-              Agendar Consulta
+              <Eye className="h-4 w-4" />
+              Ver Perfil
             </button>
           </div>
         </div>

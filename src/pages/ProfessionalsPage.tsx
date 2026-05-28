@@ -299,7 +299,6 @@ export default function ProfessionalsPage() {
                 key={professional.id} 
                 professional={professional} 
                 index={index}
-                onOpenBooking={() => handleOpenBooking(professional)}
               />
             ))}
           </div>
