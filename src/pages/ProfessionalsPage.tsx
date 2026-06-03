@@ -297,8 +297,7 @@ export default function ProfessionalsPage() {
             {filteredProfessionals.map((professional, index) => (
               <ProfessionalCard 
                 key={professional.id} 
-                professional={professional} 
-                index={index}
+                professional={professional}
               />
             ))}
           </div>

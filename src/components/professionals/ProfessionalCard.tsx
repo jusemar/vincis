@@ -1,13 +1,5 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Star, 
-  Clock, 
-  GraduationCap, 
-  Briefcase, 
-  MapPin, 
-  Eye
-} from 'lucide-react';
+import { Circle, Briefcase, GraduationCap, Star } from 'lucide-react';
 
 export interface Professional {
   id: string;
@@ -29,201 +21,135 @@ export interface Professional {
 
 interface ProfessionalCardProps {
   professional: Professional;
-  index: number;
 }
 
-const ProfessionalCard = ({ professional, index }: ProfessionalCardProps) => {
-  const [isFlipped, setIsFlipped] = useState(false);
+const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
   const navigate = useNavigate();
 
   const {
-    id,
     name,
     photo,
-    profession,
     specialty,
-    location,
     rating,
     reviewCount,
     education,
     experience,
     hourlyRate,
-    isAvailable,
     specialties,
-    about,
-    certifications
+    certifications,
   } = professional;
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
-
-  const getProfessionLabel = () => {
-    if (profession === 'tecnico') return 'Técnico';
-    if (profession === 'contador') return 'Contabilidade';
-    return 'Advocacia';
-  };
-
-  const getProfessionStyles = () => {
-    if (profession === 'tecnico') return 'bg-blue-500/20 text-blue-400';
-    if (profession === 'contador') return 'bg-green-500/20 text-green-400';
-    return 'bg-primary/20 text-primary';
-  };
-
   return (
-    <div 
-      className="group relative h-[560px] cursor-pointer"
-      onClick={handleFlip}
-      onMouseEnter={() => setIsFlipped(true)}
-      onMouseLeave={() => setIsFlipped(false)}
-      style={{ perspective: '1000px' }}
-    >
-      <div 
-        className="relative w-full h-full transition-transform duration-700"
-        style={{ 
-          transformStyle: 'preserve-3d',
-          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
-        }}
-      >
-        {/* Front of card */}
-        <div 
-          className="absolute inset-0 bg-card rounded-2xl border border-border overflow-hidden shadow-lg"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
-          {/* Category badge */}
-          <div className={`absolute top-3 right-3 z-10 px-3 py-1 rounded-full text-xs font-semibold ${getProfessionStyles()}`}>
-            {getProfessionLabel()}
-          </div>
+    <article className="group glass-card rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-glow">
+      {/* Brand bar */}
+      <header className="flex items-center justify-between gap-2 px-5 pt-4">
+        <div className="flex items-center gap-2">
+          <Circle
+            className="h-3.5 w-3.5"
+            style={{ fill: 'hsl(var(--primary))', stroke: 'hsl(var(--primary))' }}
+            strokeWidth={3}
+          />
+          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-foreground">
+            Expert Advisor Hub
+          </span>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          {certifications[0] || 'Credenciado'}
+        </span>
+      </header>
 
-          {/* Availability */}
-          <div className={`absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-            isAvailable ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
-            {isAvailable ? 'Disponível' : 'Ocupado'}
-          </div>
-
-          {/* Image */}
-          <div className="relative h-64 overflow-hidden">
-            <img 
-              src={photo} 
-              alt={name}
-              className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+      <div className="flex px-5 pt-4 pb-4">
+        {/* Left: avatar */}
+        <div className="flex flex-col items-center gap-2 shrink-0">
+          <div className="relative">
+            <div
+              className="absolute inset-0 rounded-full opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-70"
+              style={{ background: 'var(--gradient-gold)' }}
+              aria-hidden
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+            <div className="relative h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition-transform duration-500 group-hover:scale-105 shadow-card">
+              <img
+                src={photo}
+                alt={name}
+                width={256}
+                height={256}
+                className="h-full w-full object-cover"
+              />
+            </div>
           </div>
-
-          {/* Content */}
-          <div className="p-5 flex flex-col h-[calc(100%-16rem)]">
-            <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">{name}</h3>
-
-            {/* Specialty badges */}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {specialties.slice(0, 3).map((tag, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-primary/10 text-primary uppercase tracking-wide"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-
-            {/* Location + Rating */}
-            <div className="flex items-center justify-between mb-2">
-              {location && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{location}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i}
-                    className={`h-3.5 w-3.5 ${i < Math.floor(rating) ? 'text-primary fill-primary' : 'text-muted fill-muted'}`}
-                  />
-                ))}
-                <span className="text-xs font-semibold text-foreground ml-1">{rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({reviewCount})</span>
-              </div>
-            </div>
-
-            {/* Education + Experience */}
-            <div className="flex items-center justify-between gap-3 mb-auto">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <GraduationCap className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                <span className="line-clamp-1">{education}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
-                <Briefcase className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                <span>{experience}</span>
-              </div>
-            </div>
-
-            {/* Price */}
-            <div className="bg-muted/50 rounded-xl p-3 mt-4">
-              <div className="flex items-center justify-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Por hora</span>
-                <span className="text-xl font-bold text-primary ml-1">
-                  R$ {hourlyRate.toFixed(0)}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-extrabold text-foreground">
+              {rating.toFixed(1).replace('.', ',')}
+            </span>
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <span className="text-[10px] text-muted-foreground">({reviewCount})</span>
           </div>
         </div>
 
-        {/* Back of card */}
-        <div 
-          className="absolute inset-0 bg-card rounded-2xl border border-border overflow-hidden shadow-lg"
-          style={{ 
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)'
-          }}
-        >
-          <div className="h-full flex flex-col p-5">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
-              <img 
-                src={photo} 
-                alt={name}
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary"
-              />
-              <div className="min-w-0">
-                <h3 className="text-base font-bold text-foreground">{name}</h3>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {specialties.slice(0, 2).map((tag, i) => (
-                    <span key={i} className="text-[11px] font-semibold text-primary uppercase">{tag}</span>
-                  ))}
-                </div>
-              </div>
+        {/* Right: content */}
+        <div className="flex-1 min-w-0 ml-6">
+          <h1 className="text-lg font-extrabold leading-tight tracking-tight text-foreground">
+            {name.toUpperCase()}
+          </h1>
+          <p className="text-xs font-medium text-primary">
+            {specialty}
+          </p>
+
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Briefcase className="h-3 w-3" />
+            <span>
+              <span className="font-semibold text-foreground">{experience}</span> de experiência
+            </span>
+          </div>
+
+          {/* Formação */}
+          <div className="mt-2 flex items-start gap-1.5">
+            <GraduationCap className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+            <div className="text-[11px] leading-snug text-foreground">
+              <span className="font-medium">{education}</span>
             </div>
+          </div>
 
-            {/* Professional notes / About */}
-            {about && (
-              <div className="mb-4 p-4 bg-muted/30 rounded-xl border border-border/50">
-                <p className="text-sm text-muted-foreground italic leading-relaxed line-clamp-6">
-                  "{about}"
-                </p>
-              </div>
+          {/* Especialidades */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Especialidades:
+            </span>
+            {specialties.slice(0, 3).map((item) => (
+              <span
+                key={item}
+                className="rounded-md px-1.5 py-0.5 text-[11px] font-medium bg-primary/10 text-primary"
+              >
+                {item}
+              </span>
+            ))}
+            {specialties.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{specialties.length - 3}
+              </span>
             )}
-
-            {/* Action button */}
-            <button 
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 mt-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/perfil-profissional');
-              }}
-            >
-              <Eye className="h-4 w-4" />
-              Ver Perfil
-            </button>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Footer CTA */}
+      <footer className="flex items-center justify-between gap-3 px-5 py-3 bg-gradient-gold">
+        <div>
+          <span className="text-base font-bold">R$ {hourlyRate.toFixed(0)}</span>
+          <span className="ml-1 text-[11px] opacity-90">/ hora</span>
+        </div>
+        <button
+          type="button"
+          className="rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 text-navy-900"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/perfil-profissional-v2');
+          }}
+        >
+          VER PERFIL
+        </button>
+      </footer>
+    </article>
   );
 };
 

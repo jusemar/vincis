@@ -16,6 +16,8 @@ import ProfessionalsPage from './pages/ProfessionalsPage';
 import { PaginaParceiros } from './pages/PaginaParceiros';
 import AdminDashboard from './admin/AdminDashboard';
 import { PerfilProfissional } from './pages/PerfilProfissional';
+import { PerfilColaborador } from './pages/PerfilColaborador';
+import PerfilProfissionalV2 from './pages/PerfilProfissionalV2';
 import './App.css';
 
 // Loading Screen Component
@@ -204,11 +206,13 @@ function AppContent() {
             <Route path="/profissionais" element={<ProfessionalsPage />} />
             <Route path="/parceiros" element={<PaginaParceiros />} />
             <Route path="/perfil-profissional" element={<PerfilProfissional />} />
+            <Route path="/perfil-profissional-v2" element={<PerfilProfissionalV2 />} />
+            <Route path="/perfil-colaborador" element={<PerfilColaborador />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/:page" element={<AdminDashboard />} />
           </Routes>
           
-          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissional' && <BackToTop />}
+          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissional' && location.pathname !== '/perfil-profissional-v2' && location.pathname !== '/perfil-colaborador' && <BackToTop />}
         </motion.div>
       )}
     </>
