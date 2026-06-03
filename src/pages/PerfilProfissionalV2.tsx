@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  BadgeCheck, Headphones, Medal, GraduationCap, Award,
-  CheckCircle2, Lock, Users, Send, PlusCircle, Heart, Share2,
+  BadgeCheck, Headphones, GraduationCap, Award,
+  CheckCircle2, Lock, Users, Send, Heart, Share2,
   ChevronLeft, ChevronRight, Zap, ShieldCheck, Shield, FileText,
   Mail, Phone, Link as LinkIcon, Paperclip,
 } from 'lucide-react';
@@ -40,63 +41,204 @@ const timeSlots = [
   { time: '16:00', available: true },
 ];
 
+const successCases = [
+  { type: 'IRPF', title: 'Declaração com pendências anteriores', desc: 'Organização de documentos e envio correto após inconsistências.' },
+  { type: 'MEI', title: 'Formalização de prestador', desc: 'Orientação fiscal inicial para emissão de nota e obrigações mensais.' },
+  { type: 'CNPJ', title: 'Regularização de empresa inativa', desc: 'Diagnóstico de pendências e plano de regularização fiscal.' },
+  { type: 'Simples', title: 'Correção de enquadramento fiscal', desc: 'Análise de regime e organização para reduzir riscos.' },
+];
+
+const experience = [
+  { year: '12 anos', title: 'Atuação em contabilidade', desc: 'Experiência com pessoas físicas, MEIs, autônomos e pequenas empresas.' },
+  { year: '430+', title: 'Declarações e regularizações', desc: 'Atendimento com IRPF, CNPJ, DAS, pendências e obrigações fiscais.' },
+];
+
+const faqItems = [
+  { q: 'O valor da declaração de IRPF pode mudar?', a: 'Sim. O preço inicial vale para casos simples. Situações com investimentos, exterior, atividade rural ou muitos informes podem exigir orçamento.' },
+  { q: 'O atendimento é totalmente online?', a: 'Sim. O atendimento pode acontecer por ticket, envio de documentos pela plataforma e videochamada em consultorias agendadas.' },
+  { q: 'Posso tirar uma dúvida antes de contratar?', a: 'Use "Consultar especialistas" para enviar uma pergunta privada para este contador ou pública para profissionais da categoria.' },
+];
+
+const reviews = [
+  { stars: 5, text: 'Organizou meu imposto de renda com clareza e explicou tudo sem complicar.', author: 'Mariana Costa' },
+  { stars: 5, text: 'Atendimento rápido, direto e muito profissional. Resolveu minha regularização.', author: 'Rafael Oliveira' },
+];
+
+const services = [
+  {
+    name: 'Declaração de IRPF',
+    desc: 'Para pessoa física com rendimentos simples ou moderados.',
+    price: 'A partir de R$100',
+    chips: ['Atendimento online', 'Até 2 fontes pagadoras', 'Organização dos documentos', 'Entrega da declaração'],
+    note: 'Preço inicial para casos simples. Investimentos, exterior ou muitos informes podem exigir orçamento.',
+    action: 'Contratar agora',
+  },
+  {
+    name: 'Abertura de MEI',
+    desc: 'Cadastro, orientação inicial e regularização básica.',
+    price: 'A partir de R$50',
+    chips: ['Emissão do CNPJ', 'Orientação de atividade', 'Primeiros passos fiscais'],
+    note: 'Ideal para quem quer iniciar formalmente com orientação simples e rápida.',
+    action: 'Contratar agora',
+  },
+  {
+    name: 'Regularização de CNPJ',
+    desc: 'Análise de pendências fiscais, cadastrais e obrigações atrasadas.',
+    price: 'Sob orçamento',
+    chips: ['Diagnóstico inicial', 'Consulta de pendências', 'Plano de regularização'],
+    note: 'Como cada caso muda conforme pendências e órgãos envolvidos, o valor é definido após análise.',
+    action: 'Solicitar orçamento',
+    outline: true,
+  },
+  {
+    name: 'Consultoria tributária por hora',
+    desc: 'Conversa estratégica para decisões fiscais e planejamento.',
+    price: 'R$180,00/h',
+    chips: ['Videochamada', 'Análise do caso', 'Orientação prática'],
+    note: 'Use quando sua dúvida precisa de conversa ao vivo, contexto e orientação personalizada.',
+    action: 'Agendar consultoria',
+  },
+];
+
 export default function PerfilProfissionalV2() {
   const [responseType, setResponseType] = useState<'private' | 'public'>('private');
+  const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setStatus('success'), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-muted/10 animate-pulse">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8 space-y-4">
+            <div className="h-3 w-40 bg-muted rounded" />
+            <div className="h-10 w-3/4 bg-muted rounded" />
+            <div className="h-4 w-2/3 bg-muted rounded" />
+            <div className="flex gap-2">
+              <div className="h-8 w-28 bg-muted rounded-full" />
+              <div className="h-8 w-24 bg-muted rounded-full" />
+              <div className="h-8 w-36 bg-muted rounded-full" />
+            </div>
+            <div className="h-[72px] w-full bg-muted rounded-xl" />
+          </div>
+        </div>
+
+        <main className="max-w-7xl mx-auto px-4 md:px-6 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="md:col-span-8 space-y-6">
+            <div className="h-52 bg-muted rounded-xl animate-pulse" />
+            <div className="h-72 bg-muted rounded-xl animate-pulse" />
+            <div className="h-48 bg-muted rounded-xl animate-pulse" />
+            <div className="h-48 bg-muted rounded-xl animate-pulse" />
+            <div className="h-36 bg-muted rounded-xl animate-pulse" />
+            <div className="h-52 bg-muted rounded-xl animate-pulse" />
+            <div className="h-44 bg-muted rounded-xl animate-pulse" />
+          </div>
+
+          <aside className="md:col-span-4">
+            <div className="sticky top-24 space-y-6 animate-pulse">
+              <div className="h-96 bg-muted rounded-2xl" />
+              <div className="h-28 bg-muted rounded-2xl" />
+              <div className="h-32 bg-muted rounded-2xl" />
+            </div>
+          </aside>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <Shield className="h-8 w-8 text-destructive" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Erro ao carregar perfil</h2>
+          <p className="text-muted-foreground max-w-md">
+            Não foi possível carregar os dados do profissional. Tente novamente.
+          </p>
+          <button
+            onClick={() => {
+              setStatus('loading');
+              setTimeout(() => setStatus('success'), 600);
+            }}
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Spacer */}
-        <div className="md:col-span-12" />
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-amber-50/95 via-sky-50/94 to-violet-50/96 dark:from-navy-950 dark:via-navy-900 dark:to-navy-950 border-b border-border overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_10%,rgba(230,165,29,0.24),transparent_28%),radial-gradient(circle_at_70%_10%,rgba(109,93,252,0.12),transparent_24%),radial-gradient(circle_at_18%_90%,rgba(230,165,29,0.16),transparent_26%)]" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div className="md:col-span-8">
+              {/* Breadcrumb */}
+              <nav className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                <Link to="/" className="hover:text-primary transition-colors">Início</Link>
+                <ChevronRight className="h-3 w-3" />
+                <Link to="/profissionais" className="hover:text-primary transition-colors">Profissionais</Link>
+                <ChevronRight className="h-3 w-3" />
+                <span className="text-foreground font-semibold">Carlos Eduardo Mendes</span>
+              </nav>
 
-        {/* Main Content (8 cols) */}
-        <div className="md:col-span-8 space-y-6">
-          {/* Professional Intro Header */}
-          <section className="bg-card p-6 rounded-xl border border-border shadow-sm flex flex-col md:flex-row gap-6 items-start">
-            <div className="w-full">
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="bg-muted/50 px-3 py-1 rounded-full text-muted-foreground text-xs font-bold flex items-center gap-1">
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5">
+                Carlos Eduardo Mendes
+              </h1>
+              <p className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5">
+                Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
                   <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   Perfil verificado
                 </span>
-                <span className="bg-green-500/10 text-green-600 dark:text-green-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
+                  <span className="w-[7px] h-[7px] rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(22,163,74,0.14)]" />
                   Disponível
                 </span>
-                <span className="bg-muted/30 px-3 py-1 rounded-full text-muted-foreground text-xs font-bold flex items-center gap-1">
+                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
                   <Headphones className="h-3.5 w-3.5" />
                   Atendimento online
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-foreground mb-3">
-                Carlos Eduardo Mendes
-              </h1>
-              <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-                Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.
-              </p>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                <div className="bg-primary/15 p-4 rounded-xl flex flex-col justify-center items-center text-center">
-                  <span className="text-xs font-bold text-primary uppercase">PREMIUM</span>
-                  <Medal className="h-5 w-5 text-primary mt-1" />
+              <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_120px_1fr_120px] rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-bold text-sm p-3">
+                  Premium
                 </div>
-                <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground">4.9</span>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase">128 avaliações</span>
+                <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">4.9</span>
+                  <span className="text-xs font-bold text-muted-foreground">128 avaliações</span>
                 </div>
-                <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground">12 anos</span>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase">Experiência</span>
+                <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">12 anos</span>
+                  <span className="text-xs font-bold text-muted-foreground">experiência</span>
                 </div>
-                <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground">430+</span>
-                  <span className="block text-xs font-bold text-muted-foreground uppercase">Declarações</span>
+                <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">430+</span>
+                  <span className="text-xs font-bold text-muted-foreground">declarações</span>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
+        </div>
+      </section>
 
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Main Content (8 cols) */}
+        <div className="md:col-span-8 space-y-6">
           {/* About Section */}
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
@@ -251,36 +393,143 @@ export default function PerfilProfissionalV2() {
           </section>
 
           {/* Services List */}
-          <section>
-            <span className="block text-xs font-bold text-primary mb-4 uppercase tracking-widest">
-              Serviços
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">Serviços disponíveis</h2>
-            <div className="space-y-4">
-              {[
-                { name: 'Declaração de IRPF', desc: 'Para pessoa física com rendimentos simples ou moderados.', price: 'R$ 100' },
-                { name: 'Abertura de MEI', desc: 'Cadastro, orientação inicial e regularização básica.', price: 'R$ 50' },
-                { name: 'Regularização de CNPJ', desc: 'Análise de pendências fiscais e obrigações atrasadas.', price: 'Sob orçamento' },
-                { name: 'Consultoria tributária por hora', desc: 'Conversa estratégica para decisões fiscais e planejamento.', price: 'R$ 180,00/h' },
-              ].map((service) => (
-                <div
-                  key={service.name}
-                  className="bg-card border border-border rounded-xl p-6 flex justify-between items-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
-                >
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-foreground">{service.name}</h4>
-                    <p className="text-muted-foreground text-sm">{service.desc}</p>
-                  </div>
-                  <div className="text-right flex items-center gap-4 shrink-0">
-                    <div>
-                      {service.price.startsWith('R$') && (
-                        <span className="block text-primary text-xs font-bold uppercase">A partir de</span>
-                      )}
-                      <span className="text-lg font-semibold text-primary">{service.price}</span>
+          <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="p-6 pb-0">
+              <span className="block text-xs font-bold text-primary mb-4 uppercase tracking-widest">
+                Serviços
+              </span>
+              <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">Serviços disponíveis</h2>
+            </div>
+            <div className="divide-y divide-border">
+              {services.map((service) => (
+                <details key={service.name} className="group">
+                  <summary className="flex items-center gap-4 p-6 cursor-pointer list-none">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-lg font-semibold text-foreground">{service.name}</h4>
+                      <p className="text-sm text-muted-foreground mt-0.5">{service.desc}</p>
                     </div>
-                    <PlusCircle className="h-5 w-5 text-muted-foreground/50" />
+                    <span className="text-sm font-bold text-primary whitespace-nowrap">{service.price}</span>
+                    <span className="w-8 h-8 rounded-full border border-border grid place-items-center text-muted-foreground font-bold text-lg transition-transform duration-300 group-open:rotate-45 group-open:text-primary group-open:bg-primary/10 shrink-0">
+                      +
+                    </span>
+                  </summary>
+                  <div className="px-6 pb-6 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {service.chips.map((chip) => (
+                        <span
+                          key={chip}
+                          className="bg-muted/50 border border-border/50 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{service.note}</p>
+                      <button
+                        className={
+                          service.outline
+                            ? 'border-2 border-primary text-primary px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap hover:bg-primary/5 active:scale-95 transition-all shrink-0'
+                            : 'bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap hover:bg-primary/90 active:scale-95 transition-all shrink-0'
+                        }
+                      >
+                        {service.action}
+                      </button>
+                    </div>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+
+          {/* Casos de Sucesso */}
+          <section className="bg-card p-6 rounded-xl border border-border shadow-sm overflow-hidden">
+            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
+              Casos de sucesso
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
+              Experiências com clientes e demandas reais
+            </h2>
+            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2 scrollbar-none">
+              {successCases.map((item) => (
+                <article
+                  key={item.title}
+                  className="min-w-[260px] shrink-0 snap-start bg-card border border-border rounded-xl p-5 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
+                >
+                  <span className="text-primary text-xs font-bold uppercase tracking-widest">{item.type}</span>
+                  <h3 className="text-sm font-semibold text-foreground mt-2 mb-2 leading-snug">{item.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {/* Experiência */}
+          <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
+              Experiência
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
+              Histórico profissional
+            </h2>
+            <div className="space-y-3">
+              {experience.map((item) => (
+                <div key={item.year} className="grid grid-cols-[100px_1fr] gap-4 bg-muted/30 p-4 rounded-xl">
+                  <span className="text-primary font-bold text-sm">{item.year}</span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
+              ))}
+            </div>
+          </section>
+
+          {/* FAQ */}
+          <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
+              FAQ personalizado
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
+              Perguntas frequentes
+            </h2>
+            <div className="space-y-3">
+              {faqItems.map((item) => (
+                <details
+                  key={item.q}
+                  className="group border border-border rounded-xl p-4 transition-colors [&[open]]:border-primary/20"
+                >
+                  <summary className="list-none flex justify-between items-center gap-4 cursor-pointer text-sm font-semibold text-foreground">
+                    {item.q}
+                    <span className="text-primary text-lg leading-none transition-transform duration-300 group-open:rotate-45 shrink-0">+</span>
+                  </summary>
+                  <p className="text-sm text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </section>
+
+          {/* Avaliações */}
+          <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
+            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
+              Avaliações
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
+              Comentários de clientes
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {reviews.map((review) => (
+                <article key={review.author} className="bg-muted/30 p-4 rounded-xl">
+                  <div className="text-amber-400 text-sm mb-2 tracking-wider">
+                    {'★'.repeat(review.stars)}
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed mb-3">
+                    &ldquo;{review.text}&rdquo;
+                  </p>
+                  <strong className="text-xs text-muted-foreground">&mdash; {review.author}</strong>
+                </article>
               ))}
             </div>
           </section>
@@ -291,7 +540,7 @@ export default function PerfilProfissionalV2() {
           <div className="sticky top-24 space-y-6">
             {/* Main Widget */}
             <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
-              <div className="relative h-48">
+              <div className="relative h-48 -mt-8 md:-mt-10">
                 <img
                   alt="Carlos Eduardo Mendes"
                   className="w-full h-full object-cover"
@@ -307,7 +556,7 @@ export default function PerfilProfissionalV2() {
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="p-6 pt-8 md:pt-10">
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-3xl font-bold text-foreground">R$ 180</span>
                   <span className="text-muted-foreground text-sm">/ hora</span>
@@ -393,7 +642,7 @@ export default function PerfilProfissionalV2() {
 
                 <div className="space-y-4">
                   <p className="text-xs font-bold text-muted-foreground">Tem um cupom?</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       className="flex-1 bg-muted/30 border border-border rounded-lg text-sm font-bold text-center text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none px-3 py-2"
                       type="text"
@@ -410,7 +659,7 @@ export default function PerfilProfissionalV2() {
             {/* Secondary Info Cards */}
             <div className="space-y-4">
               {/* Specialties */}
-              <div className="bg-card p-4 rounded-2xl border border-border">
+              <div className="bg-card p-5 rounded-2xl border border-border">
                 <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Especialidades</h6>
                 <div className="flex flex-wrap gap-2">
                   {['IRPF', 'MEI', 'Simples Nacional', 'Regularização'].map((tag) => (
@@ -425,7 +674,7 @@ export default function PerfilProfissionalV2() {
               </div>
 
               {/* Security */}
-              <div className="bg-card p-4 rounded-2xl border border-border">
+              <div className="bg-card p-5 rounded-2xl border border-border">
                 <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Segurança</h6>
                 <ul className="space-y-3">
                   {[
