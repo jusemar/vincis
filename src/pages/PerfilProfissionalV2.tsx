@@ -45,20 +45,14 @@ export default function PerfilProfissionalV2() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Breadcrumb */}
-        <nav className="md:col-span-12 flex gap-2 text-muted-foreground text-xs font-semibold mb-2">
-          <span className="opacity-70">Contabilidade</span>
-          <span className="opacity-70">/</span>
-          <span className="opacity-70">Imposto de Renda</span>
-          <span className="opacity-70">/</span>
-          <span className="text-primary">Simples Nacional</span>
-        </nav>
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Spacer */}
+        <div className="md:col-span-12" />
 
         {/* Main Content (8 cols) */}
         <div className="md:col-span-8 space-y-6">
           {/* Professional Intro Header */}
-          <section className="flex flex-col md:flex-row gap-6 items-start">
+          <section className="bg-card p-6 rounded-xl border border-border shadow-sm flex flex-col md:flex-row gap-6 items-start">
             <div className="w-full">
               <div className="flex flex-wrap gap-2 mb-4">
                 <span className="bg-muted/50 px-3 py-1 rounded-full text-muted-foreground text-xs font-bold flex items-center gap-1">
@@ -75,10 +69,10 @@ export default function PerfilProfissionalV2() {
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05] text-foreground mb-3">
                 Carlos Eduardo Mendes
               </h1>
-              <p className="text-base text-muted-foreground max-w-2xl">
+              <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
                 Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.
               </p>
 
@@ -88,15 +82,15 @@ export default function PerfilProfissionalV2() {
                   <Medal className="h-5 w-5 text-primary mt-1" />
                 </div>
                 <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold text-foreground">4.9</span>
+                  <span className="block text-2xl font-bold tracking-tight text-foreground">4.9</span>
                   <span className="block text-xs font-bold text-muted-foreground uppercase">128 avaliações</span>
                 </div>
                 <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold text-foreground">12 anos</span>
+                  <span className="block text-2xl font-bold tracking-tight text-foreground">12 anos</span>
                   <span className="block text-xs font-bold text-muted-foreground uppercase">Experiência</span>
                 </div>
                 <div className="bg-card border border-border p-4 rounded-xl text-center shadow-sm">
-                  <span className="block text-2xl font-bold text-foreground">430+</span>
+                  <span className="block text-2xl font-bold tracking-tight text-foreground">430+</span>
                   <span className="block text-xs font-bold text-muted-foreground uppercase">Declarações</span>
                 </div>
               </div>
@@ -105,13 +99,13 @@ export default function PerfilProfissionalV2() {
 
           {/* About Section */}
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
-            <span className="block text-xs font-bold text-primary mb-2 uppercase tracking-widest">
+            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               Sobre o Contador
             </span>
-            <h2 className="text-2xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">
               Especialista em rotinas fiscais e regularização
             </h2>
-            <p className="text-base text-muted-foreground mb-6">
+            <p className="text-base text-muted-foreground leading-relaxed mb-6">
               Carlos atua com contabilidade consultiva para pessoas físicas, MEIs e pequenas empresas. O foco é simplificar decisões fiscais, evitar pendências e organizar documentos com clareza.
             </p>
             <div className="grid md:grid-cols-2 gap-6">
@@ -155,13 +149,13 @@ export default function PerfilProfissionalV2() {
           {/* Consult Section */}
           <section className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
             <div>
-              <span className="block text-xs font-bold text-primary mb-2 uppercase tracking-widest">
+              <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-[0.3em]">
                 Consultar Especialistas
               </span>
-              <h2 className="text-2xl font-bold text-foreground">
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">
                 Tire uma dúvida ou peça um orçamento
               </h2>
-              <p className="text-base text-muted-foreground">
+              <p className="text-base text-muted-foreground leading-relaxed">
                 Escolha falar direto com Carlos ou abrir para a categoria e receber múltiplas respostas em horas.
               </p>
             </div>
@@ -261,7 +255,7 @@ export default function PerfilProfissionalV2() {
             <span className="block text-xs font-bold text-primary mb-4 uppercase tracking-widest">
               Serviços
             </span>
-            <h2 className="text-2xl font-bold text-foreground mb-6">Serviços disponíveis</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">Serviços disponíveis</h2>
             <div className="space-y-4">
               {[
                 { name: 'Declaração de IRPF', desc: 'Para pessoa física com rendimentos simples ou moderados.', price: 'R$ 100' },
@@ -271,7 +265,7 @@ export default function PerfilProfissionalV2() {
               ].map((service) => (
                 <div
                   key={service.name}
-                  className="bg-card border border-border rounded-xl p-4 flex justify-between items-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+                  className="bg-card border border-border rounded-xl p-6 flex justify-between items-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                 >
                   <div className="flex-1">
                     <h4 className="text-lg font-semibold text-foreground">{service.name}</h4>
@@ -313,9 +307,9 @@ export default function PerfilProfissionalV2() {
                 </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-6">
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-3xl font-extrabold text-foreground">R$ 180</span>
+                  <span className="text-3xl font-bold text-foreground">R$ 180</span>
                   <span className="text-muted-foreground text-sm">/ hora</span>
                 </div>
 
