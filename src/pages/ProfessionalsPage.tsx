@@ -239,8 +239,8 @@ export default function ProfessionalsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="relative pt-24 pb-12 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero" />
+      <div className="relative pt-24 pb-12 overflow-hidden bg-background">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
         <div className="absolute inset-0 bg-grid opacity-30" />
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
