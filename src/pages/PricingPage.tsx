@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Models from '../sections/Models';
 import { 
   Check, 
   X, 
@@ -359,6 +360,9 @@ export default function PricingPage() {
             ))}
           </div>
         </div>
+
+        {/* Models */}
+        <Models />
 
         {/* Legal Plans */}
         <div className="mb-20">

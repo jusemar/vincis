@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   BadgeCheck, Headphones, GraduationCap, Award,
@@ -29,9 +30,24 @@ const availabilityData = {
     { day: 14, status: 'available' },
     { day: 15, status: 'available' },
     { day: 16, status: 'available' },
+    { day: 17, status: 'available' },
+    { day: 18, status: 'available' },
+    { day: 19, status: 'unavailable' },
+    { day: 20, status: 'available' },
+    { day: 21, status: 'available' },
+    { day: 22, status: 'available' },
+    { day: 23, status: 'unavailable' },
+    { day: 24, status: 'available' },
+    { day: 25, status: 'available' },
+    { day: 26, status: 'available' },
+    { day: 27, status: 'available' },
+    { day: 28, status: 'available' },
+    { day: 29, status: 'available' },
+    { day: 30, status: 'available' },
+    { day: 31, status: 'available' },
   ],
   weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
-  leadingBlanks: 5,
+  leadingBlanks: 4,
 };
 
 const timeSlots = [
@@ -176,45 +192,78 @@ export default function PerfilProfissionalV2() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background glows & grid */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-grid opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+        <div className="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full blur-3xl"
+             style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 60%)" }} />
+        <div className="absolute -bottom-40 -right-32 h-[600px] w-[600px] rounded-full blur-3xl"
+             style={{ background: "radial-gradient(circle, hsl(var(--amber-400) / 0.2), transparent 60%)" }} />
+      </div>
+
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-amber-50/95 via-sky-50/94 to-violet-50/96 dark:from-navy-950 dark:via-navy-900 dark:to-navy-950 border-b border-border overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_10%,rgba(230,165,29,0.24),transparent_28%),radial-gradient(circle_at_70%_10%,rgba(109,93,252,0.12),transparent_24%),radial-gradient(circle_at_18%_90%,rgba(230,165,29,0.16),transparent_26%)]" />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8">
+      <section className="relative">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-8">
               {/* Breadcrumb */}
-              <nav className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+              <motion.nav
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center gap-2 text-xs text-muted-foreground mb-4"
+              >
                 <Link to="/" className="hover:text-primary transition-colors">Início</Link>
                 <ChevronRight className="h-3 w-3" />
                 <Link to="/profissionais" className="hover:text-primary transition-colors">Profissionais</Link>
                 <ChevronRight className="h-3 w-3" />
                 <span className="text-foreground font-semibold">Carlos Eduardo Mendes</span>
-              </nav>
+              </motion.nav>
 
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5">
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.05 }}
+                className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
+              >
                 Carlos Eduardo Mendes
-              </h1>
-              <p className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5">
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5"
+              >
                 Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.
-              </p>
+              </motion.p>
 
-              <div className="flex flex-wrap gap-2 mb-6">
-                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="flex flex-wrap gap-2 mb-6"
+              >
+                <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
                   <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   Perfil verificado
                 </span>
-                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
                   <span className="w-[7px] h-[7px] rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(22,163,74,0.14)]" />
                   Disponível
                 </span>
-                <span className="inline-flex items-center gap-1.5 border border-white/75 bg-white/50 dark:bg-white/10 backdrop-blur-sm rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
                   <Headphones className="h-3.5 w-3.5" />
                   Atendimento online
                 </span>
-              </div>
+              </motion.div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_120px_1fr_120px] rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="grid grid-cols-1 md:grid-cols-[120px_1fr_120px_1fr_120px] rounded-xl border border-border bg-card shadow-sm overflow-hidden"
+              >
                 <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-bold text-sm p-3">
                   Premium
                 </div>
@@ -230,16 +279,20 @@ export default function PerfilProfissionalV2() {
                   <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">430+</span>
                   <span className="text-xs font-bold text-muted-foreground">declarações</span>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Main Content (8 cols) */}
-        <div className="md:col-span-8 space-y-6">
-          {/* About Section */}
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-8 grid grid-cols-1 md:grid-cols-12 gap-6 md:-mt-60">
+        <div className="md:col-span-8 space-y-6 md:pt-60">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               Sobre o Contador
@@ -287,15 +340,22 @@ export default function PerfilProfissionalV2() {
               </div>
             </div>
           </section>
+          </motion.div>
 
           {/* Consult Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
           <section className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
             <div>
               <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-[0.3em]">
                 Consultar Especialistas
               </span>
               <h2 className="text-3xl font-bold tracking-tight text-foreground">
-                Tire uma dúvida ou peça um orçamento
+                Diga o que você precisa e receba um orçamento
               </h2>
               <p className="text-base text-muted-foreground leading-relaxed">
                 Escolha falar direto com Carlos ou abrir para a categoria e receber múltiplas respostas em horas.
@@ -391,8 +451,15 @@ export default function PerfilProfissionalV2() {
               </div>
             </div>
           </section>
+          </motion.div>
 
           {/* Services List */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
           <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
             <div className="p-6 pb-0">
               <span className="block text-xs font-bold text-primary mb-4 uppercase tracking-widest">
@@ -441,8 +508,15 @@ export default function PerfilProfissionalV2() {
               ))}
             </div>
           </section>
+          </motion.div>
 
           {/* Casos de Sucesso */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm overflow-hidden">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               Casos de sucesso
@@ -463,8 +537,15 @@ export default function PerfilProfissionalV2() {
               ))}
             </div>
           </section>
+          </motion.div>
 
           {/* Experiência */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               Experiência
@@ -484,8 +565,15 @@ export default function PerfilProfissionalV2() {
               ))}
             </div>
           </section>
+          </motion.div>
 
           {/* FAQ */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               FAQ personalizado
@@ -510,8 +598,15 @@ export default function PerfilProfissionalV2() {
               ))}
             </div>
           </section>
+          </motion.div>
 
           {/* Avaliações */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
               Avaliações
@@ -533,14 +628,22 @@ export default function PerfilProfissionalV2() {
               ))}
             </div>
           </section>
+          </motion.div>
         </div>
 
         {/* Sticky Sidebar (4 cols) */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="md:col-span-4"
+        >
         <aside className="md:col-span-4">
           <div className="sticky top-24 space-y-6">
             {/* Main Widget */}
             <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
-              <div className="relative h-48 -mt-8 md:-mt-10">
+              <div className="relative h-48">
                 <img
                   alt="Carlos Eduardo Mendes"
                   className="w-full h-full object-cover"
@@ -556,7 +659,7 @@ export default function PerfilProfissionalV2() {
                 </div>
               </div>
 
-              <div className="p-6 pt-8 md:pt-10">
+              <div className="p-6">
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-3xl font-bold text-foreground">R$ 180</span>
                   <span className="text-muted-foreground text-sm">/ hora</span>
@@ -617,7 +720,7 @@ export default function PerfilProfissionalV2() {
 
                 <div className="mb-6">
                   <h6 className="text-xs font-bold text-muted-foreground uppercase mb-3">
-                    Horários disponíveis para 13 de Outubro
+                    Horários disponíveis
                   </h6>
                   <div className="grid grid-cols-2 gap-2">
                     {timeSlots.map((slot) => (
@@ -646,7 +749,7 @@ export default function PerfilProfissionalV2() {
                     <input
                       className="flex-1 bg-muted/30 border border-border rounded-lg text-sm font-bold text-center text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none px-3 py-2"
                       type="text"
-                      defaultValue="VINCIS10"
+                      defaultValue=""
                     />
                     <button className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold hover:bg-primary/20 transition-colors">
                       Aplicar
@@ -692,6 +795,7 @@ export default function PerfilProfissionalV2() {
             </div>
           </div>
         </aside>
+        </motion.div>
       </main>
 
       <Footer />

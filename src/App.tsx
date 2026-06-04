@@ -7,7 +7,6 @@ import Navigation from './components/Navigation';
 import ChatDemo from './sections/home/ChatDemo';
 import Banners from './components/Banners';
 import ServicesHub from './sections/home/ServicesHub';
-import Models from './sections/Models';
 import HowItWorks from './sections/HowItWorks';
 import PricingPage from './pages/PricingPage';
 import CTA from './sections/CTA';
@@ -162,7 +161,6 @@ const HomePage = () => {
         <ChatDemo />        
         <Banners />
         <ServicesHub />
-        <Models />
         <HowItWorks />
         <CTA />
       </main>
