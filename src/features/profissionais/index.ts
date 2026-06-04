@@ -1,0 +1,5 @@
+export { default as ProfessionalsPage } from './components/ProfessionalsPage'
+export { default as ProfessionalCard } from './components/ProfessionalCard'
+export { default as BookingModal } from './components/BookingModal'
+export { default as FilterBar } from './components/FilterBar'
+export type { Professional, FilterState } from './types/profissionais'

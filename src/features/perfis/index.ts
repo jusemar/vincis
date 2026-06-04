@@ -1,0 +1,5 @@
+export { PerfilProfissional } from './components/PerfilProfissional'
+export { default as PerfilProfissionalV2 } from './components/PerfilProfissionalV2'
+export { PerfilColaborador } from './components/PerfilColaborador'
+export { default as ProfileCard } from './components/ProfileCard'
+export { professionalData } from './constants/perfil'
