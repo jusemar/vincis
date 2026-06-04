@@ -667,7 +667,7 @@ export default function PerfilProfissionalV2() {
 
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h5 className="text-lg font-semibold text-foreground">Disponibilidade do mês</h5>
+                    <h5 className="text-lg font-semibold text-foreground">Maio 2026</h5>
                     <div className="flex gap-2">
                       <button className="text-muted-foreground/50 hover:text-foreground transition-colors">
                         <ChevronLeft className="h-5 w-5" />
@@ -774,6 +774,14 @@ export default function PerfilProfissionalV2() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              {/* Como funciona */}
+              <div className="bg-card p-5 rounded-2xl border border-border">
+                <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Como funciona</h6>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Escolha um serviço fechado, solicite orçamento para casos variáveis ou agende uma consultoria para conversar ao vivo.
+                </p>
               </div>
 
               {/* Security */}

@@ -143,7 +143,7 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
           className="rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 text-navy-900"
           onClick={(e) => {
             e.stopPropagation();
-            navigate('/perfil-profissional-v2');
+            navigate('/perfil-profissional');
           }}
         >
           VER PERFIL

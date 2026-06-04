@@ -12,8 +12,8 @@ import PricingPage from './pages/PricingPage';
 import CTA from './sections/CTA';
 import Footer from './sections/Footer';
 import ProfessionalsPage from './pages/ProfessionalsPage';
-import { PaginaParceiros } from './pages/PaginaParceiros';
 import AdminDashboard from './admin/AdminDashboard';
+import { PaginaParceiros } from './pages/PaginaParceiros';
 import { PerfilProfissional } from './pages/PerfilProfissional';
 import { PerfilColaborador } from './pages/PerfilColaborador';
 import PerfilProfissionalV2 from './pages/PerfilProfissionalV2';
@@ -203,14 +203,14 @@ function AppContent() {
             <Route path="/precos" element={<PricingPage />} />
             <Route path="/profissionais" element={<ProfessionalsPage />} />
             <Route path="/parceiros" element={<PaginaParceiros />} />
-            <Route path="/perfil-profissional" element={<PerfilProfissional />} />
-            <Route path="/perfil-profissional-v2" element={<PerfilProfissionalV2 />} />
+            <Route path="/perfil-profissionalv3" element={<PerfilProfissional />} />
+            <Route path="/perfil-profissional" element={<PerfilProfissionalV2 />} />
             <Route path="/perfil-colaborador" element={<PerfilColaborador />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/:page" element={<AdminDashboard />} />
           </Routes>
           
-          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissional' && location.pathname !== '/perfil-profissional-v2' && location.pathname !== '/perfil-colaborador' && <BackToTop />}
+          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissionalv3' && location.pathname !== '/perfil-profissional' && location.pathname !== '/perfil-colaborador' && <BackToTop />}
         </motion.div>
       )}
     </>
