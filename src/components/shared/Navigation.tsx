@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogIn, UserPlus } from 'lucide-react';
+import { Menu, X, LogIn, UserPlus, Headset } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
 
@@ -9,7 +9,7 @@ const navLinks = [
   { name: 'Profissionais', href: '/profissionais', type: 'route' },
   { name: 'Parceiros', href: '/parceiros', type: 'route' },
   { name: 'Serviços', href: '/#models', type: 'hash' },
-  { name: 'Como Funciona', href: '/#how-it-works', type: 'hash' },
+  { name: 'Como Funciona', href: '/como-funciona', type: 'route' },
   { name: 'Preços', href: '/precos', type: 'route' },
 ];
 
@@ -120,9 +120,18 @@ export default function Navigation() {
 
             {/* Right side buttons - Entrar e Cadastrar */}
             <div className="hidden md:flex items-center gap-3">
+              {/* Suporte */}
+              <Link
+                to="/suporte"
+                className="p-2 text-foreground/70 hover:text-primary transition-colors"
+                title="Suporte"
+              >
+                <Headset className="w-5 h-5" />
+              </Link>
+
               {/* Theme Toggle */}
               <ThemeToggle />
-              
+
               {/* Botão Entrar */}
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link

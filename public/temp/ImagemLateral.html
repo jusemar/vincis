@@ -1,0 +1,254 @@
+<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Vincis - Simples assim, em 3 passos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f2f2ed",
+                        "background-deep": "#e8e6e0",
+                        "surface-container-low": "#f7f7f3",
+                        "surface-bright": "#ffffff",
+                        "on-surface": "#1c1917",
+                        "primary": "#e8a000",
+                        "primary-container": "#e8a000",
+                        "on-primary-container": "#fffceb",
+                        "text-primary": "#1c1917",
+                        "text-muted": "#756f6b",
+                        "outline-variant": "#d1cecb",
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "stack-md": "1rem",
+                        "container-max": "1280px",
+                        "stack-lg": "2rem",
+                        "margin-mobile": "1rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "sans": ["Inter", "system-ui", "-apple-system", "sans-serif"],
+                        "headline-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["60px", {"lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f2f2ed;
+            color: #1c1917;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .tab-active {
+            background: linear-gradient(90deg, rgba(232, 160, 0, 0.08) 0%, rgba(232, 160, 0, 0.02) 100%);
+            border-left: 4px solid #e8a000;
+        }
+
+        @media (max-width: 1023px) {
+            .tab-active {
+                border-left: none;
+                border-bottom: 4px solid #e8a000;
+                background: rgba(232, 160, 0, 0.05);
+            }
+        }
+
+        .text-gradient-gold {
+            background: linear-gradient(135deg, #e8a000, #f0b400);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .transition-image {
+            transition: opacity 0.5s ease-in-out, transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background selection:bg-primary/30">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 glass-nav border-b border-outline-variant/20">
+<div class="flex justify-between items-center h-16 px-gutter max-w-container-max mx-auto">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-primary">Vincis</span>
+<div class="hidden md:flex gap-6">
+<a class="text-primary font-semibold border-b-2 border-primary pb-1 font-body-md text-body-md" href="#">Portfolio</a>
+<a class="text-text-muted hover:text-on-surface transition-colors font-body-md text-body-md" href="#">Operations</a>
+<a class="text-text-muted hover:text-on-surface transition-colors font-body-md text-body-md" href="#">Analytics</a>
+<a class="text-text-muted hover:text-on-surface transition-colors font-body-md text-body-md" href="#">Finance</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-text-muted hover:text-on-surface transition-colors font-body-md text-body-md hidden sm:block">Login</button>
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-semibold hover:brightness-110 transition-all">Get Started</button>
+</div>
+</div>
+</nav>
+<main class="pt-32 pb-24 px-gutter max-w-container-max mx-auto">
+<!-- Centered Header -->
+<header class="text-center max-w-4xl mx-auto mb-20 space-y-6">
+<h1 class="font-headline-xl text-headline-xl text-text-primary tracking-tight leading-tight">
+                Simples assim, em <span class="text-gradient-gold">3 passos</span>
+            </h1>
+<p class="font-body-lg text-body-lg text-text-muted max-w-2xl mx-auto">
+                Do problema ao especialista certo — rápido, seguro e sem burocracia.
+            </p>
+</header>
+<!-- Feature Section with Tabbed Interface -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left Side: Tabs -->
+<div class="lg:col-span-4 order-1 lg:order-1 flex lg:flex-col overflow-x-auto lg:overflow-x-visible hide-scrollbar gap-2 lg:gap-4 pb-4 lg:pb-0" id="tab-container">
+<button class="tab-active flex-shrink-0 lg:w-full text-left p-6 rounded-r-xl transition-all duration-300 group min-w-[280px] lg:min-w-0" id="tab-0" onclick="switchTab(0)">
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">dashboard</span>
+<h3 class="font-headline-md text-headline-md text-text-primary group-hover:text-primary transition-colors">Dashboard Inteligente</h3>
+</div>
+<p class="font-body-md text-body-md text-text-muted leading-relaxed hidden lg:block">Visão completa do seu portfólio com métricas em tempo real e análise preditiva.</p>
+</div>
+</button>
+<button class="flex-shrink-0 lg:w-full text-left p-6 rounded-r-xl transition-all duration-300 hover:bg-surface-bright/5 group min-w-[280px] lg:min-w-0" id="tab-1" onclick="switchTab(1)">
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">engineering</span>
+<h3 class="font-headline-md text-headline-md text-text-primary group-hover:text-primary transition-colors">Operações Simplificadas</h3>
+</div>
+<p class="font-body-md text-body-md text-text-muted leading-relaxed hidden lg:block">Gerencie manutenções, contratos e tarefas da sua equipe com máxima eficiência.</p>
+</div>
+</button>
+<button class="flex-shrink-0 lg:w-full text-left p-6 rounded-r-xl transition-all duration-300 hover:bg-surface-bright/5 group min-w-[280px] lg:min-w-0" id="tab-2" onclick="switchTab(2)">
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary transition-colors">analytics</span>
+<h3 class="font-headline-md text-headline-md text-text-primary group-hover:text-primary transition-colors">Análise Financeira</h3>
+</div>
+<p class="font-body-md text-body-md text-text-muted leading-relaxed hidden lg:block">Relatórios detalhados de ROI, fluxo de caixa e performance por unidade.</p>
+</div>
+</button>
+</div>
+<!-- Right Side: Images Area -->
+<div class="lg:col-span-8 order-2 lg:order-2 relative aspect-[16/10] bg-surface-container-low rounded-2xl overflow-hidden group shadow-md">
+<div class="absolute inset-0" id="image-container">
+<!-- Image 0: Dashboard Inteligente (https://lh3.googleusercontent.com/aida-public/AB6AXuBajid22LRHAdHeQkAciZajA2lbdIVWZo6TeIHtV84Olltt3PagyZf2FZKt7aKmHvWYZS3jYX-l7HDtj4iL8bOOYlCJC-qreVE1WpSvAVxbysI7LSPGh9rdIif6W--BKU7RRwS9wIn-bPGiPoIqGAJhZslCa89YCwYMqog11cadnYf7JiEPR4gKL48iKDnTxgOwNqSW6r0ouf9hud4Sqz3wJZTsIMzWuSheGvArnhmuSdxawJHuMxJ30WxYbuHnKqXTu_wnIsreTFM) -->
+<img alt="Vincis Dashboard Analytics" class="transition-image absolute inset-0 w-full h-full object-cover opacity-100 scale-100" id="img-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBajid22LRHAdHeQkAciZajA2lbdIVWZo6TeIHtV84Olltt3PagyZf2FZKt7aKmHvWYZS3jYX-l7HDtj4iL8bOOYlCJC-qreVE1WpSvAVxbysI7LSPGh9rdIif6W--BKU7RRwS9wIn-bPGiPoIqGAJhZslCa89YCwYMqog11cadnYf7JiEPR4gKL48iKDnTxgOwNqSW6r0ouf9hud4Sqz3wJZTsIMzWuSheGvArnhmuSdxawJHuMxJ30WxYbuHnKqXTu_wnIsreTFM">
+<!-- Image 1: Operações Simplificadas (https://lh3.googleusercontent.com/aida-public/AB6AXuAHkdAVFCKOLRbDPsU6DxUK8tKe4nZeLMA8dgK3rKKHu6yqTsWpjlxvzUVtR7b5x_Egmo7eV-32TRwBz4tnb3SfobuzECWq3wlsSo63-oZFpATEM3Lmr_Xt940JXFD685La8Mvh3mFx8x8Kxh0ZsTMwxBaYnw2Dneri1gdtaVLwnFjsChfxB6yDbFotFZ3Vuc7CEO5yuT14L5dEyp5NPTHogaA9CUxFhjUjk-fCfxhYHJrq8_JZzw01_zmHjdIybnSairisEdHf49o) -->
+<img alt="Operations Management Board" class="transition-image absolute inset-0 w-full h-full object-cover opacity-0 scale-105" id="img-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHkdAVFCKOLRbDPsU6DxUK8tKe4nZeLMA8dgK3rKKHu6yqTsWpjlxvzUVtR7b5x_Egmo7eV-32TRwBz4tnb3SfobuzECWq3wlsSo63-oZFpATEM3Lmr_Xt940JXFD685La8Mvh3mFx8x8Kxh0ZsTMwxBaYnw2Dneri1gdtaVLwnFjsChfxB6yDbFotFZ3Vuc7CEO5yuT14L5dEyp5NPTHogaA9CUxFhjUjk-fCfxhYHJrq8_JZzw01_zmHjdIybnSairisEdHf49o">
+<!-- Image 2: Análise Financeira (https://lh3.googleusercontent.com/aida-public/AB6AXuAJ_nK-CIs41ton6riak05ZakGJo4K-iMJLfhcSZiCcn683yMhnLIf2ScBaRE4_SOjVH2RkAWplaWzCbTHL31RoFUWOo2nTUcNZ8JPDpbpP4fRz2UFgbBFHY-r8c-c-nrV3o3e_JlslnD-1HimLvflz2M8lo3rrdDljiBRjibNnv293pTTru3ZPBgeakI0u97NhLM5g5Fgse8oRzo1MpOuONzlrY1CNII_qq9cp2lZ7NHJtzUEcGqcWdYxOrZIgqlwPxxCgXAuMLG8) -->
+<img alt="Financial Analytics and Charts" class="transition-image absolute inset-0 w-full h-full object-cover opacity-0 scale-105" id="img-2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJ_nK-CIs41ton6riak05ZakGJo4K-iMJLfhcSZiCcn683yMhnLIf2ScBaRE4_SOjVH2RkAWplaWzCbTHL31RoFUWOo2nTUcNZ8JPDpbpP4fRz2UFgbBFHY-r8c-c-nrV3o3e_JlslnD-1HimLvflz2M8lo3rrdDljiBRjibNnv293pTTru3ZPBgeakI0u97NhLM5g5Fgse8oRzo1MpOuONzlrY1CNII_qq9cp2lZ7NHJtzUEcGqcWdYxOrZIgqlwPxxCgXAuMLG8)">
+</div>
+<!-- Atmospheric Overlays -->
+<div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-background via-transparent to-transparent opacity-40"></div>
+<!-- Interactive Glow -->
+<div class="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 blur-[100px] rounded-full group-hover:bg-primary/20 transition-all duration-700"></div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 bg-background-deep border-t border-outline-variant/10">
+<div class="max-w-container-max mx-auto px-gutter flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex flex-col items-center md:items-start gap-2">
+<span class="font-headline-md text-headline-md text-primary font-bold">Vincis</span>
+<p class="font-body-md text-body-md text-text-muted text-center md:text-left">© 2024 Vincis Platform. Precision Property Management.</p>
+</div>
+<div class="flex gap-8">
+<a class="text-text-muted hover:text-primary transition-colors font-body-md text-body-md" href="#">Privacy Policy</a>
+<a class="text-text-muted hover:text-primary transition-colors font-body-md text-body-md" href="#">Terms of Service</a>
+<a class="text-text-muted hover:text-primary transition-colors font-body-md text-body-md" href="#">Security</a>
+<a class="text-text-muted hover:text-primary transition-colors font-body-md text-body-md" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<script>
+        let currentTab = 0;
+
+        function switchTab(index) {
+            if (index === currentTab) return;
+
+            const tabsCount = 3;
+            for (let i = 0; i < tabsCount; i++) {
+                const tab = document.getElementById(`tab-${i}`);
+                const img = document.getElementById(`img-${i}`);
+                const icon = tab.querySelector('.material-symbols-outlined');
+
+                if (i === index) {
+                    // Activate Tab
+                    tab.classList.add('tab-active');
+                    tab.classList.remove('hover:bg-surface-bright/5');
+                    
+                    // Show Image
+                    img.classList.remove('opacity-0', 'scale-105');
+                    img.classList.add('opacity-100', 'scale-100');
+                    
+                    if (icon) {
+                        icon.classList.remove('text-text-muted');
+                        icon.classList.add('text-primary');
+                    }
+                } else {
+                    // Deactivate Tab
+                    tab.classList.remove('tab-active');
+                    tab.classList.add('hover:bg-surface-bright/5');
+                    
+                    // Hide Image
+                    img.classList.add('opacity-0', 'scale-105');
+                    img.classList.remove('opacity-100', 'scale-100');
+                    
+                    if (icon) {
+                        icon.classList.add('text-text-muted');
+                        icon.classList.remove('text-primary');
+                    }
+                }
+            }
+
+            currentTab = index;
+
+            // On mobile, scroll the active tab into view
+            if (window.innerWidth < 1024) {
+                const activeTab = document.getElementById(`tab-${index}`);
+                activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    </script>
+</body></html>

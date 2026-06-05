@@ -4,11 +4,11 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navigation from './components/shared/Navigation';
 import ChatDemo from './features/home/components/ChatDemo';
+import SimpleSteps from './features/home/components/SimpleSteps';
 import Banners from './features/home/components/Banners';
 import ServicesHub from './features/home/components/ServicesHub';
-import HowItWorks from './features/home/components/HowItWorks';
-import PricingPage from './features/precos/components/PricingPage';
 import CTA from './features/home/components/CTA';
+import PricingPage from './features/precos/components/PricingPage';
 import Footer from './components/shared/Footer';
 import ProfessionalsPage from './features/profissionais/components/ProfessionalsPage';
 import AdminDashboard from './features/admin/components/AdminDashboard';
@@ -16,6 +16,8 @@ import { PaginaParceiros } from './features/parceiros/components/PaginaParceiros
 import { PerfilProfissional } from './features/perfis/components/PerfilProfissional';
 import { PerfilColaborador } from './features/perfis/components/PerfilColaborador';
 import PerfilProfissionalV2 from './features/perfis/components/PerfilProfissionalV2';
+import SupportPage from './features/suporte/components/SupportPage';
+import ComoFuncionaPage from './features/como-funciona/components/ComoFuncionaPage';
 import './App.css';
 
 // Loading Screen Component
@@ -158,9 +160,9 @@ const HomePage = () => {
       <main>
       {/*   <Hero />  */}
         <ChatDemo />        
+        <SimpleSteps />
         <Banners />
         <ServicesHub />
-        <HowItWorks />
         <CTA />
       </main>
       <Footer />
@@ -205,11 +207,13 @@ function AppContent() {
             <Route path="/perfil-profissionalv3" element={<PerfilProfissional />} />
             <Route path="/perfil-profissional" element={<PerfilProfissionalV2 />} />
             <Route path="/perfil-colaborador" element={<PerfilColaborador />} />
+            <Route path="/suporte" element={<SupportPage />} />
+            <Route path="/como-funciona" element={<ComoFuncionaPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/:page" element={<AdminDashboard />} />
           </Routes>
           
-          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissionalv3' && location.pathname !== '/perfil-profissional' && location.pathname !== '/perfil-colaborador' && <BackToTop />}
+          {!isAdminPage && location.pathname !== '/profissionais' && location.pathname !== '/perfil-profissionalv3' && location.pathname !== '/perfil-profissional' && location.pathname !== '/perfil-colaborador' && location.pathname !== '/suporte' && <BackToTop />}
         </motion.div>
       )}
     </>

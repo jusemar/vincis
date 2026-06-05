@@ -29,7 +29,7 @@ const footerLinks = {
     { name: 'Parceiros', href: '/parceiros' },
   ],
   suporte: [
-    { name: 'Central de Ajuda', href: '#' },
+    { name: 'Central de Ajuda', href: '/suporte' },
     { name: 'Documentação', href: '#' },
     { name: 'Status', href: '#' },
     { name: 'Termos de Uso', href: '#' },
