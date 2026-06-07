@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogIn, UserPlus, Headset } from 'lucide-react';
+import { Menu, X, Headset } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
+import { BotoesAuth, ModalEntrar, ModalCadastro, useControleModais } from '@/features/usuarios';
 
 const navLinks = [
   { name: 'Início', href: '/', type: 'route' },
@@ -16,6 +17,7 @@ const navLinks = [
 export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { modalAberto, abrir, fechar, alternarPara } = useControleModais();
   const location = useLocation();
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function Navigation() {
               })}
             </div>
 
-            {/* Right side buttons - Entrar e Cadastrar */}
+            {/* Right side buttons */}
             <div className="hidden md:flex items-center gap-3">
               {/* Suporte */}
               <Link
@@ -132,27 +134,8 @@ export default function Navigation() {
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* Botão Entrar */}
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link
-                  to="/admin"
-                  className="px-4 py-2 text-sm font-semibold text-foreground border border-border rounded-lg hover:bg-muted/50 transition-all flex items-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Entrar
-                </Link>
-              </motion.div>
-
-              {/* Botão Cadastrar / Criar Conta */}
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link
-                  to="/cadastrar"
-                  className="px-5 py-2.5 text-sm font-semibold text-primary-foreground bg-gradient-gold rounded-lg btn-shine shadow-glow hover:shadow-glow-lg transition-shadow flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Criar Conta
-                </Link>
-              </motion.div>
+              {/* Entrar / Criar conta */}
+              <BotoesAuth onAbrirEntrar={() => abrir('entrar')} onAbrirCadastro={() => abrir('cadastro')} />
             </div>
 
             {/* Mobile Menu Button */}
@@ -227,28 +210,28 @@ export default function Navigation() {
                   transition={{ delay: 0.4 }}
                   className="mt-4 flex flex-col gap-2"
                 >
-                  <Link
-                    to="/admin"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full px-5 py-3 text-sm font-semibold text-foreground border border-border rounded-lg flex items-center justify-center gap-2 hover:bg-muted/50 transition-all"
-                  >
-                    <LogIn className="w-5 h-5" />
-                    Entrar
-                  </Link>
-                  <Link
-                    to="/cadastrar"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full px-5 py-3 text-sm font-semibold text-primary-foreground bg-gradient-gold rounded-lg flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    Criar Conta
-                  </Link>
+                  <BotoesAuth
+                    variant="mobile"
+                    onAbrirEntrar={() => { setIsMobileMenuOpen(false); abrir('entrar') }}
+                    onAbrirCadastro={() => { setIsMobileMenuOpen(false); abrir('cadastro') }}
+                  />
                 </motion.div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ModalEntrar
+        aberto={modalAberto === 'entrar'}
+        onFechar={fechar}
+        onAbrirCadastro={() => alternarPara('cadastro')}
+      />
+      <ModalCadastro
+        aberto={modalAberto === 'cadastro'}
+        onFechar={fechar}
+        onAbrirEntrar={() => alternarPara('entrar')}
+      />
     </>
   );
 }
