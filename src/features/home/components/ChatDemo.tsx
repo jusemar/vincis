@@ -501,8 +501,8 @@ export default function ChatDemo() {
           {[
             {
               icon: Clock,
-              title: 'Resposta em 2 min',
-              description: 'Nosso time responde em média em menos de 2 minutos',
+              title: 'Resposta em 10 min',
+              description: 'Nosso time responde em média em menos de 10 minutos',
             },
             {
               icon: Check,
