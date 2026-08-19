@@ -8,6 +8,181 @@
       "when": 1780879785511,
       "tag": "0000_absurd_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780964236879,
+      "tag": "0001_long_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780964978422,
+      "tag": "0002_lowly_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780965705066,
+      "tag": "0003_puzzling_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780965984372,
+      "tag": "0004_overjoyed_tinkerer",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784162751521,
+      "tag": "0005_tiny_terrax",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784479218206,
+      "tag": "0006_productive_blonde_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784492365213,
+      "tag": "0007_adorable_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784499747759,
+      "tag": "0008_smart_william_stryker",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785182137135,
+      "tag": "0009_flippant_giant_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785190863232,
+      "tag": "0010_gray_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785194002349,
+      "tag": "0011_hard_malcolm_colcord",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785197726723,
+      "tag": "0012_awesome_dazzler",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785198780512,
+      "tag": "0013_messy_speed_demon",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786587144567,
+      "tag": "0014_concerned_nemesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786668899302,
+      "tag": "0015_round_tag",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786727549320,
+      "tag": "0016_verificacao_whatsapp_gestao",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786733234635,
+      "tag": "0017_catalogo_servicos_e_contratacoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786998420002,
+      "tag": "0018_atendimentos_operacionais",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787005683075,
+      "tag": "0019_conversa_e_status_atendimento",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787009907573,
+      "tag": "0020_protocolo_manifestacoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787038574565,
+      "tag": "0021_tranquil_omega_flight",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1787080319396,
+      "tag": "0022_colaboracao_no_atendimento",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787087711737,
+      "tag": "0023_leitura_e_notificacoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787094510920,
+      "tag": "0024_comunicados_institucionais",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787120244108,
+      "tag": "0025_conclusao_do_atendimento",
+      "breakpoints": true
     }
   ]
 }

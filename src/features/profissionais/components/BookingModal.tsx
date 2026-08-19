@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   X, 
   ChevronLeft, 
   Calendar, 
@@ -17,6 +17,7 @@ import {
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Professional } from '../types/profissionais';
 
 interface BookingModalProps {
@@ -40,7 +41,7 @@ interface BookingData {
   coupon: string;
 }
 
-const channelConfig: Record<ChannelType, { label: string; icon: any; discount: number; description: string }> = {
+const channelConfig: Record<ChannelType, { label: string; icon: LucideIcon; discount: number; description: string }> = {
   chat: { 
     label: 'Chat', 
     icon: MessageCircle, 

@@ -1,13 +1,24 @@
-import { useNavigate } from 'react-router-dom';
-import { Circle, Briefcase, GraduationCap, Star } from 'lucide-react';
-import type { Professional } from '../types/profissionais';
+"use client";
+
+import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Circle, Briefcase, GraduationCap, Star } from "lucide-react";
+import type { Professional } from "../types/profissionais";
 
 interface ProfessionalCardProps {
   professional: Professional;
+  variant?: "public" | "adminEquipe";
+  statusLabel?: string;
+  adminControls?: ReactNode;
 }
 
-const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
-  const navigate = useNavigate();
+const ProfessionalCard = ({
+  professional,
+  variant = "public",
+  statusLabel,
+  adminControls,
+}: ProfessionalCardProps) => {
+  const router = useRouter();
 
   const {
     name,
@@ -29,16 +40,32 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
         <div className="flex items-center gap-2">
           <Circle
             className="h-3.5 w-3.5"
-            style={{ fill: 'hsl(var(--primary))', stroke: 'hsl(var(--primary))' }}
+            style={{
+              fill: "hsl(var(--primary))",
+              stroke: "hsl(var(--primary))",
+            }}
             strokeWidth={3}
           />
           <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-foreground">
             Expert Advisor Hub
           </span>
         </div>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          {certifications[0] || 'Credenciado'}
-        </span>
+        {variant === "adminEquipe" ? (
+          <div className="flex items-center gap-2">
+            {statusLabel && (
+              <span className="rounded-full bg-background/70 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-foreground">
+                {statusLabel}
+              </span>
+            )}
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {certifications[0] || "Credenciado"}
+            </span>
+          </div>
+        ) : (
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {certifications[0] || "Credenciado"}
+          </span>
+        )}
       </header>
 
       <div className="flex px-5 pt-4 pb-4">
@@ -47,7 +74,7 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
           <div className="relative">
             <div
               className="absolute inset-0 rounded-full opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-70"
-              style={{ background: 'var(--gradient-gold)' }}
+              style={{ background: "var(--gradient-gold)" }}
               aria-hidden
             />
             <div className="relative h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition-transform duration-500 group-hover:scale-105 shadow-card">
@@ -61,11 +88,16 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* Sem avaliações ainda não é nota zero: exibir "0,0" afirmaria uma
+                reputação péssima que ninguém deu. O traço mantém o mesmo espaço
+                e a mesma tipografia, sem inventar número. */}
             <span className="text-sm font-extrabold text-foreground">
-              {rating.toFixed(1).replace('.', ',')}
+              {reviewCount > 0 ? rating.toFixed(1).replace(".", ",") : "—"}
             </span>
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-[10px] text-muted-foreground">({reviewCount})</span>
+            <span className="text-[10px] text-muted-foreground">
+              ({reviewCount})
+            </span>
           </div>
         </div>
 
@@ -74,14 +106,15 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
           <h1 className="text-lg font-extrabold leading-tight tracking-tight text-foreground">
             {name.toUpperCase()}
           </h1>
-          <p className="text-xs font-medium text-primary">
-            {specialty}
-          </p>
+          <p className="text-xs font-medium text-primary">{specialty}</p>
 
           <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Briefcase className="h-3 w-3" />
             <span>
-              <span className="font-semibold text-foreground">{experience}</span> de experiência
+              <span className="font-semibold text-foreground">
+                {experience}
+              </span>{" "}
+              de experiência
             </span>
           </div>
 
@@ -116,21 +149,38 @@ const ProfessionalCard = ({ professional }: ProfessionalCardProps) => {
       </div>
 
       {/* Footer CTA */}
-      <footer className="flex items-center justify-between gap-3 px-5 py-3 bg-gradient-gold">
+      <footer
+        className={
+          variant === "adminEquipe"
+            ? "flex flex-col gap-3 bg-gradient-gold px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+            : "flex items-center justify-between gap-3 bg-gradient-gold px-5 py-3"
+        }
+      >
         <div>
-          <span className="text-base font-bold">R$ {hourlyRate.toFixed(0)}</span>
+          <span className="text-base font-bold">
+            R$ {hourlyRate.toFixed(0)}
+          </span>
           <span className="ml-1 text-[11px] opacity-90">/ hora</span>
         </div>
-        <button
-          type="button"
-          className="rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 text-navy-900"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate('/perfil-profissional');
-          }}
-        >
-          VER PERFIL
-        </button>
+        {variant === "adminEquipe" ? (
+          adminControls
+        ) : (
+          <button
+            type="button"
+            disabled={!professional.isAvailable}
+            className="rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!professional.isAvailable) return;
+              // Mesmo botão de sempre; agora leva ao perfil daquele prestador.
+              router.push(`/perfil-profissional?prestador=${professional.id}`);
+            }}
+          >
+            {professional.isAvailable
+              ? "VER PERFIL"
+              : "INDISPONÍVEL NO MOMENTO"}
+          </button>
+        )}
       </footer>
     </article>
   );

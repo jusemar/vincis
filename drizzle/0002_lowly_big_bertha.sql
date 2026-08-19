@@ -1,0 +1,1 @@
+ALTER TABLE "usuarios" ADD CONSTRAINT "usuarios_whatsapp_unique" UNIQUE("whatsapp");

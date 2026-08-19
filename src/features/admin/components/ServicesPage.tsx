@@ -1,8 +1,9 @@
-import { useState } from 'react';
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package,
-  Plus,
   Search,
   Clock,
   CheckCircle,
@@ -12,106 +13,109 @@ import {
   Eye,
   FileText,
 } from 'lucide-react';
+import { listarContratacoesDoPrestador } from '@/features/servicos/actions/contratacoes';
+import { listarMeusServicos } from '@/features/servicos/actions/catalogo';
 
 interface Service {
-  id: number;
+  id: string;
   service: string;
   client: string;
-  clientId: number;
-  value: number;
+  value: number | null;
+  /** Rótulo já formatado: preserva "Sob orçamento" e "R$ 180,00/h". */
+  valueLabel: string;
   deadline: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled' | 'awaiting-quote';
   category: 'accounting' | 'legal' | 'consulting';
   description: string;
   createdAt: string;
-  completedAt?: string;
   attachments: number;
 }
 
-const mockServices: Service[] = [
-  {
-    id: 1,
-    service: 'Declaração IRPF',
-    client: 'Ana Souza',
-    clientId: 4,
-    value: 350,
-    deadline: '20/04/2024',
-    status: 'pending',
-    category: 'accounting',
-    description: 'Declaração de imposto de renda pessoa física referente ao ano de 2023.',
-    createdAt: '15/04/2024',
-    attachments: 2,
-  },
-  {
-    id: 2,
-    service: 'Consultoria Fiscal',
-    client: 'TechStart ME',
-    clientId: 5,
-    value: 550,
-    deadline: '25/04/2024',
-    status: 'in-progress',
-    category: 'accounting',
-    description: 'Análise fiscal completa e planejamento tributário para otimização de impostos.',
-    createdAt: '10/04/2024',
-    attachments: 5,
-  },
-  {
-    id: 3,
-    service: 'Contrato Social',
-    client: 'Nova Empresa',
-    clientId: 0,
-    value: 450,
-    deadline: '30/04/2024',
-    status: 'pending',
-    category: 'legal',
-    description: 'Elaboração de contrato social para nova empresa.',
-    createdAt: '14/04/2024',
-    attachments: 0,
-  },
-  {
-    id: 4,
-    service: 'Elaboração de Contrato',
-    client: 'João Silva',
-    clientId: 1,
-    value: 380,
-    deadline: '18/04/2024',
-    status: 'completed',
-    category: 'legal',
-    description: 'Contrato de prestação de serviços personalizado.',
-    createdAt: '05/04/2024',
-    completedAt: '14/04/2024',
-    attachments: 3,
-  },
-  {
-    id: 5,
-    service: 'Cálculo de Rescisão',
-    client: 'Carlos Oliveira',
-    clientId: 3,
-    value: 200,
-    deadline: '16/04/2024',
-    status: 'completed',
-    category: 'accounting',
-    description: 'Cálculo de rescisão contratual com todos os direitos trabalhistas.',
-    createdAt: '08/04/2024',
-    completedAt: '12/04/2024',
-    attachments: 1,
-  },
-];
+/** Rótulo do valor preservando as formas já usadas na interface. */
+function rotularValor(modeloPreco: string, valorCentavos: number | null): string {
+  if (modeloPreco === 'sob_orcamento' || valorCentavos === null) return 'Sob orçamento';
+  const valor = valorCentavos / 100;
+  const formatado = valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: Number.isInteger(valor) ? 0 : 2,
+  });
+  if (modeloPreco === 'por_hora') return `R$ ${formatado}/h`;
+  if (modeloPreco === 'a_partir_de') return `A partir de R$ ${formatado}`;
+  return `R$ ${formatado}`;
+}
 
-const stats = [
-  { label: 'Total de Serviços', value: '12', icon: Package, color: 'text-blue-500' },
-  { label: 'Pendentes', value: '3', icon: Clock, color: 'text-yellow-500' },
-  { label: 'Em Andamento', value: '4', icon: AlertCircle, color: 'text-orange-500' },
-  { label: 'Concluídos (Mês)', value: '8', icon: CheckCircle, color: 'text-green-500' },
-];
+/** Status do banco → chave usada pelo visual já existente. */
+const STATUS_VISUAL: Record<string, Service['status']> = {
+  pendente: 'pending',
+  em_andamento: 'in-progress',
+  concluido: 'completed',
+  cancelado: 'cancelled',
+  aguardando_orcamento: 'awaiting-quote',
+};
+
+const CATEGORIA_VISUAL: Record<string, Service['category']> = {
+  contabil: 'accounting',
+  juridico: 'legal',
+  consultoria: 'consulting',
+};
 
 export default function ServicesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
   const [filterCategory] = useState<'all' | 'accounting' | 'legal'>('all');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [totalCatalogo, setTotalCatalogo] = useState(0);
 
-  const filteredServices = mockServices.filter((service) => {
+  // Os dados da tabela deixam de ser mockados: vêm das contratações reais
+  // recebidas por este prestador.
+  useEffect(() => {
+    let ativo = true;
+    void (async () => {
+      const [contratacoes, catalogo] = await Promise.all([
+        listarContratacoesDoPrestador(),
+        listarMeusServicos(),
+      ]);
+      if (!ativo) return;
+      if (contratacoes.sucesso && contratacoes.dados) {
+        setServices(
+          contratacoes.dados.map((item) => ({
+            id: item.id,
+            service: item.nomeServico,
+            client: item.clienteNome,
+            value: item.valorCentavos === null ? null : item.valorCentavos / 100,
+            valueLabel: rotularValor(item.modeloPreco, item.valorCentavos),
+            deadline: item.prazoEstimadoDias
+              ? `${item.prazoEstimadoDias} dias`
+              : '—',
+            status: STATUS_VISUAL[item.status] ?? 'pending',
+            category: CATEGORIA_VISUAL[item.categoria] ?? 'accounting',
+            description: item.nomeServico,
+            createdAt: new Intl.DateTimeFormat('pt-BR').format(
+              new Date(item.criadoEm),
+            ),
+            attachments: 0,
+          })),
+        );
+      }
+      if (catalogo.sucesso && catalogo.dados) setTotalCatalogo(catalogo.dados.length);
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // Mesmos quatro cartões de resumo, agora contando dados reais.
+  const stats = useMemo(
+    () => [
+      { label: 'Total de Serviços', value: String(totalCatalogo), icon: Package, color: 'text-blue-500' },
+      { label: 'Pendentes', value: String(services.filter((s) => s.status === 'pending' || s.status === 'awaiting-quote').length), icon: Clock, color: 'text-yellow-500' },
+      { label: 'Em Andamento', value: String(services.filter((s) => s.status === 'in-progress').length), icon: AlertCircle, color: 'text-orange-500' },
+      { label: 'Concluídos (Mês)', value: String(services.filter((s) => s.status === 'completed').length), icon: CheckCircle, color: 'text-green-500' },
+    ],
+    [services, totalCatalogo],
+  );
+
+  const filteredServices = services.filter((service) => {
     const matchesSearch =
       service.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.client.toLowerCase().includes(searchQuery.toLowerCase());
@@ -150,6 +154,15 @@ export default function ServicesPage() {
             Cancelado
           </span>
         );
+      case 'awaiting-quote':
+        // Único estado novo, exigido por serviços sob orçamento. Reaproveita o
+        // mesmo formato de badge dos demais.
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Clock className="w-3 h-3" />
+            Aguardando orçamento
+          </span>
+        );
     }
   };
 
@@ -175,14 +188,6 @@ export default function ServicesPage() {
           <h2 className="text-2xl font-bold">Serviços</h2>
           <p className="text-muted-foreground">Gerencie seus serviços avulsos.</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Novo Serviço
-        </motion.button>
       </motion.div>
 
       <motion.div
@@ -286,7 +291,7 @@ export default function ServicesPage() {
                   </td>
                   <td className="p-4">{service.client}</td>
                   <td className="p-4">
-                    <span className="font-semibold text-primary">R$ {service.value}</span>
+                    <span className="font-semibold text-primary">{service.valueLabel}</span>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-1 text-sm">
@@ -352,7 +357,7 @@ export default function ServicesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-muted/50 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">Valor do Serviço</p>
-                    <p className="text-2xl font-bold text-primary">R$ {selectedService.value}</p>
+                    <p className="text-2xl font-bold text-primary">{selectedService.valueLabel}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">Prazo de Entrega</p>

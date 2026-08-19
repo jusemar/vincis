@@ -1,395 +1,1072 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+"use client";
+
+import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
 import {
-  Plus,
-  Search,
-  Mail,
-  Phone,
-  Video,
-  MessageSquare,
-  Calendar,
-  FileText,
+  AlertCircle,
+  Archive,
   CheckCircle,
   Clock,
-  AlertCircle,
-} from 'lucide-react';
+  Mail,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  Users,
+} from "lucide-react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  arquivarCliente,
+  atualizarCliente,
+  criarCliente,
+  listarMeusClientes,
+  obterMeuCliente,
+  restaurarCliente,
+} from "@/features/clientes/actions/clientes";
+import {
+  ClienteSchema,
+  type ClienteDTO,
+} from "@/features/clientes/schemas/cliente";
+import type {
+  NivelAcessoCliente,
+  PermissoesCliente,
+} from "@/features/clientes/lib/permissoes-cliente";
+import { consultarCep } from "@/features/usuarios/actions/consultar-cep";
 
-interface Client {
-  id: number;
-  name: string;
+type StatusCliente = "ativo" | "pendente" | "inativo";
+type AreaCliente = "contabil" | "juridico" | "ambos";
+
+type ClienteLista = {
+  id: string;
+  codigo: string;
+  nome: string;
   email: string;
-  phone: string;
-  company: string;
-  plan: string;
-  planValue: number;
-  status: 'active' | 'pending' | 'inactive';
-  lastContact: string;
-  lastTicket: string;
-  nextAppointment: string;
-  totalServices: number;
-  totalSpent: number;
-  area: 'accounting' | 'legal' | 'both';
-  avatar: string;
-  notes: string;
+  telefone: string;
+  empresaNome: string | null;
+  area: string;
+  status: string;
+  tipoAtendimento: string;
+  valorReferenciaCentavos: number;
+  responsavelNome: string;
+  arquivadoEm: Date | null;
+  createdAt: Date;
+  // Verdadeiro quando o acesso vem de convite de colaboração (externo,
+  // somente leitura), e não de propriedade ou atribuição interna.
+  acessoColaboracao?: boolean;
+  // Nível e permissões calculados no servidor pela mesma matriz que autoriza as
+  // Server Actions. A interface não recalcula regra nenhuma — só obedece.
+  nivelAcesso: NivelAcessoCliente;
+  permissoes: PermissoesCliente;
+};
+
+type ClienteDetalhe = ClienteLista & {
+  observacoes: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+};
+
+const VALORES_INICIAIS: ClienteDTO = {
+  nome: "",
+  email: "",
+  telefone: "",
+  empresaNome: "",
+  area: "contabil",
+  status: "ativo",
+  tipoAtendimento: "mensal",
+  valorReferencia: "",
+  observacoes: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  estado: "",
+};
+
+function formatarTelefone(valor: string) {
+  const digitos = valor.replace(/\D/g, "").slice(0, 11);
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 6)
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  if (digitos.length <= 10) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+  }
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
 }
 
-const mockClients: Client[] = [
-  {
-    id: 1,
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    phone: '(11) 99999-1234',
-    company: 'Silva ME',
-    plan: 'Plano Premium',
-    planValue: 399,
-    status: 'active',
-    lastContact: '14/04/2024',
-    lastTicket: '10/04',
-    nextAppointment: '15/04 às 14h',
-    totalServices: 15,
-    totalSpent: 5985,
-    area: 'accounting',
-    avatar: 'JS',
-    notes: 'Cliente antigo, prefere contato por e-mail.',
+function formatarMoedaDigitada(valor: string) {
+  const centavos = Number(valor.replace(/\D/g, ""));
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(centavos / 100);
+}
+
+function formatarCentavos(centavos: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(centavos / 100);
+}
+
+const STATUS: Record<
+  StatusCliente,
+  { texto: string; classe: string; Icone: typeof CheckCircle }
+> = {
+  ativo: { texto: "Ativo", classe: "badge-success", Icone: CheckCircle },
+  pendente: { texto: "Pendente", classe: "badge-warning", Icone: Clock },
+  inativo: {
+    texto: "Inativo",
+    classe: "bg-destructive/10 text-destructive",
+    Icone: AlertCircle,
   },
-  {
-    id: 2,
-    name: 'Maria Santos',
-    email: 'maria.santos@empresa.com',
-    phone: '(11) 98888-5678',
-    company: 'Santos LTDA',
-    plan: 'Plano Empresarial',
-    planValue: 599,
-    status: 'active',
-    lastContact: '13/04/2024',
-    lastTicket: '08/04',
-    nextAppointment: '16/04 às 10h',
-    totalServices: 22,
-    totalSpent: 13178,
-    area: 'legal',
-    avatar: 'MS',
-    notes: 'Prefere reuniões por videochamada.',
+};
+
+const AREAS: Record<AreaCliente, { texto: string; classe: string }> = {
+  contabil: { texto: "Contábil", classe: "badge-info" },
+  juridico: {
+    texto: "Jurídico",
+    classe: "bg-primary/10 text-primary",
   },
-  {
-    id: 3,
-    name: 'Carlos Oliveira',
-    email: 'carlos@oliveirafilhos.com',
-    phone: '(11) 97777-9012',
-    company: 'Oliveira & Filhos',
-    plan: 'Plano Básico',
-    planValue: 299,
-    status: 'active',
-    lastContact: '12/04/2024',
-    lastTicket: '05/04',
-    nextAppointment: '-',
-    totalServices: 8,
-    totalSpent: 2392,
-    area: 'both',
-    avatar: 'CO',
-    notes: 'Empresa em expansão, pode upgrade.',
-  },
-  {
-    id: 4,
-    name: 'Ana Souza',
-    email: 'ana@souza.adv.br',
-    phone: '(11) 96666-3456',
-    company: 'Souza Advocacia',
-    plan: 'Plano Premium',
-    planValue: 399,
-    status: 'active',
-    lastContact: '11/04/2024',
-    lastTicket: '02/04',
-    nextAppointment: '20/04 às 15h',
-    totalServices: 12,
-    totalSpent: 4788,
-    area: 'accounting',
-    avatar: 'AS',
-    notes: '',
-  },
-  {
-    id: 5,
-    name: 'TechStart ME',
-    email: 'contato@techstart.com.br',
-    phone: '(11) 95555-7890',
-    company: 'TechStart ME',
-    plan: 'Plano Básico',
-    planValue: 299,
-    status: 'pending',
-    lastContact: '10/04/2024',
-    lastTicket: '-',
-    nextAppointment: '-',
-    totalServices: 3,
-    totalSpent: 897,
-    area: 'accounting',
-    avatar: 'TS',
-    notes: 'Novo cliente, necessidade de declaração IR.',
-  },
-];
+  ambos: { texto: "Ambos", classe: "badge-warning" },
+};
+
+function iniciais(nome: string) {
+  return nome
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((parte) => parte[0])
+    .join("")
+    .toUpperCase();
+}
+
+function BadgeStatus({ status }: { status: string }) {
+  const configuracao = STATUS[status as StatusCliente] ?? STATUS.inativo;
+  const Icone = configuracao.Icone;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${configuracao.classe}`}
+    >
+      <Icone className="size-3" />
+      {configuracao.texto}
+    </span>
+  );
+}
+
+function BadgeArea({ area }: { area: string }) {
+  const configuracao = AREAS[area as AreaCliente] ?? AREAS.ambos;
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs ${configuracao.classe}`}>
+      {configuracao.texto}
+    </span>
+  );
+}
 
 export default function ClientsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [, setShowAddModal] = useState(false);
+  const [busca, setBusca] = useState("");
+  const buscaAdiada = useDeferredValue(busca);
+  const [status, setStatus] = useState<
+    "todos" | "ativo" | "pendente" | "arquivados"
+  >("todos");
+  const [pagina, setPagina] = useState(1);
+  const [clientes, setClientes] = useState<ClienteLista[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [carregando, setCarregando] = useState(true);
+  const [erroLista, setErroLista] = useState("");
+  const [versao, setVersao] = useState(0);
+  const [clienteDetalhe, setClienteDetalhe] = useState<ClienteDetalhe | null>(
+    null,
+  );
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
+  const [formularioAberto, setFormularioAberto] = useState(false);
+  const [clienteEditadoId, setClienteEditadoId] = useState<string | null>(null);
+  const [clienteArquivado, setClienteArquivado] =
+    useState<ClienteDetalhe | null>(null);
+  const [arquivando, setArquivando] = useState(false);
+  const [restaurando, setRestaurando] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
-  const filteredClients = mockClients.filter((client) => {
-    const matchesSearch =
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
-    return matchesSearch && matchesStatus;
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ClienteDTO>({
+    resolver: zodResolver(ClienteSchema),
+    defaultValues: VALORES_INICIAIS,
   });
+  const tipoAtendimento = useWatch({ control, name: "tipoAtendimento" });
+  const area = useWatch({ control, name: "area" });
+  const cep = useWatch({ control, name: "cep" });
+  const atendimentoJuridico = area === "juridico";
 
-  const getStatusBadge = (status: Client['status']) => {
-    switch (status) {
-      case 'active':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium badge-success">
-            <CheckCircle className="w-3 h-3" />
-            Ativo
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium badge-warning">
-            <Clock className="w-3 h-3" />
-            Pendente
-          </span>
-        );
-      case 'inactive':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-            <AlertCircle className="w-3 h-3" />
-            Inativo
-          </span>
-        );
+  useEffect(() => {
+    if (atendimentoJuridico) {
+      setValue("tipoAtendimento", "mensal");
+      setValue("valorReferencia", "");
     }
-  };
+  }, [atendimentoJuridico, setValue]);
 
-  const getAreaBadge = (area: Client['area']) => {
-    switch (area) {
-      case 'accounting': return <span className="px-2 py-0.5 rounded text-xs badge-info">Contábil</span>;
-      case 'legal': return <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-500">Jurídico</span>;
-      case 'both': return <span className="px-2 py-0.5 rounded text-xs badge-warning">Ambos</span>;
+  useEffect(() => {
+    let cancelado = false;
+
+    startTransition(async () => {
+      setCarregando(true);
+      setErroLista("");
+      const resultado = await listarMeusClientes({
+        busca: buscaAdiada,
+        status,
+        pagina,
+      });
+      if (cancelado) return;
+      if (!resultado.sucesso || !resultado.dados) {
+        setClientes([]);
+        setErroLista(resultado.mensagem);
+      } else {
+        setClientes(resultado.dados.clientes);
+        setTotal(resultado.dados.total);
+        setTotalPaginas(resultado.dados.totalPaginas);
+      }
+      setCarregando(false);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [buscaAdiada, pagina, status, versao]);
+
+  function recarregar() {
+    setVersao((atual) => atual + 1);
+  }
+
+  function abrirNovoCliente() {
+    setClienteEditadoId(null);
+    reset(VALORES_INICIAIS);
+    setFormularioAberto(true);
+  }
+
+  function abrirEdicao(cliente: ClienteDetalhe) {
+    setClienteEditadoId(cliente.id);
+    reset({
+      nome: cliente.nome,
+      email: cliente.email,
+      telefone: formatarTelefone(cliente.telefone),
+      empresaNome: cliente.empresaNome ?? "",
+      area: cliente.area as AreaCliente,
+      status: cliente.status as StatusCliente,
+      tipoAtendimento: cliente.tipoAtendimento as "mensal" | "avulso",
+      valorReferencia: formatarCentavos(cliente.valorReferenciaCentavos),
+      observacoes: cliente.observacoes ?? "",
+      cep: cliente.cep ?? "",
+      logradouro: cliente.logradouro ?? "",
+      numero: cliente.numero ?? "",
+      complemento: cliente.complemento ?? "",
+      bairro: cliente.bairro ?? "",
+      cidade: cliente.cidade ?? "",
+      estado: cliente.estado ?? "",
+    });
+    setFormularioAberto(true);
+  }
+
+  async function abrirDetalhe(clienteId: string) {
+    setCarregandoDetalhe(true);
+    const resultado = await obterMeuCliente(clienteId);
+    setCarregandoDetalhe(false);
+    if (!resultado.sucesso || !resultado.dados) {
+      toast.error(resultado.mensagem);
+      return;
     }
-  };
+    setClienteDetalhe(resultado.dados);
+  }
+
+  async function salvar(dados: ClienteDTO) {
+    const resultado = clienteEditadoId
+      ? await atualizarCliente(clienteEditadoId, dados)
+      : await criarCliente(dados);
+    if (!resultado.sucesso) {
+      if ("erros" in resultado && resultado.erros) {
+        for (const [campo, mensagens] of Object.entries(resultado.erros)) {
+          const mensagemCampo = mensagens?.[0];
+          if (mensagemCampo) {
+            setError(campo as keyof ClienteDTO, {
+              type: "server",
+              message: mensagemCampo,
+            });
+          }
+        }
+      }
+      toast.error(resultado.mensagem);
+      return;
+    }
+    toast.success(resultado.mensagem);
+    setFormularioAberto(false);
+    setClienteDetalhe(null);
+    setPagina(1);
+    recarregar();
+  }
+
+  async function buscarEndereco() {
+    setBuscandoCep(true);
+    const resultado = await consultarCep(cep);
+    setBuscandoCep(false);
+    if (!resultado.sucesso) {
+      toast.error(resultado.mensagem);
+      return;
+    }
+    for (const [campo, valor] of Object.entries(resultado.endereco)) {
+      setValue(campo as keyof ClienteDTO, valor);
+    }
+    toast.success("Endereço encontrado.");
+  }
+
+  async function confirmarArquivamento() {
+    if (!clienteArquivado) return;
+    setArquivando(true);
+    const resultado = await arquivarCliente(clienteArquivado.id);
+    setArquivando(false);
+    if (!resultado.sucesso) {
+      toast.error(resultado.mensagem);
+      return;
+    }
+    toast.warning(resultado.mensagem);
+    setClienteArquivado(null);
+    setClienteDetalhe(null);
+    recarregar();
+  }
+
+  async function restaurar(cliente: ClienteDetalhe) {
+    setRestaurando(true);
+    const resultado = await restaurarCliente(cliente.id);
+    setRestaurando(false);
+    if (!resultado.sucesso) {
+      toast.error(resultado.mensagem);
+      return;
+    }
+    toast.success(resultado.mensagem);
+    setClienteDetalhe(null);
+    recarregar();
+  }
+
+  const erro = (campo: keyof typeof errors) =>
+    errors[campo] ? (
+      <p className="mt-1 text-xs text-destructive">
+        {errors[campo]?.message as string}
+      </p>
+    ) : null;
 
   return (
     <div className="space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between flex-wrap gap-4"
+        className="glass-card relative flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-2xl border border-amber-500/20 p-5 shadow-card sm:p-6"
       >
+        <div className="absolute inset-y-0 left-0 w-1 bg-gradient-gold" />
         <div>
-          <h2 className="text-2xl font-bold">Clientes</h2>
-          <p className="text-muted-foreground">Gerencie seus clientes e contatos.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-500">
+            Carteira profissional
+          </p>
+          <h2 className="font-serif text-2xl font-bold">Clientes</h2>
+          <p className="text-muted-foreground">
+            Gerencie seus clientes e contatos.
+          </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
+        <Button
+          onClick={abrirNovoCliente}
+          className="bg-gradient-gold font-semibold text-on-gradient shadow-glow hover:shadow-glow-lg"
         >
-          <Plus className="w-5 h-5" />
-          Novo Cliente
-        </motion.button>
+          <Plus className="size-5" />
+          Novo cliente
+        </Button>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex items-center gap-4 flex-wrap"
+        className="glass-card flex flex-wrap items-center gap-4 rounded-2xl border border-amber-500/15 p-4 shadow-card"
       >
-        <div className="relative flex-1 min-w-[250px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
+        <div className="relative min-w-64 flex-1">
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={busca}
+            onChange={(evento) => {
+              setBusca(evento.target.value);
+              setPagina(1);
+            }}
+            className="h-11 pl-10"
             placeholder="Buscar por nome, empresa ou e-mail..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
           />
         </div>
-        <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
-          {(['all', 'active', 'pending', 'inactive'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 text-sm rounded-md transition-all ${
-                filterStatus === status
-                  ? 'bg-background shadow-sm font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {status === 'all' ? 'Todos' : status === 'active' ? 'Ativos' : status === 'pending' ? 'Pendentes' : 'Inativos'}
-            </button>
-          ))}
+        <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1">
+          {(["todos", "ativo", "pendente", "arquivados"] as const).map(
+            (opcao) => (
+              <button
+                key={opcao}
+                onClick={() => {
+                  setStatus(opcao);
+                  setPagina(1);
+                }}
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-sm transition-all sm:px-4 ${
+                  status === opcao
+                    ? "bg-background font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opcao === "todos"
+                  ? "Todos"
+                  : opcao === "ativo"
+                    ? "Ativos"
+                    : opcao === "pendente"
+                      ? "Pendentes"
+                      : "Arquivados"}
+              </button>
+            ),
+          )}
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-      >
-        {filteredClients.map((client, index) => (
-          <motion.div
-            key={client.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-            whileHover={{ y: -4 }}
-            className="bg-card border rounded-xl p-5 hover:shadow-lg transition-all cursor-pointer"
-            onClick={() => setSelectedClient(client)}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-gold flex items-center justify-center">
-                  <span className="text-on-gradient font-bold">{client.avatar}</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold">{client.name}</h3>
-                  <p className="text-sm text-muted-foreground">{client.company}</p>
-                </div>
-              </div>
-              {getStatusBadge(client.status)}
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="w-4 h-4" />
-                <span className="truncate">{client.email}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="w-4 h-4" />
-                <span>{client.phone}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t">
-              <div className="flex items-center gap-2">
-                {getAreaBadge(client.area)}
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Plano:</span>
-                <span className="font-semibold text-primary">R$ {client.planValue}</span>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      <AnimatePresence>
-        {selectedClient && (
+      {carregando ? (
+        <div className="flex min-h-72 items-center justify-center rounded-xl border bg-card">
+          <RefreshCw className="size-6 animate-spin text-primary" />
+          <span className="ml-3 text-sm text-muted-foreground">
+            Carregando clientes...
+          </span>
+        </div>
+      ) : erroLista ? (
+        <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border bg-card p-6 text-center">
+          <AlertCircle className="size-9 text-destructive" />
+          <p className="mt-3 font-medium">
+            Não foi possível carregar os clientes
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{erroLista}</p>
+          <Button className="mt-4" variant="outline" onClick={recarregar}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : clientes.length === 0 ? (
+        <div className="flex min-h-72 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-6 text-center">
+          <Users className="size-10 text-muted-foreground" />
+          <h3 className="mt-4 font-serif text-xl font-semibold">
+            {busca || status !== "todos"
+              ? "Nenhum cliente encontrado"
+              : "Sua carteira começa aqui"}
+          </h3>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            {busca || status !== "todos"
+              ? "Ajuste a busca ou os filtros para encontrar outro cliente."
+              : "Cadastre seu primeiro cliente para organizar contatos e atendimentos."}
+          </p>
+          {!busca && status === "todos" && (
+            <Button className="mt-5" onClick={abrirNovoCliente}>
+              <Plus />
+              Cadastrar cliente
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedClient(null)}
+            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b">
+            {clientes.map((cliente, indice) => (
+              <motion.button
+                type="button"
+                key={cliente.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 + indice * 0.03 }}
+                whileHover={{ y: -4 }}
+                onClick={() => void abrirDetalhe(cliente.id)}
+                className="group cursor-pointer overflow-hidden rounded-2xl border border-amber-500/15 bg-card p-5 text-left shadow-card transition-all hover:border-amber-500/30 hover:shadow-glow"
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-gold">
+                      <span className="font-bold text-on-gradient">
+                        {iniciais(cliente.nome)}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold">{cliente.nome}</h3>
+                      <p className="text-xs font-medium text-primary">
+                        {cliente.codigo}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {cliente.empresaNome || "Pessoa física"}
+                      </p>
+                    </div>
+                  </div>
+                  <BadgeStatus status={cliente.status} />
+                </div>
+                <div className="mb-4 space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="size-4 shrink-0" />
+                    <span className="truncate">{cliente.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="size-4 shrink-0" />
+                    <span>{formatarTelefone(cliente.telefone)}</span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Responsável: {cliente.responsavelNome}
+                  </p>
+                  {cliente.acessoColaboracao && (
+                    <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                      Colaboração externa
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-end justify-between gap-3 border-t pt-4">
+                  <div className="space-y-2">
+                    <BadgeArea area={cliente.area} />
+                    {cliente.area === "juridico" ? (
+                      <p className="text-sm font-medium text-foreground">
+                        Atendimento jurídico
+                      </p>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {cliente.tipoAtendimento === "mensal"
+                            ? "Mensal"
+                            : "Serviço avulso"}
+                        </p>
+                        <p className="mt-0.5 text-lg font-semibold tabular-nums text-primary">
+                          {formatarCentavos(cliente.valorReferenciaCentavos)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {cliente.arquivadoEm
+                      ? "Arquivado"
+                      : `Desde ${new Intl.DateTimeFormat("pt-BR").format(
+                          new Date(cliente.createdAt),
+                        )}`}
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </motion.div>
+
+          <div className="flex flex-col items-center justify-between gap-3 border-t pt-4 text-sm sm:flex-row">
+            <p className="text-muted-foreground">
+              {total}{" "}
+              {total === 1 ? "cliente encontrado" : "clientes encontrados"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagina <= 1}
+                onClick={() => setPagina((atual) => atual - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="px-2">
+                Página {pagina} de {totalPaginas}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagina >= totalPaginas}
+                onClick={() => setPagina((atual) => atual + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <Dialog
+        open={Boolean(clienteDetalhe) || carregandoDetalhe}
+        onOpenChange={(aberto) => {
+          if (!aberto) setClienteDetalhe(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          {carregandoDetalhe || !clienteDetalhe ? (
+            <div className="flex min-h-60 items-center justify-center">
+              <RefreshCw className="size-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-gold flex items-center justify-center">
-                    <span className="text-on-gradient font-bold text-xl">{selectedClient.avatar}</span>
+                  <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-gradient-gold">
+                    <span className="text-xl font-bold text-on-gradient">
+                      {iniciais(clienteDetalhe.nome)}
+                    </span>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">{selectedClient.name}</h3>
-                    <p className="text-muted-foreground">{selectedClient.company}</p>
-                    {getStatusBadge(selectedClient.status)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                <div>
-                  <h4 className="font-semibold mb-3">Informações de Contato</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">E-mail</p>
-                      <p className="text-sm">{selectedClient.email}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Telefone</p>
-                      <p className="text-sm">{selectedClient.phone}</p>
+                    <DialogTitle className="font-serif text-2xl">
+                      {clienteDetalhe.nome}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {clienteDetalhe.empresaNome || "Pessoa física"}
+                    </DialogDescription>
+                    <div className="mt-2">
+                      <BadgeStatus status={clienteDetalhe.status} />
                     </div>
                   </div>
                 </div>
+              </DialogHeader>
 
-                <div>
-                  <h4 className="font-semibold mb-3">Plano e Serviços</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Plano Atual</p>
-                      <p className="text-lg font-bold text-primary">{selectedClient.plan}</p>
-                      <p className="text-sm">R$ {selectedClient.planValue}/mês</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">Total Gasto</p>
-                      <p className="text-lg font-bold">R$ {selectedClient.totalSpent.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">{selectedClient.totalServices} serviços</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-3">Ações Rápidas</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                      <MessageSquare className="w-4 h-4" />
-                      Enviar Mensagem
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors">
-                      <Video className="w-4 h-4" />
-                      Iniciar Videochamada
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors">
-                      <Calendar className="w-4 h-4" />
-                      Agendar Reunião
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-accent transition-colors">
-                      <FileText className="w-4 h-4" />
-                      Ver Contrato
-                    </button>
-                  </div>
-                </div>
-
-                {selectedClient.notes && (
+              <div className="grid gap-4 rounded-xl bg-muted/50 p-4 sm:grid-cols-2">
+                {clienteDetalhe.area !== "juridico" && (
                   <div>
-                    <h4 className="font-semibold mb-3">Observações</h4>
-                    <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4">
-                      {selectedClient.notes}
-                    </p>
+                    <p className="text-xs text-muted-foreground">E-mail</p>
+                    <a
+                      href={`mailto:${clienteDetalhe.email}`}
+                      className="mt-1 block break-all text-sm hover:text-primary"
+                    >
+                      {clienteDetalhe.email}
+                    </a>
                   </div>
                 )}
+                {clienteDetalhe.area !== "juridico" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Telefone</p>
+                    <a
+                      href={`tel:${clienteDetalhe.telefone}`}
+                      className="mt-1 block text-sm hover:text-primary"
+                    >
+                      {formatarTelefone(clienteDetalhe.telefone)}
+                    </a>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Área</p>
+                  <div className="mt-1">
+                    <BadgeArea area={clienteDetalhe.area} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cadastro</p>
+                  <p className="mt-1 text-sm">
+                    {new Intl.DateTimeFormat("pt-BR").format(
+                      new Date(clienteDetalhe.createdAt),
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Tipo de atendimento
+                  </p>
+                  <p className="mt-1 text-sm font-medium">
+                    {clienteDetalhe.tipoAtendimento === "mensal"
+                      ? "Mensal"
+                      : "Serviço avulso"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    {clienteDetalhe.tipoAtendimento === "mensal"
+                      ? "Valor mensal"
+                      : "Valor do serviço"}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-primary">
+                    {formatarCentavos(clienteDetalhe.valorReferenciaCentavos)}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">
+                    Profissional responsável
+                  </p>
+                  <p className="mt-1 text-sm font-medium">
+                    {clienteDetalhe.responsavelNome}
+                  </p>
+                </div>
               </div>
 
-              <div className="p-6 border-t flex justify-end gap-3">
-                <button
-                  onClick={() => setSelectedClient(null)}
-                  className="px-5 py-2.5 rounded-lg border hover:bg-muted transition-colors"
-                >
-                  Fechar
-                </button>
-                <button className="px-5 py-2.5 rounded-lg bg-gradient-gold text-on-gradient font-semibold shadow-glow hover:shadow-glow-lg transition-all">
-                  Editar Cliente
-                </button>
+              <div>
+                <h4 className="font-semibold">Observações</h4>
+                <p className="mt-2 whitespace-pre-wrap rounded-lg border p-4 text-sm text-muted-foreground">
+                  {clienteDetalhe.observacoes ||
+                    "Nenhuma observação registrada."}
+                </p>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div>
+                <h4 className="font-semibold">Endereço</h4>
+                <p className="mt-2 rounded-lg border p-4 text-sm text-muted-foreground">
+                  {[
+                    clienteDetalhe.logradouro,
+                    clienteDetalhe.numero,
+                    clienteDetalhe.complemento,
+                    clienteDetalhe.bairro,
+                    clienteDetalhe.cidade && clienteDetalhe.estado
+                      ? `${clienteDetalhe.cidade}/${clienteDetalhe.estado}`
+                      : null,
+                    clienteDetalhe.cep,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+              </div>
+
+              {/* Só aparece o que o servidor de fato autoriza: as permissões
+                  vêm calculadas de `PERMISSOES_POR_NIVEL`, a mesma tabela que
+                  as Server Actions consultam. */}
+              <DialogFooter className="items-center">
+                {clienteDetalhe.nivelAcesso === "colaborador_externo" && (
+                  <p className="mr-auto text-xs text-muted-foreground">
+                    Acesso por colaboração externa — somente leitura.
+                  </p>
+                )}
+                {clienteDetalhe.arquivadoEm
+                  ? clienteDetalhe.permissoes.restaurar && (
+                      <Button
+                        disabled={restaurando}
+                        onClick={() => void restaurar(clienteDetalhe)}
+                      >
+                        <RefreshCw />
+                        {restaurando ? "Restaurando..." : "Restaurar cliente"}
+                      </Button>
+                    )
+                  : (
+                      <>
+                        {clienteDetalhe.permissoes.arquivar && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setClienteArquivado(clienteDetalhe)}
+                          >
+                            <Archive />
+                            Arquivar
+                          </Button>
+                        )}
+                        {clienteDetalhe.permissoes.editar && (
+                          <Button onClick={() => abrirEdicao(clienteDetalhe)}>
+                            <Pencil />
+                            Editar cliente
+                          </Button>
+                        )}
+                      </>
+                    )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={formularioAberto} onOpenChange={setFormularioAberto}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">
+              {clienteEditadoId ? "Editar cliente" : "Novo cliente"}
+            </DialogTitle>
+            <DialogDescription>
+              As informações ficarão visíveis somente na sua carteira.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-7" onSubmit={handleSubmit(salvar)}>
+            <section className="space-y-4">
+              <div>
+                <h3 className="font-semibold">Dados do cliente</h3>
+                <p className="text-sm text-muted-foreground">
+                  Identificação e canais de contato.
+                </p>
+              </div>
+              <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="cliente-nome">Nome</Label>
+                  <Input
+                    id="cliente-nome"
+                    className={errors.nome ? "border-destructive" : ""}
+                    {...register("nome")}
+                  />
+                  {erro("nome")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-email">E-mail</Label>
+                  <Input
+                    id="cliente-email"
+                    type="email"
+                    className={errors.email ? "border-destructive" : ""}
+                    {...register("email")}
+                  />
+                  {erro("email")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-telefone">Telefone</Label>
+                  <Controller
+                    control={control}
+                    name="telefone"
+                    render={({ field }) => (
+                      <Input
+                        id="cliente-telefone"
+                        inputMode="tel"
+                        maxLength={15}
+                        className={errors.telefone ? "border-destructive" : ""}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(evento) =>
+                          field.onChange(formatarTelefone(evento.target.value))
+                        }
+                      />
+                    )}
+                  />
+                  {erro("telefone")}
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="cliente-empresa">
+                    Empresa do cliente (opcional)
+                  </Label>
+                  <Input
+                    id="cliente-empresa"
+                    placeholder="Opcional para pessoa física"
+                    {...register("empresaNome")}
+                  />
+                  {erro("empresaNome")}
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4 border-t pt-6">
+              <div>
+                <h3 className="font-semibold">Atendimento</h3>
+                <p className="text-sm text-muted-foreground">
+                  Área, situação e referência comercial.
+                </p>
+              </div>
+              <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-area">Área</Label>
+                  <select
+                    id="cliente-area"
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    {...register("area")}
+                  >
+                    <option value="contabil">Contábil</option>
+                    <option value="juridico">Advogado</option>
+                    <option value="ambos">Contábil e jurídico</option>
+                  </select>
+                  {erro("area")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-status">Situação</Label>
+                  <select
+                    id="cliente-status"
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    {...register("status")}
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="inativo">Inativo</option>
+                  </select>
+                  {erro("status")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-tipo-atendimento">
+                    Tipo de atendimento
+                  </Label>
+                  <select
+                    id="cliente-tipo-atendimento"
+                    disabled={atendimentoJuridico}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    {...register("tipoAtendimento")}
+                  >
+                    <option value="mensal">Mensal</option>
+                    <option value="avulso">Serviço avulso</option>
+                  </select>
+                  {erro("tipoAtendimento")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-valor-referencia">
+                    {tipoAtendimento === "avulso"
+                      ? "Valor do serviço"
+                      : "Valor mensal"}
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="valorReferencia"
+                    render={({ field }) => (
+                      <Input
+                        id="cliente-valor-referencia"
+                        inputMode="numeric"
+                        disabled={atendimentoJuridico}
+                        className={
+                          errors.valorReferencia ? "border-destructive" : ""
+                        }
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(evento) =>
+                          field.onChange(
+                            formatarMoedaDigitada(evento.target.value),
+                          )
+                        }
+                        placeholder="R$ 0,00"
+                      />
+                    )}
+                  />
+                  {erro("valorReferencia")}
+                </div>
+              </div>
+              {atendimentoJuridico && (
+                <p className="text-sm text-muted-foreground sm:col-span-2">
+                  Tipo e valor não são aplicados ao atendimento de advogado.
+                </p>
+              )}
+            </section>
+
+            <section className="space-y-2 border-t pt-6">
+              <Label htmlFor="cliente-observacoes">Observações</Label>
+              <Textarea
+                id="cliente-observacoes"
+                className="min-h-28"
+                {...register("observacoes")}
+              />
+              {erro("observacoes")}
+            </section>
+            <section className="space-y-4 border-t pt-6">
+              <div>
+                <h3 className="font-semibold">Endereço</h3>
+                <p className="text-sm text-muted-foreground">
+                  Informe o CEP para preencher os dados automaticamente.
+                </p>
+              </div>
+              <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-cep">CEP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="cliente-cep"
+                      inputMode="numeric"
+                      maxLength={8}
+                      {...register("cep")}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={buscandoCep}
+                      onClick={() => void buscarEndereco()}
+                    >
+                      <Search />
+                      {buscandoCep ? "Buscando" : "Buscar"}
+                    </Button>
+                  </div>
+                  {erro("cep")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Logradouro</Label>
+                  <Input {...register("logradouro")} />
+                  {erro("logradouro")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input {...register("numero")} />
+                  {erro("numero")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Complemento</Label>
+                  <Input {...register("complemento")} />
+                  {erro("complemento")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Bairro</Label>
+                  <Input {...register("bairro")} />
+                  {erro("bairro")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input {...register("cidade")} />
+                  {erro("cidade")}
+                </div>
+                <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Input
+                    maxLength={2}
+                    className="uppercase"
+                    {...register("estado")}
+                  />
+                  {erro("estado")}
+                </div>
+              </div>
+            </section>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormularioAberto(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvando..." : "Salvar cliente"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(clienteArquivado)}
+        onOpenChange={(aberto) => {
+          if (!aberto) setClienteArquivado(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Arquivar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {clienteArquivado
+                ? `${clienteArquivado.nome} será removido da carteira ativa. Os dados serão preservados com segurança.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={arquivando}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={arquivando}
+              onClick={(evento) => {
+                evento.preventDefault();
+                void confirmarArquivamento();
+              }}
+            >
+              {arquivando ? "Arquivando..." : "Arquivar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

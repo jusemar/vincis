@@ -1,8 +1,9 @@
-import { motion } from 'framer-motion';
+"use client";
+
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
-  Package,
   Ticket,
   Calendar,
   DollarSign,
@@ -11,33 +12,44 @@ import {
   Award,
   Settings,
   Headphones,
-} from 'lucide-react';
-import { useLocation, Link } from 'react-router-dom';
+  UsersRound,
+} from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  nomeUsuario: string;
 }
 
+/**
+ * Navegação do painel.
+ *
+ * `Serviços` saiu daqui: o catálogo do prestador passou a viver em
+ * `Meu Perfil → Serviços`, e o trabalho contratado é executado em
+ * `Atendimentos`. A rota `?pagina=services` continua existindo — só deixou de
+ * ser um destino do menu operacional.
+ */
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'clients', label: 'Clientes', icon: Users },
-  { id: 'services', label: 'Serviços', icon: Package },
-  { id: 'tickets', label: 'Mensagens', icon: Ticket, badge: 3 },
-  { id: 'appointments', label: 'Agenda', icon: Calendar },
-  { id: 'atendimentos', label: 'Atendimentos', icon: Headphones },
-  { id: 'financial', label: 'Financeiro', icon: DollarSign },
-  { id: 'reviews', label: 'Avaliações', icon: Star },
-  { id: 'profile', label: 'Meu Perfil', icon: User },
-  { id: 'achievements', label: 'Conquistas', icon: Award },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "clients", label: "Clientes", icon: Users },
+  { id: "team", label: "Equipe", icon: UsersRound },
+  { id: "tickets", label: "Mensagens", icon: Ticket, badge: 3 },
+  { id: "appointments", label: "Agenda", icon: Calendar },
+  { id: "atendimentos", label: "Atendimentos", icon: Headphones },
+  { id: "financial", label: "Financeiro", icon: DollarSign },
+  { id: "reviews", label: "Avaliações", icon: Star },
+  { id: "profile", label: "Meu Perfil", icon: User },
+  { id: "achievements", label: "Conquistas", icon: Award },
 ];
 
-export default function AdminSidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const location = useLocation();
-  const currentPage = location.pathname.split('/admin/')[1] || 'dashboard';
+export default function AdminSidebar({ isCollapsed, onToggle, nomeUsuario }: SidebarProps) {
+  const searchParams = useSearchParams();
+  const currentPage = searchParams.get("pagina") || "dashboard";
 
   return (
-    <aside className={`sidebar ${isCollapsed ? '' : 'expanded'}`}>
+    <aside className={`sidebar ${isCollapsed ? "" : "expanded"}`}>
       {/* Logo */}
       <div className="logo-wrap">
         <div className="logo-mark">V</div>
@@ -45,14 +57,26 @@ export default function AdminSidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Nav Items */}
-      <nav style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <nav
+        style={{
+          flex: 1,
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
         {navItems.map((item) => {
           const isActive = currentPage === item.id;
           const Icon = item.icon;
           return (
-            <Link key={item.id} to={`/admin/${item.id}`} style={{ textDecoration: 'none' }}>
+            <Link
+              key={item.id}
+              href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
+              style={{ textDecoration: "none" }}
+            >
               <motion.button
-                className={`nav-btn ${isActive ? 'active' : ''}`}
+                className={`nav-btn ${isActive ? "active" : ""}`}
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onToggle}
@@ -60,20 +84,22 @@ export default function AdminSidebar({ isCollapsed, onToggle }: SidebarProps) {
                 <Icon size={18} className="nav-icon" />
                 <span className="nav-label">{item.label}</span>
                 {item.badge && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    height: 20,
-                    minWidth: 20,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '999px',
-                    background: 'hsl(var(--primary))',
-                    color: 'hsl(var(--primary-foreground))',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '0 6px'
-                  }}>
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      height: 20,
+                      minWidth: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "999px",
+                      background: "hsl(var(--primary))",
+                      color: "hsl(var(--primary-foreground))",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "0 6px",
+                    }}
+                  >
                     {item.badge}
                   </span>
                 )}
@@ -91,10 +117,20 @@ export default function AdminSidebar({ isCollapsed, onToggle }: SidebarProps) {
 
       {/* Footer: Avatar + Nome */}
       <div className="sidebar-footer">
-        <div className="sidebar-avatar">AS</div>
-        <div className="nav-label" style={{ opacity: 1, width: 'auto' }}>
-          <p style={{ fontSize: 12, fontWeight: 600 }}>Ana Silva</p>
-          <p style={{ fontSize: 10, color: 'hsl(var(--primary))' }}>★ 4.8 · 124 avaliações</p>
+        <div className="sidebar-avatar">
+          {nomeUsuario
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((parte) => parte[0])
+            .join("")
+            .toUpperCase()}
+        </div>
+        <div className="nav-label" style={{ opacity: 1, width: "auto" }}>
+          <p style={{ fontSize: 12, fontWeight: 600 }}>{nomeUsuario}</p>
+          <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
+            ★ 4.8 · 124 avaliações
+          </p>
         </div>
       </div>
     </aside>

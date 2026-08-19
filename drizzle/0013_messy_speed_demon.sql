@@ -1,0 +1,1 @@
+ALTER TABLE "perfis_profissionais" ADD COLUMN "ano_inicio_atuacao" integer;

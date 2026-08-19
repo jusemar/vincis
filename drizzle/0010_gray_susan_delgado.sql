@@ -1,0 +1,2 @@
+ALTER TABLE "clientes" ADD COLUMN "tipo_atendimento" varchar(20) DEFAULT 'mensal' NOT NULL;--> statement-breakpoint
+ALTER TABLE "clientes" ADD COLUMN "valor_referencia_centavos" integer DEFAULT 0 NOT NULL;

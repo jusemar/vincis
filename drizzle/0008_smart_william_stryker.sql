@@ -1,0 +1,1 @@
+ALTER TABLE "perfis_profissionais" ADD COLUMN "observacao_analise" text;

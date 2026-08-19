@@ -1,76 +1,684 @@
-# AGENTS.md
+# 📐 Regras do Projeto — Plataforma SaaS de Contabilidade e Advocacia
 
-## Project Overview
+> Documento vivo. Toda IA deve seguir estas regras sem exceção.
 
-Single-page Vite + React + TypeScript application using Tailwind CSS with Radix UI components.
-Migrated to **feature-based architecture** per `regras.md`.
+---
 
-## Commands
+# 🤖 Regras de Comportamento da IA
 
-- `npm run dev` - Start dev server
-- `npm run build` - TypeScript check, then build (`tsc -b && vite build`)
-- `npm run lint` - Run ESLint
-- `npm run preview` - Preview production build
+1. Antes de alterar algo grande, explique rapidamente o plano. Depois execute sem ficar pedindo aprovação a cada comando.
 
-## Path Alias
+2. Após aprovação:
 
-`@` maps to `./src` (configured in `tsconfig.json` and `vite.config.ts`)
+   * passo a passo;
+   * caminho completo do arquivo;
+   * código comentado explicando o motivo das decisões.
 
-## Routes
+3. Aplicar práticas de engenharia sênior:
 
-| Route | Component | Feature |
-|-------|-----------|---------|
-| `/` | Home `(ChatDemo, Banners, ServicesHub, HowItWorks, CTA)` + `Footer` | `home` |
-| `/precos` | `PricingPage` + `Models` | `precos` |
-| `/profissionais` | `ProfessionalsPage` + `ProfessionalCard, BookingModal, FilterBar` | `profissionais` |
-| `/parceiros` | `PaginaParceiros` | `parceiros` |
-| `/perfil-profissionalv3` | `PerfilProfissional` | `perfis` |
-| `/perfil-profissional` | `PerfilProfissionalV2` | `perfis` |
-| `/perfil-colaborador` | `PerfilColaborador` | `perfis` |
-| `/admin` / `/admin/:page` | `AdminDashboard` | `admin` |
+   * código limpo;
+   * separação de responsabilidades;
+   * escalabilidade;
+   * segurança;
+   * observabilidade.
 
-## Feature Structure
+4. Interfaces sempre responsivas.
 
-```
+5. Prioridade máxima para experiência mobile.
+
+6. Toda implementação deve considerar:
+
+   * múltiplas empresas (multiempresa);
+   * múltiplos usuários;
+   * crescimento futuro da plataforma.
+
+7. Autonomia da IA / Codex
+
+* Não parar para pedir permissão em tarefas técnicas comuns.
+* Pode executar comandos de validação, testes, build, lint, typecheck e abrir/recarregar navegador headless.
+* Pode investigar erros, consultar logs e ajustar arquivos do projeto sem perguntar antes.
+* Só deve perguntar ao usuário quando:
+
+  * envolver apagar dados reais;
+  * mexer em produção;
+  * alterar credenciais;
+  * alterar cobrança;
+  * houver mais de uma decisão de negócio possível.
+* Ao final sempre validar com:
+
+  * npm run typecheck ou npx tsc --noEmit
+  * npm run lint (se existir)
+  * npm run build (se aplicável)
+  * testes manuais necessários
+* Não considerar tarefa concluída sem informar:
+
+  * o que foi alterado;
+  * o que foi testado;
+  * resultado dos testes.
+
+---
+
+# 🧠 Arquitetura do Projeto
+
+* Modelo: Feature-Based (modular por domínio)
+* Next.js App Router
+* Arquitetura preparada para SaaS Multiempresa
+* Backend orientado a domínios
+
+---
+
+# 🧩 REGRA PRINCIPAL (CRÍTICA)
+
+👉 Cada domínio vive em um único lugar.
+
+👉 Painel Administrativo, Portal do Cliente e Painel Operacional são apenas variações de interface dentro do mesmo domínio.
+
+---
+
+## 📁 Estrutura de Feature (PADRÃO)
+
+```bash
 src/features/<dominio>/
-├── components/     # UI components re-exported via index.ts
-├── actions/        # (future) server actions / mutations
-├── queries/        # (future) data fetching
-├── schemas/        # (future) Zod/validation schemas
-├── lib/            # (future) business logic
-├── types/          # (future) type definitions
-├── constants/      # (future) constants
-└── index.ts       # barrel exports
+├── components/
+│   ├── admin/
+│   ├── cliente/
+│   └── operacional/
+│
+├── actions/
+├── queries/
+│   └── subpasta/
+│
+├── hooks/
+├── schemas/
+├── lib/
+├── types/
+├── constants/
+└── index.ts
 ```
 
-## Existing Features
+Regra prática:
 
-- **home** — Landing page sections (ChatDemo, ServicesHub, HowItWorks, CTA, Banners, Hero, Pricing)
-- **precos** — PricingPage, Models section
-- **profissionais** — ProfessionalsPage, ProfessionalCard, BookingModal, FilterBar
-- **perfis** — PerfilProfissional, PerfilProfissionalV2, PerfilColaborador, perfil sections
-- **parceiros** — PaginaParceiros
-- **admin** — AdminDashboard + all subpages + atendimentos Kanban
+👉 Até 3 arquivos → pode ficar direto
 
-## Shared Components
+👉 Passou disso → criar subpastas por assunto
 
+---
+
+## 🧠 Domínios da Plataforma
+
+Exemplos:
+
+```bash
+usuarios
+empresas
+clientes
+
+contadores
+advogados
+
+documentos
+contratos
+processos
+
+tributos
+guias
+notas-fiscais
+
+atendimentos
+mensagens
+notificacoes
+
+pagamentos
+assinaturas
+
+auditoria
+permissoes
 ```
-src/components/
-├── ui/             # shadcn/ui components (Radix-based)
-└── shared/         # Navigation, ThemeToggle, Footer
+
+---
+
+## Regras de Domínio
+
+Cada domínio possui responsabilidade única.
+
+Exemplos:
+
+* documentos → gestão documental
+* contratos → contratos jurídicos
+* processos → processos jurídicos
+* tributos → cálculos tributários
+* guias → emissão de guias
+* atendimentos → relacionamento com cliente
+
+❌ Nunca duplicar domínio
+
+❌ Nunca misturar regras entre domínios
+
+---
+
+# 📁 Estrutura Global
+
+```bash
+src/
+├── app/
+├── features/
+├── db/
+├── integracoes/
+├── components/
+│   ├── ui/
+│   └── shared/
+├── lib/
+├── hooks/
+├── types/
+├── constants/
 ```
 
-## Key Configurations
+---
 
-- Dark mode via `ThemeContext` using class and `[data-theme="dark"]` selectors
-- Tailwind custom colors: `navy-*`, `amber-*`
-- Custom animations: `float`, `pulse-glow`, `fade-in-up`, `scale-in`, etc.
+# 🗄️ Banco de Dados (Drizzle ORM)
 
-## Known Divergences from regras.md
+```bash
+src/db/
+├── connection.ts
+├── schema.ts
+└── tables/
+    ├── <dominio>/
+    │   ├── tabela.ts
+    │   └── relacoes.ts
+```
 
-- Project uses Vite + React (not Next.js App Router)
-- No backend, no Drizzle ORM, no PostgreSQL (frontend-only SPA)
-- `actions/`, `queries/`, `schemas/`, `lib/`, `types/`, `constants/` dirs exist but are empty (awaiting backend)
-- RBAC, multiempresa, auditoria not implemented yet
-- No `app/` directory (Vite uses `src/`)
-- `src/admin` migrated to `src/features/admin` (regras.md says no pages inside features)
+---
+
+## Convenções de Nomenclatura
+
+Usar nomes claros e descritivos.
+
+Priorizar português.
+
+Exemplos:
+
+```txt
+emitirGuiaTributaria
+buscarDocumentosCliente
+calcularImposto
+gerarContrato
+```
+
+Evitar:
+
+```txt
+calculateTax
+documentsService
+taxManager
+```
+
+Exceções:
+
+* bibliotecas;
+* APIs externas;
+* nomes obrigatórios do framework;
+* nomes oficiais de terceiros.
+
+---
+
+# 🏢 Multiempresa (OBRIGATÓRIO)
+
+A plataforma é SaaS.
+
+Toda entidade de negócio deve possuir:
+
+```txt
+empresaId
+```
+
+Exceto:
+
+* usuários globais;
+* permissões globais;
+* configurações globais.
+
+Toda query deve respeitar isolamento por empresa.
+
+Nenhuma empresa pode visualizar dados de outra empresa.
+
+---
+# 👥 Perfis e Permissões
+
+Utilizar RBAC.
+
+Os perfis e permissões da plataforma são definidos pelas regras de negócio vigentes e podem evoluir ao longo do projeto.
+
+Toda action deve validar permissões.
+
+❌ Nunca confiar apenas na interface.
+
+❌ Nunca esconder botão como única proteção.
+
+
+---
+
+# 📋 Auditoria (OBRIGATÓRIO)
+
+Toda alteração crítica deve gerar log.
+
+Exemplos:
+
+* emissão de guia;
+* alteração contratual;
+* alteração tributária;
+* upload de documento;
+* assinatura digital;
+* exclusão lógica.
+
+Registrar:
+
+```txt
+usuarioId
+empresaId
+data
+acao
+entidade
+registroAfetado
+ip
+```
+
+---
+
+# 📂 Gestão de Documentos
+
+Todo documento deve possuir:
+
+```txt
+empresaId
+usuarioId
+categoria
+status
+versao
+dataUpload
+```
+
+Preferir:
+
+* versionamento;
+* arquivamento lógico.
+
+Evitar exclusão física.
+
+---
+
+# ✍️ Assinaturas Digitais
+
+Toda assinatura deve registrar:
+
+```txt
+documentoId
+usuarioId
+data
+ip
+hash
+```
+
+Assinaturas devem ser auditáveis.
+
+Nunca confiar apenas em validações do frontend.
+
+---
+
+# 🔄 Integrações Externas
+
+Toda integração deve ficar em:
+
+```bash
+src/integracoes/
+```
+
+Exemplos:
+
+* Receita Federal
+* Simples Nacional
+* Junta Comercial
+* NF-e
+* NFS-e
+* Certificado Digital
+* OCR
+* Assinatura Digital
+* Gateways de Pagamento
+
+Toda integração deve possuir:
+
+* logs;
+* timeout;
+* retry;
+* tratamento de erro;
+* tipagem forte.
+
+---
+
+# 🤖 Inteligência Artificial
+
+IA nunca toma decisões finais.
+
+IA pode:
+
+* sugerir documentos;
+* sugerir contratos;
+* sugerir petições;
+* sugerir cálculos;
+* sugerir classificações fiscais;
+* sugerir enquadramentos tributários;
+* auxiliar atendimento.
+
+Toda decisão final deve ser validada por usuário autorizado.
+
+---
+
+# ⚠️ Separação de Responsabilidades
+
+actions/
+
+* create
+* update
+* delete
+
+queries/
+
+* get
+* list
+* search
+
+lib/
+
+* regras de negócio
+
+hooks/
+
+* client side
+
+❌ Nunca colocar regra de negócio dentro de componentes.
+
+---
+
+# ⚙️ Next.js (App Router)
+
+app/ contém apenas:
+
+```txt
+page.tsx
+layout.tsx
+loading.tsx
+error.tsx
+route.ts
+```
+
+---
+
+## Regras
+
+* Mutações → Server Actions
+
+* API Routes apenas para:
+
+  * webhooks
+  * integrações externas
+
+* Server Components por padrão
+
+* use client apenas quando necessário
+
+---
+
+# 🔐 Segurança (PRIORIDADE MÁXIMA)
+
+Obrigatório:
+
+* validação com Zod;
+* validação de sessão;
+* validação de permissões;
+* sanitização de entrada;
+* rate limiting quando necessário;
+* logs de auditoria.
+
+Nunca:
+
+* confiar no frontend;
+* expor dados de outras empresas;
+* expor segredos;
+* usar NEXT_PUBLIC_ para dados sensíveis.
+
+---
+
+# 📑 Formulários
+
+Utilizar:
+
+* react-hook-form
+* zod
+
+Validação dupla:
+
+* client
+* server
+
+❌ Nunca usar useState para formulários complexos.
+
+---
+
+# 🔄 TanStack Query
+
+* não usar fetch manual em client;
+* usar query keys padronizadas;
+* invalidar queries após mutações.
+
+---
+
+# 🧠 Drizzle ORM
+
+* relations obrigatórias;
+* queries fora dos componentes;
+* migrations automáticas;
+* nunca editar migrations manualmente.
+
+---
+
+# 🎨 Tailwind CSS
+
+Obrigatório:
+
+* prettier-plugin-tailwindcss
+* classes organizadas
+* dark mode preparado
+
+Evitar:
+
+```txt
+w-[123px]
+h-[341px]
+```
+
+Sem justificativa técnica.
+
+---
+
+# 🎯 Design System
+
+```bash
+src/components/ui/
+├── Button.tsx
+├── Input.tsx
+├── Card.tsx
+├── Modal.tsx
+├── Select.tsx
+├── Tabela.tsx
+```
+
+Utilizar:
+
+* CVA
+* variantes
+* reutilização
+
+---
+
+# 📈 Performance
+
+Obrigatório:
+
+* paginação;
+* lazy loading;
+* cache quando aplicável;
+* evitar consultas desnecessárias;
+* otimização para mobile.
+
+---
+
+# 🚀 Escalabilidade
+
+Todo desenvolvimento deve considerar:
+
+* múltiplas empresas;
+* múltiplos usuários;
+* milhares de documentos;
+* milhares de contratos;
+* milhares de processos;
+* crescimento sem refatoração estrutural.
+
+Seguir ordem:
+
+```txt
+Banco
+→ Types
+→ Schemas
+→ Queries
+→ Actions
+→ UI
+```
+
+---
+
+# ❌ Proibições Absolutas
+
+* lógica dentro de app/
+* páginas dentro de features/
+* duplicação de domínio
+* services genéricos
+* uso de any
+* upload direto sem validação
+* confiar no frontend
+* validação apenas visual
+* consultas sem isolamento por empresa
+
+---
+
+# 🧭 Regra Final
+
+Todo código deve ser:
+
+* escalável;
+* seguro;
+* auditável;
+* reutilizável;
+* organizado;
+* tipado;
+* fácil de manter;
+* preparado para SaaS multiempresa;
+* preparado para contabilidade;
+* preparado para advocacia.
+
+---
+
+# Commands
+
+```bash
+npm run dev       # next dev --port 5173
+npm run build     # next build
+npm run start     # next start --port 5173
+npm run lint      # eslint .
+```
+
+Validações obrigatórias após alterações:
+
+```bash
+npm run build
+npm run lint
+```
+
+---
+
+# Domínios Implementados
+
+usuarios
+empresas
+perfis
+permissoes
+autenticacao
+sessoes
+
+Domínios futuros:
+
+clientes
+contadores
+advogados
+profissionais
+
+documentos
+contratos
+processos
+
+tributos
+guias
+notas-fiscais
+
+atendimentos
+mensagens
+notificacoes
+
+pagamentos
+assinaturas
+
+auditoria
+
+---
+
+# Estado Atual (Jun/2026)
+
+Implementado:
+
+* Banco (PostgreSQL + Drizzle ORM)
+* Usuários (cadastro, login, sessão server-side)
+* Perfis (cliente, contador, advogado, profissional)
+* Permissões (RBAC)
+* Tokens (confirmação de email)
+* Sessões (sessoes_usuario, sem JWT)
+* API routes (health, auth/cadastro, auth/login, auth/sessao, auth/logout)
+* Landing page (Hero, Serviços, Como Funciona, Profissionais, Preços)
+* Admin Dashboard
+* Temas (claro/escuro)
+* Autenticação UI (Modal Entrar, Modal Criar Conta)
+
+Pendente:
+
+* TanStack Query (substituir fetch manual)
+* Server Actions (substituir API routes de auth)
+* Confirmação de email (UI + fluxo completo)
+* Auditoria
+* Marketplace
+* Gestão de empresas
+* Gestão de clientes
+* Gestão documental
+* Gestão de contratos
+* Gestão de processos
+* Tributos e guias
+* Notificações
+* Pagamentos / assinaturas
+
+---
+
+# Política de Portas
+
+- Proibido uso de qualquer porta entre 3000 e 3999
+- Frontend obrigatório: 5173
+- API (Next.js API routes): embutida na mesma porta
+
+Se qualquer serviço tentar iniciar em porta proibida:
+- deve ser interrompido automaticamente
+- deve ser realocado para a porta correta

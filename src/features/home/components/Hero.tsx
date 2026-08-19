@@ -1,6 +1,35 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion';
-import { ArrowRight, Shield, Users, Zap, Award } from 'lucide-react';
+import { ArrowRight, Shield, Users, Zap, Award, type LucideIcon } from 'lucide-react';
+
+type BackgroundParticle = {
+  left: number;
+  top: number;
+  duration: number;
+  delay: number;
+};
+
+/**
+ * Gera a mesma sequencia em qualquer ambiente. Manter os dados no escopo do
+ * modulo garante que SSR e a primeira renderizacao do cliente compartilhem
+ * exatamente as mesmas propriedades visuais, sem remover a variedade dos orbs.
+ */
+const createBackgroundParticles = (count: number, seed: number): BackgroundParticle[] => {
+  let state = seed >>> 0;
+  const next = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 2 ** 32;
+  };
+
+  return Array.from({ length: count }, () => ({
+    left: next() * 100,
+    top: next() * 100,
+    duration: 5 + next() * 5,
+    delay: next() * 5,
+  }));
+};
+
+const BACKGROUND_PARTICLES = createBackgroundParticles(20, 0x56494e43);
 
 // 3D Floating Card Component
 const FloatingCard = ({ 
@@ -77,22 +106,22 @@ const BackgroundOrbs = () => {
       />
 
       {/* Floating particles */}
-      {[...Array(20)].map((_, i) => (
+      {BACKGROUND_PARTICLES.map((particle, i) => (
         <motion.div
           key={i}
           className="absolute w-1 h-1 bg-primary/30 rounded-full"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
           }}
           animate={{
             y: [0, -100, 0],
             opacity: [0, 1, 0],
           }}
           transition={{
-            duration: 5 + Math.random() * 5,
+            duration: particle.duration,
             repeat: Infinity,
-            delay: Math.random() * 5,
+            delay: particle.delay,
             ease: "easeInOut"
           }}
         />
@@ -102,7 +131,7 @@ const BackgroundOrbs = () => {
 };
 
 // 3D Tilt Card for stats
-const TiltCard = ({ icon: Icon, value, label }: { icon: any, value: string, label: string }) => {
+const TiltCard = ({ icon: Icon, value, label }: { icon: LucideIcon, value: string, label: string }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   

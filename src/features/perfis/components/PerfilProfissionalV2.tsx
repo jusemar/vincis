@@ -1,12 +1,17 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import {
   BadgeCheck, Headphones, GraduationCap, Award,
   CheckCircle2, Lock, Users, Send, Heart, Share2,
   ChevronLeft, ChevronRight, Zap, ShieldCheck, Shield, FileText, Paperclip,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import Footer from '../../../components/shared/Footer';
+import { contratarServico } from '@/features/servicos/actions/contratar';
+import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
 import { cn } from '@/lib/utils';
 
 const availabilityData = {
@@ -115,7 +120,104 @@ const services = [
   },
 ];
 
-export default function PerfilProfissionalV2() {
+type ServicoPublico = {
+  id: string;
+  name: string;
+  desc: string;
+  price: string;
+  chips: string[];
+  note: string;
+  action: string;
+  outline?: boolean;
+};
+
+/** Identidade pública real do prestador. Ausente = vitrine de demonstração. */
+export type IdentidadePublica = {
+  nome: string
+  apresentacao: string
+  experienciaAnos: number | null
+  avaliacaoMedia: number | null
+  totalAvaliacoes: number
+}
+
+type PerfilProfissionalV2Props = {
+  identidade?: IdentidadePublica;
+  /**
+   * Catálogo real do prestador. Quando ausente (vitrine de demonstração sem
+   * `?prestador=`), a lista estática original continua sendo exibida — o visual
+   * é idêntico nos dois casos.
+   */
+  servicos?: ServicoPublico[];
+};
+
+export default function PerfilProfissionalV2({
+  identidade,
+  servicos,
+}: PerfilProfissionalV2Props = {}) {
+  // Dados reais quando o perfil é de um prestador; caso contrário mantém o
+  // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
+  const nomeExibido = identidade?.nome ?? 'Carlos Eduardo Mendes';
+  const apresentacaoExibida =
+    identidade?.apresentacao ??
+    'Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.';
+  const [contratando, setContratando] = useState(false);
+  const listaServicos: ServicoPublico[] = servicos ?? (services as ServicoPublico[]);
+
+  /**
+   * Contratação direta. O Cliente vem da sessão no servidor; aqui só
+   * encaminhamos o visitante sem conta para o fluxo de login já existente,
+   * preservando a intenção para retomar o mesmo serviço depois.
+   */
+  /** Recado e anexos que o Cliente prepara antes de confirmar, por serviço. */
+  const [mensagens, setMensagens] = useState<Record<string, string>>({});
+  const [anexos, setAnexos] = useState<Record<string, File[]>>({});
+
+  async function contratar(servicoId: string) {
+    if (contratando) return;
+    setContratando(true);
+    try {
+      const resultado = await contratarServico({
+        servicoId,
+        mensagem: mensagens[servicoId] ?? '',
+      });
+      if (!resultado.sucesso && resultado.precisaEntrar) {
+        const retorno = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/?entrar=1&retorno=${encodeURIComponent(retorno)}`;
+        return;
+      }
+      if (!resultado.sucesso) {
+        toast.error(resultado.mensagem);
+        return;
+      }
+
+      // Os anexos vão para o Atendimento recém-criado pelo mesmo caminho
+      // autorizado usado durante o atendimento — não existe segundo sistema de
+      // arquivos só para a contratação.
+      // Só quando a contratação nasce agora. Se ela já existia, clicar de novo
+      // não pode duplicar os anexos — dali em diante o lugar de enviar arquivo
+      // é o próprio Atendimento. É a mesma regra da mensagem inicial.
+      const atendimentoId = resultado.dados?.jaExistia
+        ? undefined
+        : resultado.dados?.atendimentoId;
+      const arquivos = anexos[servicoId] ?? [];
+      if (atendimentoId && arquivos.length) {
+        for (const arquivo of arquivos) {
+          const dados = new FormData();
+          dados.set('atendimentoId', atendimentoId);
+          dados.set('arquivo', arquivo);
+          const envio = await anexarArquivoAoAtendimento(dados);
+          if (!envio.sucesso) toast.error(`${arquivo.name}: ${envio.mensagem}`);
+        }
+      }
+
+      setMensagens((atual) => ({ ...atual, [servicoId]: '' }));
+      setAnexos((atual) => ({ ...atual, [servicoId]: [] }));
+      toast.success(resultado.mensagem);
+    } finally {
+      setContratando(false);
+    }
+  }
+
   const [responseType, setResponseType] = useState<'private' | 'public'>('private');
   const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
 
@@ -213,11 +315,11 @@ export default function PerfilProfissionalV2() {
                 transition={{ duration: 0.4 }}
                 className="flex items-center gap-2 text-xs text-muted-foreground mb-4"
               >
-                <Link to="/" className="hover:text-primary transition-colors">Início</Link>
+                <Link href="/" className="hover:text-primary transition-colors">Início</Link>
                 <ChevronRight className="h-3 w-3" />
-                <Link to="/profissionais" className="hover:text-primary transition-colors">Profissionais</Link>
+                <Link href="/profissionais" className="hover:text-primary transition-colors">Profissionais</Link>
                 <ChevronRight className="h-3 w-3" />
-                <span className="text-foreground font-semibold">Carlos Eduardo Mendes</span>
+                <span className="text-foreground font-semibold">{nomeExibido}</span>
               </motion.nav>
 
               <motion.h1
@@ -226,7 +328,7 @@ export default function PerfilProfissionalV2() {
                 transition={{ duration: 0.5, delay: 0.05 }}
                 className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
               >
-                Carlos Eduardo Mendes
+                {nomeExibido}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
@@ -234,7 +336,7 @@ export default function PerfilProfissionalV2() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5"
               >
-                Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.
+                {apresentacaoExibida}
               </motion.p>
 
               <motion.div
@@ -267,11 +369,27 @@ export default function PerfilProfissionalV2() {
                   Premium
                 </div>
                 <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">4.9</span>
-                  <span className="text-xs font-bold text-muted-foreground">128 avaliações</span>
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">
+                    {identidade
+                      ? identidade.totalAvaliacoes > 0
+                        ? ((identidade.avaliacaoMedia ?? 0) / 10)
+                            .toFixed(1)
+                            .replace('.', ',')
+                        : '—'
+                      : '4.9'}
+                  </span>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {identidade
+                      ? `${identidade.totalAvaliacoes} avaliações`
+                      : '128 avaliações'}
+                  </span>
                 </div>
                 <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">12 anos</span>
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">
+                    {identidade
+                      ? `${identidade.experienciaAnos ?? 0} anos`
+                      : '12 anos'}
+                  </span>
                   <span className="text-xs font-bold text-muted-foreground">experiência</span>
                 </div>
                 <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
@@ -467,8 +585,8 @@ export default function PerfilProfissionalV2() {
               <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">Serviços disponíveis</h2>
             </div>
             <div className="divide-y divide-border">
-              {services.map((service) => (
-                <details key={service.name} className="group">
+              {listaServicos.map((service) => (
+                <details key={service.id ?? service.name} className="group">
                   <summary className="flex items-center gap-4 p-6 cursor-pointer list-none">
                     <div className="flex-1 min-w-0">
                       <h4 className="text-lg font-semibold text-foreground">{service.name}</h4>
@@ -490,9 +608,58 @@ export default function PerfilProfissionalV2() {
                         </span>
                       ))}
                     </div>
+                    {/* Recado e documentos que o Cliente já quer entregar. Sem
+                        obrigatoriedade: exigir texto para contratar seria um
+                        obstáculo, e a conversa continua depois no Atendimento. */}
+                    {service.id && (
+                      <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+                        <label
+                          htmlFor={`mensagem-${service.id}`}
+                          className="block text-xs font-bold uppercase tracking-wide text-muted-foreground"
+                        >
+                          Mensagem para o profissional{' '}
+                          <span className="font-medium normal-case tracking-normal">(opcional)</span>
+                        </label>
+                        <textarea
+                          id={`mensagem-${service.id}`}
+                          rows={3}
+                          value={mensagens[service.id] ?? ''}
+                          onChange={(e) =>
+                            setMensagens((atual) => ({
+                              ...atual,
+                              [service.id as string]: e.target.value,
+                            }))
+                          }
+                          placeholder="Explique sua necessidade. Ex.: preciso abrir um MEI para prestação de serviços e já tenho meus documentos."
+                          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            id={`anexos-${service.id}`}
+                            type="file"
+                            multiple
+                            accept=".txt,.pdf,.jpg,.jpeg,.png"
+                            onChange={(e) =>
+                              setAnexos((atual) => ({
+                                ...atual,
+                                [service.id as string]: Array.from(e.target.files ?? []),
+                              }))
+                            }
+                            className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground hover:file:bg-muted"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Arquivos ficam privados, visíveis só para você e o profissional. TXT, PDF, JPG ou PNG até 10 MB.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                       <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{service.note}</p>
                       <button
+                        type="button"
+                        disabled={contratando || !service.id}
+                        onClick={() => service.id && void contratar(service.id)}
                         className={
                           service.outline
                             ? 'border-2 border-primary text-primary px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap hover:bg-primary/5 active:scale-95 transition-all shrink-0'

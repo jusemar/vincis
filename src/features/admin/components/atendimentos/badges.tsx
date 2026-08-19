@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Clock, CheckCircle2, Lock, Users } from "lucide-react";
 import type { Priority, Deadline, Access, Status, Category } from "../../types/atendimentos";
+import { IDENTIDADE_STATUS } from "../../constants/status-atendimento";
 
 export const PriorityDot = ({ priority }: { priority: Priority }) => {
   const map = {
@@ -42,30 +43,29 @@ export const DeadlineBadge = ({ deadline, label }: { deadline: Deadline; label: 
 };
 
 export const CategoryBadge = ({ category }: { category: Category }) => {
-  const map: Record<Category, string> = {
+  const map: Record<string, string> = {
     Fiscal: "bg-blue-50 text-blue-700",
     RH: "bg-violet-50 text-violet-700",
     Jurídico: "bg-amber-50 text-amber-700",
     Societário: "bg-emerald-50 text-emerald-700",
     Contábil: "bg-slate-100 text-slate-700",
   };
+  // Categoria sem cor própria (Consultoria e as futuras) usa o neutro do
+  // design system: o badge continua idêntico e exibe o nome verdadeiro, em vez
+  // de ser convertido em outra categoria só para caber na paleta.
+  const neutro = "bg-muted text-muted-foreground";
   return (
-    <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium", map[category])}>
+    <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium", map[category] ?? neutro)}>
       {category}
     </span>
   );
 };
 
+// Mesmas classes de sempre; agora vindas do mapa único de identidade dos
+// status, o mesmo que pinta a bolinha da coluna do Kanban.
 export const StatusBadge = ({ status }: { status: Status }) => {
-  const map: Record<Status, { label: string; cls: string }> = {
-    novo: { label: "Novo", cls: "bg-status-new-bg text-status-new" },
-    andamento: { label: "Em andamento", cls: "bg-status-progress-bg text-status-progress" },
-    "aguardando-cliente": { label: "Aguardando cliente", cls: "bg-status-waiting-bg text-status-waiting" },
-    "aguardando-assinatura": { label: "Aguardando assinatura", cls: "bg-status-sign-bg text-status-sign" },
-    concluido: { label: "Concluído", cls: "bg-status-done-bg text-status-done" },
-  };
-  const { label, cls } = map[status];
-  return <span className={cn("rounded-md px-2 py-1 text-xs font-medium", cls)}>{label}</span>;
+  const { rotulo, badge } = IDENTIDADE_STATUS[status];
+  return <span className={cn("rounded-md px-2 py-1 text-xs font-medium", badge)}>{rotulo}</span>;
 };
 
 export const AccessBadge = ({ access }: { access: Access }) => {

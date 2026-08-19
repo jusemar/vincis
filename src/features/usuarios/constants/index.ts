@@ -11,4 +11,11 @@ export const PAPEL_OPTIONS = [
     descricao: 'Advogado ou contador que deseja atender clientes pela Vincis',
     icone: 'briefcase',
   },
+  {
+    valor: 'colaborador' as const,
+    titulo: 'Sou Colaborador',
+    descricao:
+      'Tenho conhecimento técnico e presto serviços compatíveis, sem registro em CRC ou OAB',
+    icone: 'hand-heart',
+  },
 ]

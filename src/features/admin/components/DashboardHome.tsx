@@ -1,4 +1,7 @@
 import { motion } from 'framer-motion';
+import type { ResumoDoPainelDTO } from '@/features/atendimentos/queries/painel-do-prestador';
+import { VISUAL_TIPO_COMUNICADO } from '@/features/comunicados/constants/comunicado';
+import type { ComunicadoDTO } from '@/features/comunicados/types/comunicado';
 import {
   Users,
   DollarSign,
@@ -56,6 +59,14 @@ const metrics = [
   },
 ];
 
+/**
+ * Linhas de demonstração do mural.
+ *
+ * Mantidas nesta fase de propósito: os comunicados institucionais reais entram
+ * acima delas, na mesma lista e com o mesmo bloco de JSX, para comparação lado
+ * a lado. Removê-las depois é apagar esta constante e a concatenação em
+ * `linhasDoMural` — nada mais.
+ */
 const recentActivity = [
   {
     id: 1,
@@ -127,7 +138,117 @@ const AnimatedNumber = ({ value, prefix = '', suffix = '' }: { value: number; pr
   </motion.span>
 );
 
-export default function DashboardHome() {
+function tempoRelativo(iso: string, agora = Date.now()) {
+  const minutos = Math.max(0, Math.round((agora - new Date(iso).getTime()) / 60000))
+  if (minutos < 60) return `${Math.max(1, minutos)} min atrás`
+  const horas = Math.round(minutos / 60)
+  if (horas < 24) return `${horas} ${horas === 1 ? 'hora' : 'horas'} atrás`
+  const dias = Math.round(horas / 24)
+  return `${dias} ${dias === 1 ? 'dia' : 'dias'} atrás`
+}
+
+export default function DashboardHome({
+  clientesAtivos,
+  nomeUsuario,
+  resumo,
+  comunicados = [],
+}: {
+  clientesAtivos: number
+  nomeUsuario: string
+  /**
+   * Números reais da operação, carregados no servidor.
+   *
+   * Ausentes, a tela continua exatamente como antes — os cards mockados de
+   * faturamento, meta e avaliação seguem intactos, porque esses dados ainda não
+   * existem no banco e inventá-los seria pior do que exibir o mock.
+   */
+  resumo?: ResumoDoPainelDTO
+  /**
+   * Mural institucional da Vincis.
+   *
+   * Não é resumo de operação: nenhum protocolo, Cliente ou Atendimento entra
+   * aqui. Quem quiser a trilha de um Atendimento tem o Histórico dele; quem
+   * quiser o que pede atenção pessoal tem o sino.
+   */
+  comunicados?: ComunicadoDTO[]
+}) {
+  const primeiroNome = nomeUsuario.trim().split(/\s+/)[0] || 'Profissional'
+  const metricas = metrics.map((metrica) =>
+    metrica.title === 'Clientes Ativos'
+      ? { ...metrica, value: clientesAtivos, change: 'Sua carteira' }
+      : // "Atendimentos Mês" tem correspondente real: os que estão em aberto na
+        // carteira. Os outros dois cards continuam mockados de propósito.
+        metrica.title === 'Atendimentos Mês' && resumo
+        ? {
+            ...metrica,
+            value: resumo.atendimentosAtivos,
+            change: `${resumo.atendimentosNovos} novos`,
+            trend: 'neutral' as const,
+          }
+        : metrica,
+  )
+
+  /**
+   * Atividades reais na frente, mockadas atrás.
+   *
+   * Mesmo arranjo do quadro de Atendimentos e do sino: as duas origens juntas,
+   * na mesma lista, com o mesmo desenho.
+   */
+  /**
+   * Indicadores reais, na mesma forma dos `quickStats` mockados.
+   *
+   * Linha adicional em vez de substituição: "Avaliação Média" e "Total de
+   * Avaliações" não têm equivalente no banco, e trocá-los por outra coisa
+   * mudaria o Dashboard aprovado. Assim as duas origens ficam visíveis lado a
+   * lado, com exatamente o mesmo card.
+   */
+  const indicadoresReais = resumo
+    ? [
+        {
+          label: 'Mensagens não lidas',
+          value: String(resumo.mensagensNaoLidas),
+          icon: Ticket,
+          color: 'text-red-500',
+        },
+        {
+          label: 'Convites pendentes',
+          value: String(resumo.convitesPendentes),
+          icon: Crown,
+          color: 'text-purple-500',
+        },
+        {
+          label: 'Aguardando ação',
+          value: String(resumo.protocolosAguardandoAcao),
+          icon: Activity,
+          color: 'text-amber-500',
+        },
+        {
+          label: 'Prazos vencidos',
+          value: String(resumo.prazosVencidos),
+          icon: Calendar,
+          color: resumo.prazosVencidos > 0 ? 'text-red-500' : 'text-green-500',
+        },
+      ]
+    : []
+
+  const linhasDoMural = [
+    ...comunicados.map((comunicado) => {
+      const visual = VISUAL_TIPO_COMUNICADO[comunicado.tipo]
+      return {
+        id: `real-${comunicado.id}`,
+        type: comunicado.tipo,
+        icon: visual.icone,
+        color: visual.fundo,
+        title: comunicado.titulo,
+        description: comunicado.resumo,
+        time: comunicado.publicadoEm
+          ? tempoRelativo(comunicado.publicadoEm)
+          : '',
+      }
+    }),
+    ...recentActivity.map((mock) => ({ ...mock, id: `mock-${mock.id}` })),
+  ]
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -135,7 +256,7 @@ export default function DashboardHome() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h2 className="text-2xl font-bold mb-1">Olá, Ana! 👋</h2>
+        <h2 className="mb-1 text-2xl font-bold">Olá, {primeiroNome}!</h2>
         <p className="text-muted-foreground">
           Veja o resumo da sua atividade e mantenha o controle do seu negócio.
         </p>
@@ -173,7 +294,7 @@ export default function DashboardHome() {
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((metric, index) => {
+        {metricas.map((metric, index) => {
           const Icon = metric.icon;
           return (
             <motion.div
@@ -261,6 +382,27 @@ export default function DashboardHome() {
               );
             })}
           </div>
+
+          {indicadoresReais.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {indicadoresReais.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.5 + index * 0.05 }}
+                    className="bg-card border rounded-xl p-4 text-center"
+                  >
+                    <Icon className={`w-6 h-6 mx-auto mb-2 ${stat.color}`} />
+                    <h4 className="text-xl font-bold">{stat.value}</h4>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -271,8 +413,17 @@ export default function DashboardHome() {
                 Atividade Recente
               </h3>
             </div>
-            <div className="p-4 space-y-4">
-              {recentActivity.map((activity, index) => (
+            {/*
+              Altura fixa com rolagem interna.
+
+              O mural cresce com o tempo — três comunicados hoje, trinta em um
+              mês — e sem teto o card empurraria a coluna inteira para baixo,
+              esticando a página a cada aviso novo. `max-h` com rolagem própria
+              mantém o Dashboard do tamanho aprovado sem encolher fonte nem
+              espaçamento: o que muda é quanto se vê de uma vez, não o desenho.
+            */}
+            <div className="max-h-[26rem] overflow-y-auto p-4 space-y-4">
+              {linhasDoMural.map((activity, index) => (
                 <motion.div
                   key={activity.id}
                   initial={{ opacity: 0, x: -20 }}

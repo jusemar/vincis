@@ -1,10 +1,45 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { professionalData } from '../constants/perfil';
+import { contratarServico } from '@/features/servicos/actions/contratar';
+import type { ServicoVitrine } from '@/features/servicos/queries/vitrine-publica';
 
-export default function ServicesSection() {
+type ServicesSectionProps = {
+  /** Catálogo real do prestador. Sem prestador na URL, mantém a vitrine demo. */
+  servicos?: ServicoVitrine[];
+};
+
+export default function ServicesSection({ servicos }: ServicesSectionProps = {}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [contratando, iniciarTransicao] = useTransition();
+
+  // Mesmo formato de dado do mock anterior: o JSX abaixo não muda.
+  const lista = servicos ?? professionalData.services;
+
+  function contratar(servicoId: string | undefined) {
+    if (!servicoId) return;
+    iniciarTransicao(async () => {
+      const resultado = await contratarServico({ servicoId });
+      if (!resultado.sucesso) {
+        // Visitante sem sessão volta para o fluxo de login já existente,
+        // guardando a intenção para retomar o serviço certo depois.
+        if (resultado.precisaEntrar) {
+          const destino = `${window.location.pathname}${window.location.search}`;
+          window.location.href = `/?entrar=1&retorno=${encodeURIComponent(
+            `${destino}#servico-${servicoId}`,
+          )}`;
+          return;
+        }
+        toast.error(resultado.mensagem);
+        return;
+      }
+      toast.success(resultado.mensagem);
+    });
+  }
 
   return (
     <motion.section
@@ -35,8 +70,8 @@ export default function ServicesSection() {
           boxShadow: '0 10px 26px rgba(32, 28, 22, .065)',
         }}
       >
-        {professionalData.services.map((service, i) => (
-          <div key={i} style={{ borderBottom: i < professionalData.services.length - 1 ? '1px solid #f1ebe3' : 'none' }}>
+        {lista.map((service, i) => (
+          <div key={i} style={{ borderBottom: i < lista.length - 1 ? '1px solid #f1ebe3' : 'none' }}>
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               className="w-full text-left cursor-pointer"
@@ -125,6 +160,11 @@ export default function ServicesSection() {
                         {service.priceNote}
                       </p>
                       <button
+                        type="button"
+                        disabled={contratando}
+                        onClick={() =>
+                          contratar((service as ServicoVitrine).id)
+                        }
                         style={{
                           width: '100%',
                           borderRadius: 13,

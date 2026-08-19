@@ -9,19 +9,22 @@ export const EMPTY_FILTERS: FiltersState = {
   assignee: [], dateFrom: "", dateTo: "",
 };
 
-const STATUS: { id: Status; label: string }[] = [
+export const STATUS: { id: Status; label: string }[] = [
   { id: "novo", label: "Novo" },
   { id: "andamento", label: "Em andamento" },
   { id: "aguardando-cliente", label: "Aguardando cliente" },
   { id: "aguardando-assinatura", label: "Aguardando assinatura" },
   { id: "concluido", label: "Concluído" },
+  { id: "recusado", label: "Recusado" },
+  { id: "cancelado", label: "Cancelado" },
 ];
 const PRIORITIES: { id: Priority; label: string; dot: string }[] = [
   { id: "alta", label: "Alta", dot: "bg-priority-high" },
   { id: "media", label: "Média", dot: "bg-priority-medium" },
   { id: "baixa", label: "Baixa", dot: "bg-priority-low" },
 ];
-const CATEGORIES: Category[] = ["Fiscal", "RH", "Jurídico", "Societário", "Contábil"];
+/** Categorias sempre presentes. As demais chegam pelos dados reais. */
+export const CATEGORIAS_BASE: Category[] = ["Fiscal", "RH", "Jurídico", "Societário", "Contábil"];
 const ACCESSES: { id: Access; label: string }[] = [
   { id: "compartilhado", label: "Compartilhado" },
   { id: "privado", label: "Privado" },
@@ -45,9 +48,13 @@ interface Props {
   filters: FiltersState;
   setFilters: (f: FiltersState) => void;
   activeCount: number;
+  /** Categorias existentes na tela, incluindo as que vêm dos dados reais. */
+  categories?: Category[];
 }
 
-export const FiltersPanel = ({ open, onClose, filters, setFilters, activeCount }: Props) => {
+export const FiltersPanel = ({
+  open, onClose, filters, setFilters, activeCount, categories = CATEGORIAS_BASE,
+}: Props) => {
   if (!open) return null;
 
   function toggle<T>(key: keyof FiltersState, value: T) {
@@ -113,7 +120,7 @@ export const FiltersPanel = ({ open, onClose, filters, setFilters, activeCount }
 
           <Section title="Categoria">
             <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <Chip key={c} active={filters.category.includes(c)} onClick={() => toggle("category", c)}>
                   {c}
                 </Chip>

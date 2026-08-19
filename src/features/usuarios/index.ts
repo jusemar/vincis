@@ -1,4 +1,7 @@
 export { BotoesAuth } from './components/BotoesAuth'
 export { ModalEntrar } from './components/ModalEntrar'
 export { ModalCadastro } from './components/ModalCadastro'
+export { ConfirmarEmailPage } from './components/ConfirmarEmailPage'
 export { useControleModais } from './hooks/useControleModais'
+export { AuthProvider, useAuth } from './hooks/useAuth'
+export type { AuthContextType } from './types'
