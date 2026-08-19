@@ -30,3 +30,5 @@ build/
 *:Zone.Identifier
 *:SmartScreen
 .next/
+*.tsbuildinfo
+*.tsbuildinfo
