@@ -34,6 +34,7 @@ import {
   obterMarcasDeLeitura,
 } from '../lib/leitura'
 import { condicaoLeituraManifestacao } from '../lib/manifestacoes'
+import { obterUltimosAjustes } from '../lib/solicitacoes-ajuste'
 import { transicoesPermitidas } from '../lib/transicoes'
 import type { AtendimentoOperacionalDTO } from '../types/atendimento'
 
@@ -129,8 +130,15 @@ export async function listarAtendimentosDoPrestador(
   // 200 Atendimentos, e uma ida ao banco por card seria um problema real.
   const marcasDeLeitura = await obterMarcasDeLeitura(usuarioId, 'atendimento', ids)
 
-  const [participantes, eventos, mensagens, manifestacoes, checklist, arquivos] =
-    await Promise.all([
+  const [
+    participantes,
+    eventos,
+    mensagens,
+    manifestacoes,
+    checklist,
+    arquivos,
+    ajustes,
+  ] = await Promise.all([
       db
         .select({
           atendimentoId: atendimentoParticipantes.atendimentoId,
@@ -240,6 +248,9 @@ export async function listarAtendimentosDoPrestador(
         )
         .where(inArray(atendimentoArquivos.atendimentoId, ids))
         .orderBy(desc(atendimentoArquivos.createdAt)),
+      // A solicitação de ajuste mais recente de cada Atendimento. Os ids já
+      // passaram pelo recorte de alcance — esta consulta não amplia nada.
+      obterUltimosAjustes(ids),
     ])
 
   return registros.map((registro) => {
@@ -329,6 +340,7 @@ export async function listarAtendimentosDoPrestador(
           ).length,
         }
       : null,
+    ajuste: ajustes.get(registro.id) ?? null,
     responsavel: { id: registro.responsavelId, nome: registro.responsavelNome },
     cliente: {
       usuarioId: registro.clienteUsuarioId,

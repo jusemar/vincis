@@ -36,6 +36,7 @@ import { AvatarStack } from "./AvatarStack";
 import { ConcluirAtendimentoDialog } from "./ConcluirAtendimentoDialog";
 import { AccessBadge, CategoryBadge, PriorityDot, StatusBadge } from "./badges";
 import { ParticipantesDialog } from "./ParticipantesDialog";
+import { SolicitacaoDeAjusteCard } from "./SolicitacaoDeAjusteCard";
 import { useRolagemDaConversa } from "@/features/atendimentos/hooks/useRolagemDaConversa";
 import { useTempoReal } from "@/features/tempo-real/components/TempoRealProvider";
 import type { FocoDoPainel, Protocol, RealChecklistItem } from "../../types/atendimentos";
@@ -498,6 +499,18 @@ const ProtocolTab = ({
   return (
     <>
       <div className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">
+        {/*
+          Solicitação de ajuste do Cliente, no topo do Protocolo.
+          Fica antes das manifestações porque é o que precisa de decisão: o
+          resto do registro formal continua abaixo, na ordem cronológica de
+          sempre. Sem solicitação, nada é desenhado aqui.
+        */}
+        {real?.adjustment && (
+          <SolicitacaoDeAjusteCard
+            adjustment={real.adjustment}
+            onAtualizar={onAtualizar}
+          />
+        )}
         {!real ? (
           <p className="rounded-lg border border-dashed border-border py-8 text-center text-xs text-muted-foreground">
             Card de demonstração: sem protocolo registrado.

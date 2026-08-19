@@ -9,81 +9,39 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import type { PainelDeAvaliacoesDTO } from '@/features/avaliacoes/queries/painel-de-avaliacoes';
+
 interface Review {
-  id: number;
+  id: string;
   client: string;
   avatar: string;
   stars: number;
   text: string;
   date: string;
   service: string;
+  /**
+   * Contador de "Útil".
+   *
+   * Curtida de avaliação não existe nesta etapa e não deve ser implementada
+   * aqui. O botão continua no lugar, inerte como sempre esteve, e o contador
+   * fica em zero — que é a verdade: ninguém marcou nada, porque não há como.
+   */
   helpful: number;
 }
 
-const mockReviews: Review[] = [
-  {
-    id: 1,
-    client: 'João Silva',
-    avatar: 'JS',
-    stars: 5,
-    text: 'Atendimento excepcional! Resolveu todas as minhas dúvidas sobre a declaração de IR de forma clara e rápida. Super recomendo!',
-    date: '14/04/2024',
-    service: 'Declaração IRPF',
-    helpful: 5,
-  },
-  {
-    id: 2,
-    client: 'Maria Santos',
-    avatar: 'MS',
-    stars: 5,
-    text: 'Profissional muito competente e atenciosa. Explicou todo o processo de forma detalhada e acompanhou até a conclusão.',
-    date: '12/04/2024',
-    service: 'Consultoria Fiscal',
-    helpful: 8,
-  },
-  {
-    id: 3,
-    client: 'Carlos Oliveira',
-    avatar: 'CO',
-    stars: 4,
-    text: 'Bom atendimento, mas houve um pequeno atraso na entrega do serviço. Deixei 4 estrelas pela espera, mas o resultado foi excelente.',
-    date: '10/04/2024',
-    service: 'Cálculo de Rescisão',
-    helpful: 3,
-  },
-  {
-    id: 4,
-    client: 'Ana Souza',
-    avatar: 'AS',
-    stars: 5,
-    text: 'Melhor contadora que já atendeu minha empresa! extremely profissional e sempre disponível para tirar dúvidas.',
-    date: '08/04/2024',
-    service: 'Plano Contábil',
-    helpful: 12,
-  },
-  {
-    id: 5,
-    client: 'TechStart ME',
-    avatar: 'TS',
-    stars: 5,
-    text: 'Excelente trabalho na elaboração do contrato social. Muito bem feito e dentro do prazo. Recomendo fortemente!',
-    date: '05/04/2024',
-    service: 'Contrato Social',
-    helpful: 6,
-  },
-];
+/** Iniciais do nome do Cliente para o círculo dourado do card. */
+function iniciais(nome: string) {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((parte) => parte[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
 
-const reviewStats = {
-  average: 4.8,
-  total: 124,
-  distribution: [
-    { stars: 5, count: 89, percentage: 72 },
-    { stars: 4, count: 28, percentage: 23 },
-    { stars: 3, count: 5, percentage: 4 },
-    { stars: 2, count: 1, percentage: 1 },
-    { stars: 1, count: 1, percentage: 1 },
-  ],
-};
+const formatarData = (iso: string) =>
+  new Intl.DateTimeFormat('pt-BR').format(new Date(iso));
 
 const recentAchievements = [
   { title: 'Resposta Rápida', icon: '⚡', description: '100 tickets respondidos em 24h' },
@@ -91,15 +49,57 @@ const recentAchievements = [
   { title: 'Cliente Satisfeito', icon: '😊', description: '10 clientes satisfeitos consecutivos' },
 ];
 
-export default function ReviewsPage() {
+/**
+ * Avaliações recebidas pelo prestador.
+ *
+ * Mesmo desenho aprovado — nota grande, barras por estrela, cards de comentário
+ * — agora alimentado pelas avaliações reais. `mockReviews` e `reviewStats`
+ * saíram daqui: a média, a quantidade, a distribuição e os comentários vêm de
+ * `obterPainelDeAvaliacoes`, a mesma fonte do card público e do perfil público.
+ *
+ * Ranking e Conquistas continuam como estavam. Não são reputação deste
+ * prestador e ranking é explicitamente uma etapa futura — conectá-los agora
+ * seria implementar coisa que esta etapa não deve implementar.
+ */
+export default function ReviewsPage({ painel }: { painel?: PainelDeAvaliacoesDTO }) {
   const [filterStars, setFilterStars] = useState<number | null>(null);
-  const [expandedReviews, setExpandedReviews] = useState<number[]>([]);
+  const [expandedReviews, setExpandedReviews] = useState<string[]>([]);
+
+  const reviewStats = {
+    // Sem avaliação nenhuma não existe média: o traço ocupa o mesmo lugar do
+    // número sem afirmar uma reputação que ninguém deu. "0.0" ali seria a pior
+    // nota possível, atribuída pela ausência de notas.
+    average: painel?.reputacao.media ?? null,
+    total: painel?.reputacao.total ?? 0,
+    distribution: (painel?.distribuicao ?? [5, 4, 3, 2, 1].map((nota) => ({
+      nota,
+      total: 0,
+      percentual: 0,
+    }))).map((faixa) => ({
+      stars: faixa.nota,
+      count: faixa.total,
+      percentage: faixa.percentual,
+    })),
+  };
+
+  const reviews: Review[] = (painel?.recebidas ?? []).map((avaliacao) => ({
+    id: avaliacao.id,
+    client: avaliacao.autor,
+    avatar: iniciais(avaliacao.autor),
+    stars: avaliacao.nota,
+    text: avaliacao.comentario ?? '',
+    date: formatarData(avaliacao.criadoEm),
+    // O contexto da nota é o protocolo do Atendimento avaliado — é ele que
+    // transforma "4 estrelas" em algo sobre o que agir.
+    service: `${avaliacao.protocolo} · ${avaliacao.atendimentoTitulo}`,
+    helpful: 0,
+  }));
 
   const filteredReviews = filterStars
-    ? mockReviews.filter(r => r.stars === filterStars)
-    : mockReviews;
+    ? reviews.filter(r => r.stars === filterStars)
+    : reviews;
 
-  const toggleExpand = (id: number) => {
+  const toggleExpand = (id: string) => {
     setExpandedReviews(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -150,8 +150,12 @@ export default function ReviewsPage() {
           <div className="bg-card border rounded-xl p-6">
             <div className="flex items-center gap-6 flex-wrap">
               <div className="text-center">
-                <div className="text-5xl font-bold text-primary">{reviewStats.average}</div>
-                {renderStars(Math.round(reviewStats.average), 'lg')}
+                <div className="text-5xl font-bold text-primary">
+                  {reviewStats.average === null
+                    ? '—'
+                    : reviewStats.average.toFixed(1)}
+                </div>
+                {renderStars(Math.round(reviewStats.average ?? 0), 'lg')}
                 <p className="text-sm text-muted-foreground mt-2">{reviewStats.total} avaliações</p>
               </div>
               <div className="flex-1 space-y-2 min-w-[200px]">
@@ -196,6 +200,17 @@ export default function ReviewsPage() {
           </div>
 
           <div className="space-y-4">
+            {/* Sem avaliação, uma linha discreta no lugar dos cards — o painel
+                não inventa comentário para preencher espaço. */}
+            {filteredReviews.length === 0 && (
+              <div className="bg-card border rounded-xl p-5">
+                <p className="text-sm text-muted-foreground">
+                  {reviewStats.total === 0
+                    ? 'Você ainda não recebeu avaliações. Elas aparecem aqui assim que um cliente avaliar um atendimento concluído.'
+                    : 'Nenhuma avaliação com essa nota.'}
+                </p>
+              </div>
+            )}
             {filteredReviews.map((review, index) => (
               <motion.div
                 key={review.id}

@@ -189,6 +189,29 @@ export interface RealUnread {
   primeiraNaoLidaId: string | null;
 }
 
+/**
+ * Solicitação de ajuste do Cliente sobre o Atendimento concluído.
+ *
+ * Aparece no Protocolo do painel — é lá que a manifestação formal dela foi
+ * registrada — e é por ali que quem responde pelo Atendimento decide. Não é
+ * card do Kanban, não é coluna nova e não é outro Atendimento: enquanto está
+ * `pendente`, o protocolo continua exatamente onde estava.
+ */
+export interface RealAdjustment {
+  id: string;
+  status: "pendente" | "aceita" | "recusada" | "encerrada";
+  statusLabel: string;
+  reason: string;
+  /** Resposta de quem analisou. Nula enquanto o pedido está pendente. */
+  answer: string | null;
+  requesterName: string;
+  reviewerName: string | null;
+  reviewedAtLabel: string | null;
+  createdAtLabel: string;
+  /** Anexo do Cliente. `url` é a mesma rota autorizada dos demais arquivos. */
+  attachment: { name: string; url: string } | null;
+}
+
 export interface RealProtocolData {
   atendimentoId: string;
   info: RealInfo;
@@ -203,6 +226,8 @@ export interface RealProtocolData {
   unread: RealUnread;
   /** Nulo enquanto o Atendimento não foi concluído. */
   conclusion: RealConclusion | null;
+  /** Solicitação de ajuste mais recente. Nula quando nunca houve uma. */
+  adjustment: RealAdjustment | null;
 }
 
 export interface Protocol {

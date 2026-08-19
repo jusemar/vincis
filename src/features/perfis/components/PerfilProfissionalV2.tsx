@@ -140,8 +140,25 @@ export type IdentidadePublica = {
   totalAvaliacoes: number
 }
 
+/** Um card de "Comentários de clientes", já no formato que a seção desenha. */
+export type AvaliacaoPublica = {
+  id: string;
+  stars: number;
+  text: string;
+  author: string;
+};
+
 type PerfilProfissionalV2Props = {
   identidade?: IdentidadePublica;
+  /**
+   * Comentários reais do prestador, mais recentes primeiro.
+   *
+   * Ausente (vitrine de demonstração, sem `?prestador=`) mantém os dois cards
+   * de exemplo — que continuam sendo a referência visual aprovada. Presente e
+   * vazio significa "este prestador ainda não foi avaliado", e a seção mostra
+   * o estado vazio em vez de inventar comentário.
+   */
+  avaliacoes?: AvaliacaoPublica[];
   /**
    * Catálogo real do prestador. Quando ausente (vitrine de demonstração sem
    * `?prestador=`), a lista estática original continua sendo exibida — o visual
@@ -153,6 +170,7 @@ type PerfilProfissionalV2Props = {
 export default function PerfilProfissionalV2({
   identidade,
   servicos,
+  avaliacoes,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
@@ -162,6 +180,11 @@ export default function PerfilProfissionalV2({
     'Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.';
   const [contratando, setContratando] = useState(false);
   const listaServicos: ServicoPublico[] = servicos ?? (services as ServicoPublico[]);
+  // Mesma regra dos serviços: dado real quando existe prestador, conteúdo de
+  // demonstração quando a página é a vitrine sem `?prestador=`.
+  const listaAvaliacoes: AvaliacaoPublica[] =
+    avaliacoes ??
+    reviews.map((review, indice) => ({ id: `demo-${indice}`, ...review }));
 
   /**
    * Contratação direta. O Cliente vem da sessão no servidor; aqui só
@@ -780,19 +803,29 @@ export default function PerfilProfissionalV2({
             <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
               Comentários de clientes
             </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {reviews.map((review) => (
-                <article key={review.author} className="bg-muted/30 p-4 rounded-xl">
-                  <div className="text-amber-400 text-sm mb-2 tracking-wider">
-                    {'★'.repeat(review.stars)}
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed mb-3">
-                    &ldquo;{review.text}&rdquo;
-                  </p>
-                  <strong className="text-xs text-muted-foreground">&mdash; {review.author}</strong>
-                </article>
-              ))}
-            </div>
+            {/* Card idêntico ao aprovado: o que mudou foi de onde vêm as
+                estrelas, o texto e o nome. Sem avaliação nenhuma, uma linha
+                discreta no lugar do grid — nada de card fantasma nem de nota
+                fictícia. */}
+            {listaAvaliacoes.length === 0 ? (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Este profissional ainda não recebeu avaliações.
+              </p>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {listaAvaliacoes.map((review) => (
+                  <article key={review.id} className="bg-muted/30 p-4 rounded-xl">
+                    <div className="text-amber-400 text-sm mb-2 tracking-wider">
+                      {'★'.repeat(review.stars)}
+                    </div>
+                    <p className="text-sm text-foreground leading-relaxed mb-3">
+                      &ldquo;{review.text}&rdquo;
+                    </p>
+                    <strong className="text-xs text-muted-foreground">&mdash; {review.author}</strong>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
           </motion.div>
         </div>

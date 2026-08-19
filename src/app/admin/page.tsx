@@ -3,6 +3,7 @@ import AdminDashboard from '@/features/admin/components/AdminDashboard'
 import { mapearAtendimentoParaCard } from '@/features/admin/lib/atendimentos-reais'
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
 import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-prestador'
+import { obterPainelDeAvaliacoes } from '@/features/avaliacoes/queries/painel-de-avaliacoes'
 import { listarComunicadosDoMural } from '@/features/comunicados/queries/listar-comunicados'
 import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
 import { contarClientesAtivosProfissional } from '@/features/clientes/queries/listar-clientes'
@@ -36,9 +37,14 @@ export default async function AdminRoute() {
   //
   // O mural respeita a audiência do perfil — um comunicado dirigido a Clientes
   // não chega ao Dashboard de quem presta serviço. O recorte é do SQL.
-  const [resumoDoPainel, comunicados] = await Promise.all([
+  //
+  // As avaliações reais entram na mesma carga: média, quantidade, distribuição
+  // e comentários recebidos. Um dado só alimenta a tela de Avaliações, o rodapé
+  // da barra lateral e os dois indicadores de reputação do Dashboard.
+  const [resumoDoPainel, comunicados, painelDeAvaliacoes] = await Promise.all([
     obterResumoDoPainel(usuario.id),
     listarComunicadosDoMural(acesso.perfil),
+    obterPainelDeAvaliacoes(usuario.id),
   ])
 
   return (
@@ -47,6 +53,7 @@ export default async function AdminRoute() {
       atendimentosReais={atendimentosReais}
       resumoDoPainel={resumoDoPainel}
       comunicados={comunicados}
+      painelDeAvaliacoes={painelDeAvaliacoes}
     />
   )
 }

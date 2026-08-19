@@ -1,4 +1,7 @@
-import { rotuloCategoria } from '@/features/atendimentos/constants/atendimento'
+import {
+  ROTULO_STATUS_AJUSTE,
+  rotuloCategoria,
+} from '@/features/atendimentos/constants/atendimento'
 import { calcularProgresso } from '@/features/atendimentos/lib/progresso-checklist'
 import type { AtendimentoOperacionalDTO } from '@/features/atendimentos/types/atendimento'
 import { rotuloPreco } from '@/features/servicos/lib/formatar-preco'
@@ -361,6 +364,30 @@ export function mapearAtendimentoParaCard(
             byName: atendimento.conclusao.porNome,
             note: atendimento.conclusao.observacaoFinal,
             filesCount: atendimento.conclusao.arquivosDeEntrega,
+          }
+        : null,
+      // Solicitação de ajuste real: motivo, estado e resposta vêm do domínio.
+      // Sem solicitação o campo fica nulo e o painel não desenha nada — mesma
+      // regra da conclusão e do prazo.
+      adjustment: atendimento.ajuste
+        ? {
+            id: atendimento.ajuste.id,
+            status: atendimento.ajuste.status,
+            statusLabel: ROTULO_STATUS_AJUSTE[atendimento.ajuste.status],
+            reason: atendimento.ajuste.motivo,
+            answer: atendimento.ajuste.resposta,
+            requesterName: atendimento.ajuste.solicitanteNome,
+            reviewerName: atendimento.ajuste.analisadoPorNome,
+            reviewedAtLabel: atendimento.ajuste.analisadoEm
+              ? rotuloData(atendimento.ajuste.analisadoEm, agora)
+              : null,
+            createdAtLabel: rotuloData(atendimento.ajuste.criadoEm, agora),
+            attachment: atendimento.ajuste.arquivo
+              ? {
+                  name: atendimento.ajuste.arquivo.nome,
+                  url: `/api/atendimentos/${atendimento.id}/arquivos/${atendimento.ajuste.arquivo.id}`,
+                }
+              : null,
           }
         : null,
       unread: {

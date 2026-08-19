@@ -63,6 +63,9 @@ export function deveExibirToast({
 
   const abaDoEvento: Record<string, string> = {
     manifestacao: 'protocolo',
+    // A solicitação de ajuste e a resposta dela são manifestações formais: quem
+    // já está lendo o Protocolo daquele Atendimento vê a novidade entrar sozinha.
+    ajuste: 'protocolo',
     arquivo: 'arquivos',
     checklist: 'protocolo',
   }

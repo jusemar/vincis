@@ -90,3 +90,9 @@ export { eventosAuditoriaRelations } from './tables/eventos_auditoria/relacoes'
 
 export { comunicados } from './tables/comunicados/tabela'
 export { comunicadosRelations } from './tables/comunicados/relacoes'
+
+export { avaliacoesAtendimento } from './tables/avaliacoes_atendimento/tabela'
+export { avaliacoesAtendimentoRelations } from './tables/avaliacoes_atendimento/relacoes'
+
+export { atendimentoAjustes } from './tables/atendimento_ajustes/tabela'
+export { atendimentoAjustesRelations } from './tables/atendimento_ajustes/relacoes'

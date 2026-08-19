@@ -1,12 +1,14 @@
 import { inArray, or } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
+  atendimentoAjustes,
   atendimentoArquivos,
   atendimentoConvites,
   atendimentoEventos,
   atendimentoManifestacoes,
   atendimentoParticipantes,
   atendimentos,
+  avaliacoesAtendimento,
   eventosAuditoria,
 } from '@/db/schema'
 
@@ -29,6 +31,17 @@ export async function limparAtendimentosDosPrestadores(usuarioIds: string[]) {
   const ids = alvos.map(({ id }) => id)
 
   if (ids.length) {
+    // As solicitações de ajuste saem primeiro: elas apontam para arquivos,
+    // manifestações e eventos que são apagados logo abaixo.
+    await db
+      .delete(atendimentoAjustes)
+      .where(inArray(atendimentoAjustes.atendimentoId, ids))
+    // A avaliação sai antes do Atendimento. Existe cascade, mas apagar
+    // explicitamente mantém a ordem visível para quem lê a limpeza — como já é
+    // feito com o Protocolo logo abaixo.
+    await db
+      .delete(avaliacoesAtendimento)
+      .where(inArray(avaliacoesAtendimento.atendimentoId, ids))
     await db
       .delete(atendimentoArquivos)
       .where(inArray(atendimentoArquivos.atendimentoId, ids))

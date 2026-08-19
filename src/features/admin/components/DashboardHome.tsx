@@ -152,9 +152,19 @@ export default function DashboardHome({
   nomeUsuario,
   resumo,
   comunicados = [],
+  reputacao,
 }: {
   clientesAtivos: number
   nomeUsuario: string
+  /**
+   * Reputação real do prestador.
+   *
+   * Entra apenas nos dois cards de avaliação que o Dashboard aprovado já tem —
+   * nenhum card novo é adicionado. Eram os últimos números de avaliação
+   * escritos à mão no produto; agora saem da mesma agregação do card público,
+   * do perfil público e de Meu Perfil.
+   */
+  reputacao?: { media: number | null; total: number }
   /**
    * Números reais da operação, carregados no servidor.
    *
@@ -173,6 +183,28 @@ export default function DashboardHome({
   comunicados?: ComunicadoDTO[]
 }) {
   const primeiroNome = nomeUsuario.trim().split(/\s+/)[0] || 'Profissional'
+  /**
+   * Os dois cards de avaliação passam a mostrar o número real.
+   *
+   * Substituição de valor, não de card: `label`, ícone, cor, ordem e posição
+   * continuam exatamente os mesmos. Sem avaliação nenhuma a média vira traço —
+   * "0.0" no Dashboard afirmaria a pior reputação possível a quem nunca foi
+   * avaliado.
+   */
+  const indicadoresRapidos = quickStats.map((indicador) => {
+    if (!reputacao) return indicador
+    if (indicador.label === 'Avaliação Média') {
+      return {
+        ...indicador,
+        value: reputacao.media != null ? reputacao.media.toFixed(1) : '—',
+      }
+    }
+    if (indicador.label === 'Total de Avaliações') {
+      return { ...indicador, value: String(reputacao.total) }
+    }
+    return indicador
+  })
+
   const metricas = metrics.map((metrica) =>
     metrica.title === 'Clientes Ativos'
       ? { ...metrica, value: clientesAtivos, change: 'Sua carteira' }
@@ -197,10 +229,12 @@ export default function DashboardHome({
   /**
    * Indicadores reais, na mesma forma dos `quickStats` mockados.
    *
-   * Linha adicional em vez de substituição: "Avaliação Média" e "Total de
-   * Avaliações" não têm equivalente no banco, e trocá-los por outra coisa
-   * mudaria o Dashboard aprovado. Assim as duas origens ficam visíveis lado a
-   * lado, com exatamente o mesmo card.
+   * Linha adicional, e não substituição: estes indicadores não têm card
+   * equivalente na fileira de cima, e trocar um card existente por eles
+   * mudaria o Dashboard aprovado. Assim as duas origens ficam lado a lado, com
+   * exatamente o mesmo desenho. (Avaliação Média e Total de Avaliações são a
+   * exceção: aqueles dois já existiam e passaram a receber o dado real no
+   * próprio lugar, sem card novo.)
    */
   const indicadoresReais = resumo
     ? [
@@ -365,7 +399,7 @@ export default function DashboardHome({
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickStats.map((stat, index) => {
+            {indicadoresRapidos.map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <motion.div

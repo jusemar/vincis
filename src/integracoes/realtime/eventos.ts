@@ -20,6 +20,10 @@ export const TIPOS_EVENTO_REALTIME = [
   'arquivo',
   'status',
   'checklist',
+  'avaliacao',
+  // Solicitação de ajuste do Cliente e a decisão que ela recebe. Tipo próprio
+  // porque o destino é o Protocolo, e não a Conversa nem a aba de Arquivos.
+  'ajuste',
   'convite',
   'negociacao',
   'notificacao',

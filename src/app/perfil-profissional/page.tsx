@@ -1,4 +1,5 @@
 import PerfilProfissionalV2 from "@/features/perfis/components/PerfilProfissionalV2";
+import { listarAvaliacoesPublicas } from "@/features/avaliacoes/queries/reputacao";
 import { obterIdentidadePublica } from "@/features/servicos/queries/identidade-publica";
 import { listarServicosPublicos } from "@/features/servicos/queries/vitrine-publica";
 
@@ -26,6 +27,25 @@ export default async function PerfilProfissionalRoute({
     ? ((await obterIdentidadePublica(prestadorId)) ?? undefined)
     : undefined;
 
+  /**
+   * Comentários reais daquele prestador, mais recentes primeiro.
+   *
+   * Só com `?prestador=`: a vitrine de demonstração não tem dono, e portanto
+   * não tem avaliação a mostrar. O array vazio é informação — significa
+   * "prestador conhecido, ainda sem avaliação" — e é diferente de `undefined`,
+   * que mantém o conteúdo de exemplo.
+   */
+  const avaliacoes = prestadorId
+    ? (await listarAvaliacoesPublicas(prestadorId)).map((avaliacao) => ({
+        id: avaliacao.id,
+        stars: avaliacao.nota,
+        text: avaliacao.comentario,
+        // Identidade pública do Cliente, e só ela: nome. E-mail, telefone e
+        // documento não são sequer selecionados pela consulta.
+        author: avaliacao.autor,
+      }))
+    : undefined;
+
   const servicos = prestadorId
     ? (await listarServicosPublicos(prestadorId)).map((servico) => ({
         id: servico.id,
@@ -39,5 +59,11 @@ export default async function PerfilProfissionalRoute({
       }))
     : undefined;
 
-  return <PerfilProfissionalV2 identidade={identidade} servicos={servicos} />;
+  return (
+    <PerfilProfissionalV2
+      identidade={identidade}
+      servicos={servicos}
+      avaliacoes={avaliacoes}
+    />
+  );
 }

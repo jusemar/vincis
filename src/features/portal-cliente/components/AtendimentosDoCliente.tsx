@@ -32,6 +32,8 @@ import {
   rotuloCategoria,
 } from '@/features/atendimentos/constants/atendimento'
 import { useRolagemDaConversa } from '@/features/atendimentos/hooks/useRolagemDaConversa'
+import { SolicitacaoDeAjusteDoCliente } from '@/features/atendimentos/components/cliente/SolicitacaoDeAjusteDoCliente'
+import { AvaliacaoDoAtendimento } from '@/features/avaliacoes/components/cliente/AvaliacaoDoAtendimento'
 import { useTempoReal } from '@/features/tempo-real/components/TempoRealProvider'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
 import { rotuloPreco } from '@/features/servicos/lib/formatar-preco'
@@ -270,6 +272,17 @@ function DetalheAtendimento({
   const arquivosDeEntrega = atendimento.arquivos.filter(
     (arquivo) => arquivo.finalidade === 'entrega_final',
   )
+  /**
+   * A entrega existe, mas o Atendimento voltou a andar.
+   *
+   * Acontece quando um ajuste pedido pelo Cliente foi aceito: a conclusão
+   * anterior é preservada de propósito — data, autor, observação, arquivos e
+   * avaliação continuam ali —, mas chamá-la de "Atendimento concluído" enquanto
+   * o status diz "Em andamento" seria contradizer o próprio cabeçalho. O bloco
+   * é o mesmo; o que muda é o título e o tom, que passa ao neutro do tema.
+   */
+  const entregaAnterior =
+    Boolean(atendimento.conclusao) && atendimento.status !== 'concluido'
   const concluidas = atendimento.checklist.filter((etapa) => etapa.concluido).length
   const progresso = atendimento.checklist.length
     ? Math.round((concluidas / atendimento.checklist.length) * 100)
@@ -308,12 +321,26 @@ function DetalheAtendimento({
           status já usam.
         */}
         {atendimento.conclusao && (
-          <div className="rounded-xl border border-status-done/30 bg-status-done-bg p-4">
-            <div className="flex items-center gap-2 font-medium text-emerald-800">
+          <div
+            className={
+              entregaAnterior
+                ? 'rounded-xl border p-4'
+                : 'rounded-xl border border-status-done/30 bg-status-done-bg p-4'
+            }
+          >
+            <div
+              className={`flex items-center gap-2 font-medium ${
+                entregaAnterior ? 'text-foreground' : 'text-emerald-800'
+              }`}
+            >
               <CheckCircle2 className="size-5 shrink-0" />
-              Atendimento concluído
+              {entregaAnterior ? 'Entrega anterior' : 'Atendimento concluído'}
             </div>
-            <p className="mt-1 text-sm text-emerald-900/80">
+            <p
+              className={`mt-1 text-sm ${
+                entregaAnterior ? 'text-muted-foreground' : 'text-emerald-900/80'
+              }`}
+            >
               {formatarData(atendimento.conclusao.em)}
               {atendimento.conclusao.porNome
                 ? ` · por ${atendimento.conclusao.porNome}`
@@ -326,7 +353,13 @@ function DetalheAtendimento({
             )}
             {arquivosDeEntrega.length > 0 ? (
               <div className="mt-3">
-                <p className="text-xs font-medium text-emerald-900/80">
+                <p
+                  className={`text-xs font-medium ${
+                    entregaAnterior
+                      ? 'text-muted-foreground'
+                      : 'text-emerald-900/80'
+                  }`}
+                >
                   {arquivosDeEntrega.length === 1
                     ? 'Arquivo de entrega'
                     : `${arquivosDeEntrega.length} arquivos de entrega`}
@@ -352,11 +385,53 @@ function DetalheAtendimento({
                 </ul>
               </div>
             ) : (
-              <p className="mt-3 text-xs text-emerald-900/80">
+              <p
+                className={`mt-3 text-xs ${
+                  entregaAnterior
+                    ? 'text-muted-foreground'
+                    : 'text-emerald-900/80'
+                }`}
+              >
                 Este serviço foi concluído sem entrega de documentos.
               </p>
             )}
+
+            {/*
+              Avaliação, no fecho do mesmo cartão.
+              Só aparece depois da conclusão porque só um Atendimento concluído
+              aceita nota — e é aqui, logo abaixo da entrega, que o Cliente
+              acabou de ver o resultado do serviço. Sem tela nova, sem modal e
+              com os mesmos Button, borda e tipografia do resto do portal.
+            */}
+            <AvaliacaoDoAtendimento
+              atendimentoId={atendimento.id}
+              protocolo={atendimento.protocolo}
+              prestadorNome={atendimento.prestador.nome}
+              avaliacao={atendimento.avaliacao}
+              onAtualizar={onAtualizar}
+            />
           </div>
+        )}
+
+        {/*
+          Solicitação de ajuste, logo abaixo da entrega.
+          É o passo seguinte de quem acabou de receber o serviço: se algo não
+          ficou certo, o pedido nasce aqui — no mesmo protocolo, sem tela nova e
+          sem abrir outro atendimento.
+
+          Fora do cartão de conclusão de propósito: quem decide se cabe pedir é
+          o status, e não a existência de observação ou arquivo de entrega. O
+          bloco só aparece com o serviço concluído — ou quando já existe um
+          pedido para acompanhar.
+        */}
+        {(atendimento.status === 'concluido' || atendimento.ajuste) && (
+          <SolicitacaoDeAjusteDoCliente
+            atendimentoId={atendimento.id}
+            protocolo={atendimento.protocolo}
+            status={atendimento.status}
+            ajuste={atendimento.ajuste}
+            onAtualizar={onAtualizar}
+          />
         )}
 
         <div className="flex flex-wrap gap-2">

@@ -22,14 +22,25 @@ import EquipeEscritorioPage from "@/features/empresas/components/EquipeEscritori
 import type { Protocol } from "../types/atendimentos";
 import type { ResumoDoPainelDTO } from "@/features/atendimentos/queries/painel-do-prestador";
 import type { ComunicadoDTO } from "@/features/comunicados/types/comunicado";
+import type { PainelDeAvaliacoesDTO } from "@/features/avaliacoes/queries/painel-de-avaliacoes";
 
 export default function AdminDashboard({
   clientesAtivos,
   atendimentosReais = [],
   resumoDoPainel,
   comunicados = [],
+  painelDeAvaliacoes,
 }: {
   clientesAtivos: number
+  /**
+   * Avaliações reais recebidas pelo prestador.
+   *
+   * Carregado no servidor junto do resto e distribuído para os três pontos do
+   * painel que falam de reputação — a tela de Avaliações, o rodapé da barra
+   * lateral e os dois indicadores do Dashboard. Um dado só, três leituras: é o
+   * que impede o painel de discordar de si mesmo.
+   */
+  painelDeAvaliacoes?: PainelDeAvaliacoesDTO
   /** Indicadores reais do Dashboard. Os cards mockados continuam ao lado. */
   resumoDoPainel?: ResumoDoPainelDTO
   /** Mural institucional da Vincis, já filtrado pela audiência do perfil. */
@@ -63,6 +74,14 @@ export default function AdminDashboard({
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
+  /** Média e quantidade, no formato enxuto que o rodapé e o card consomem. */
+  const reputacao = painelDeAvaliacoes
+    ? {
+        media: painelDeAvaliacoes.reputacao.media,
+        total: painelDeAvaliacoes.reputacao.total,
+      }
+    : undefined;
+
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
@@ -72,6 +91,7 @@ export default function AdminDashboard({
             nomeUsuario={usuario?.nome ?? "Profissional"}
             resumo={resumoDoPainel}
             comunicados={comunicados}
+            reputacao={reputacao}
           />
         );
       case "clients":
@@ -92,7 +112,7 @@ export default function AdminDashboard({
       case "financial":
         return <FinancialPage />;
       case "reviews":
-        return <ReviewsPage />;
+        return <ReviewsPage painel={painelDeAvaliacoes} />;
       case "profile":
         return <ProfilePage />;
       case "team":
@@ -106,6 +126,7 @@ export default function AdminDashboard({
             nomeUsuario={usuario?.nome ?? "Profissional"}
             resumo={resumoDoPainel}
             comunicados={comunicados}
+            reputacao={reputacao}
           />
         );
     }
@@ -121,6 +142,7 @@ export default function AdminDashboard({
           isCollapsed={isSidebarCollapsed}
           onToggle={toggleSidebar}
           nomeUsuario={usuario?.nome ?? "Profissional"}
+          reputacao={reputacao}
         />
       </div>
 

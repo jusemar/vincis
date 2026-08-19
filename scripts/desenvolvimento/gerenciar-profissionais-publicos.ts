@@ -36,8 +36,6 @@ const MODELOS = [
     ["CRC Ativo", "Certificação CVM", "Especialista em IFRS"],
     "Especialista em planejamento tributário para empresas de médio e grande porte. Experiência em otimização fiscal e compliance contábil.",
     "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop",
-    49,
-    127,
   ],
   [
     "ana.silva",
@@ -59,8 +57,6 @@ const MODELOS = [
     ["OAB/RJ", "Especialista em Direito Societário", "Arbitragem"],
     "Advogada especializada em direito empresarial com foco em startups e empresas em crescimento. Experiência em operações de M&A.",
     "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop",
-    48,
-    89,
   ],
   [
     "carlos.lima",
@@ -77,8 +73,6 @@ const MODELOS = [
     ["CRC Ativo", "Especialista em MEI"],
     "Contador especializado em atender MEIs e pequenas empresas. Foco em simplificação e baixo custo para empreendedores.",
     "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-    47,
-    203,
   ],
   [
     "fernanda.oliveira",
@@ -95,8 +89,6 @@ const MODELOS = [
     ["OAB/SP", "Especialista em Direito do Trabalho", "Mediadora"],
     "Advogada trabalhista com vasta experiência em defesa de empresas. Especialista em prevenção de passivos trabalhistas.",
     "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
-    49,
-    156,
   ],
   [
     "marcelo.santos",
@@ -118,8 +110,6 @@ const MODELOS = [
     ["CIPD", "SHRM-CP", "Coach Profissional"],
     "Consultor de RH com experiência em gestão de pessoas para empresas de tecnologia e serviços.",
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2?w=400&h=400&fit=crop",
-    46,
-    78,
   ],
   [
     "juliana.costa",
@@ -141,8 +131,6 @@ const MODELOS = [
     ["OAB/DF", "Especialista em Direito Tributário", "LLM Tributário"],
     "Advogada tributarista com experiência em grandes escritórios. Atuação no contencioso administrativo e judicial.",
     "https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=400&h=400&fit=crop",
-    50,
-    67,
   ],
   [
     "roberto.almeida",
@@ -159,8 +147,6 @@ const MODELOS = [
     ["CRC Ativo", "Auditor Independente - CVM", "Perito Judicial"],
     "Contador com vasta experiência em auditoria para empresas listadas em bolsa. Perito judicial contábil.",
     "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop",
-    48,
-    94,
   ],
   [
     "patricia.mendonca",
@@ -182,8 +168,6 @@ const MODELOS = [
     ["CFA", "CPA", "MBA em Finanças"],
     "Consultora financeira com experiência em grandes corporações. Ajuda empresas a otimizarem sua gestão financeira.",
     "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    47,
-    112,
   ],
   [
     "bruno.ferreira",
@@ -205,8 +189,6 @@ const MODELOS = [
     ["OAB/BA", "Mediador"],
     "Advogado civilista com atuação em consultoria preventiva e contencioso. Atendimento humanizado e próximo.",
     "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
-    45,
-    45,
   ],
 ] as const;
 
@@ -289,8 +271,12 @@ async function criar() {
         formacao: m[8],
         instituicaoEnsino: m[9],
         valorHoraCentavos: m[7] * 100,
-        avaliacaoMedia: m[14],
-        totalAvaliacoes: m[15],
+        // Avaliação vem sempre das avaliações reais
+        // (`avaliacoes_atendimento`), agregadas a cada consulta. Nenhum
+        // cadastro de demonstração nasce com nota nem com contador: um número
+        // aqui reapareceria no card público como se fosse reputação.
+        avaliacaoMedia: null,
+        totalAvaliacoes: 0,
         disponivelAtendimento: ![
           "fernanda.oliveira",
           "patricia.mendonca",

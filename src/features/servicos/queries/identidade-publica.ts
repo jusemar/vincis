@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
+import { obterReputacaoDoPrestador } from '@/features/avaliacoes/queries/reputacao'
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
 import { condicaoPrestadorHabilitado } from '@/features/usuarios/lib/prestador'
 
@@ -17,8 +18,6 @@ export async function obterIdentidadePublica(prestadorId: string) {
       nome: usuarios.nome,
       apresentacao: perfisProfissionais.apresentacao,
       experienciaAnos: perfisProfissionais.tempoExperiencia,
-      avaliacaoMedia: perfisProfissionais.avaliacaoMedia,
-      totalAvaliacoes: perfisProfissionais.totalAvaliacoes,
     })
     .from(usuarios)
     .innerJoin(
@@ -35,5 +34,25 @@ export async function obterIdentidadePublica(prestadorId: string) {
     )
     .limit(1)
 
-  return prestador ?? null
+  if (!prestador) return null
+
+  /**
+   * A nota e a quantidade vêm da agregação real das avaliações.
+   *
+   * Antes saíam de `perfis_profissionais.avaliacao_media` / `total_avaliacoes`,
+   * duas colunas preenchidas por script de demonstração. Os nomes dos campos
+   * continuam iguais para que o bloco de métricas do perfil não mude nada —
+   * mesmo tamanho, mesma cor, mesma posição —, e `mediaEmDecimos` preserva a
+   * convenção "valor / 10" que aquele bloco já aplicava.
+   *
+   * Prestador sem avaliação nenhuma volta com `null` e `0`: é o que faz a tela
+   * mostrar o estado vazio em vez de afirmar uma nota que ninguém deu.
+   */
+  const reputacao = await obterReputacaoDoPrestador(prestadorId)
+
+  return {
+    ...prestador,
+    avaliacaoMedia: reputacao.mediaEmDecimos,
+    totalAvaliacoes: reputacao.total,
+  }
 }

@@ -21,6 +21,15 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
   nomeUsuario: string;
+  /**
+   * Reputação real do prestador, para o rodapé.
+   *
+   * Antes o rodapé trazia "★ 4.8 · 124 avaliações" escrito à mão. O formato
+   * continua o mesmo — nota, ponto médio e quantidade —, mas os dois números
+   * agora vêm da mesma agregação que o card público usa. Ausente (carregamento
+   * ou perfil sem reputação) cai no traço, nunca num número inventado.
+   */
+  reputacao?: { media: number | null; total: number };
 }
 
 /**
@@ -44,7 +53,12 @@ const navItems = [
   { id: "achievements", label: "Conquistas", icon: Award },
 ];
 
-export default function AdminSidebar({ isCollapsed, onToggle, nomeUsuario }: SidebarProps) {
+export default function AdminSidebar({
+  isCollapsed,
+  onToggle,
+  nomeUsuario,
+  reputacao,
+}: SidebarProps) {
   const searchParams = useSearchParams();
   const currentPage = searchParams.get("pagina") || "dashboard";
 
@@ -129,7 +143,11 @@ export default function AdminSidebar({ isCollapsed, onToggle, nomeUsuario }: Sid
         <div className="nav-label" style={{ opacity: 1, width: "auto" }}>
           <p style={{ fontSize: 12, fontWeight: 600 }}>{nomeUsuario}</p>
           <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
-            ★ 4.8 · 124 avaliações
+            ★{' '}
+            {reputacao?.media != null
+              ? reputacao.media.toFixed(1)
+              : '—'}{' '}
+            · {reputacao?.total ?? 0} avaliações
           </p>
         </div>
       </div>

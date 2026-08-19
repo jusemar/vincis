@@ -1,11 +1,13 @@
 import { relations } from 'drizzle-orm'
 import { atendimentos } from './tabela'
+import { atendimentoAjustes } from '../atendimento_ajustes/tabela'
 import { atendimentoArquivos } from '../atendimento_arquivos/tabela'
 import { atendimentoChecklistItens } from '../atendimento_checklist_itens/tabela'
 import { atendimentoEventos } from '../atendimento_eventos/tabela'
 import { atendimentoManifestacoes } from '../atendimento_manifestacoes/tabela'
 import { atendimentoMensagens } from '../atendimento_mensagens/tabela'
 import { atendimentoParticipantes } from '../atendimento_participantes/tabela'
+import { avaliacoesAtendimento } from '../avaliacoes_atendimento/tabela'
 import { clientes } from '../clientes/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
 import { empresas } from '../empresas/tabela'
@@ -51,4 +53,7 @@ export const atendimentosRelations = relations(atendimentos, ({ one, many }) => 
   manifestacoes: many(atendimentoManifestacoes),
   arquivos: many(atendimentoArquivos),
   checklist: many(atendimentoChecklistItens),
+  avaliacoes: many(avaliacoesAtendimento),
+  /** Solicitações de ajuste feitas pelo Cliente depois da conclusão. */
+  ajustes: many(atendimentoAjustes),
 }))

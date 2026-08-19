@@ -78,6 +78,53 @@ export const ROTULO_STATUS_CONVITE: Record<StatusConviteAtendimento, string> = {
 }
 
 /**
+ * Estados de uma solicitação de ajuste feita pelo Cliente.
+ *
+ * Pertencem à **solicitação**, e não ao Atendimento: nenhum deles vira coluna
+ * do Kanban. Enquanto o pedido está `pendente` o Atendimento continua exatamente
+ * onde estava — `concluido` —, porque quem reabre é a decisão de alguém
+ * autorizado, nunca o ato de pedir.
+ *
+ * - `pendente`: aguardando análise. É o único estado que ocupa o índice de
+ *   unicidade — um pedido em aberto por Atendimento;
+ * - `aceita`: analisada e aceita; o Atendimento foi reaberto;
+ * - `recusada`: analisada e recusada; o Atendimento seguiu concluído;
+ * - `encerrada`: o ciclo terminou — o Atendimento aceito foi concluído de novo.
+ */
+export const STATUS_SOLICITACAO_AJUSTE = [
+  'pendente',
+  'aceita',
+  'recusada',
+  'encerrada',
+] as const
+export type StatusSolicitacaoAjuste = (typeof STATUS_SOLICITACAO_AJUSTE)[number]
+
+export const ROTULO_STATUS_AJUSTE: Record<StatusSolicitacaoAjuste, string> = {
+  pendente: 'Em análise',
+  aceita: 'Aceita',
+  recusada: 'Recusada',
+  encerrada: 'Encerrada',
+}
+
+/**
+ * Teto do motivo do Cliente e da resposta de quem analisa.
+ *
+ * O mesmo do Protocolo: os dois textos viram manifestação formal lá, e um teto
+ * maior aqui produziria um texto que o Protocolo cortaria depois.
+ */
+export const TAMANHO_MAXIMO_MOTIVO_AJUSTE = 8000
+export const TAMANHO_MAXIMO_RESPOSTA_AJUSTE = 8000
+
+/**
+ * Mínimo da justificativa de recusa.
+ *
+ * Recusar sem dizer por quê deixa o Cliente sem nada sobre o que agir. Não é
+ * uma medida de qualidade do texto — é a diferença entre uma resposta e um
+ * silêncio formalizado.
+ */
+export const TAMANHO_MINIMO_JUSTIFICATIVA_RECUSA = 10
+
+/**
  * Tipos de linha da negociação.
  *
  * `proposta` é sempre de quem convidou e `contraproposta` de quem foi
@@ -227,6 +274,11 @@ export const TIPOS_EVENTO_ATENDIMENTO = {
   solicitacaoAoCliente: 'solicitacao_ao_cliente',
   atendimentoConcluido: 'atendimento_concluido',
   entregaFinalRegistrada: 'entrega_final_registrada',
+  atendimentoAvaliado: 'atendimento_avaliado',
+  ajusteSolicitado: 'ajuste_solicitado',
+  ajusteAceito: 'ajuste_aceito',
+  ajusteRecusado: 'ajuste_recusado',
+  atendimentoReaberto: 'atendimento_reaberto',
   participanteAtribuido: 'participante_atribuido',
   participanteRemovido: 'participante_removido',
   conviteEnviado: 'convite_enviado',

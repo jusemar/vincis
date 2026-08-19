@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   atendimentoArquivos,
@@ -28,6 +28,7 @@ import { obterAudienciaDoAtendimento } from './audiencia'
 import { obterAcessoAtendimento, respondePeloAtendimento } from './autorizacao'
 import { difundirSegmentado } from './difusao'
 import type { ExecutorDb } from './executor'
+import { encerrarAjustesResolvidos } from './solicitacoes-ajuste'
 import { podeTransicionar } from './transicoes'
 
 const DESTINO: StatusAtendimento = 'concluido'
@@ -152,7 +153,16 @@ export async function concluirAtendimento({
   if (!atual) return { sucesso: false, motivo: 'nao-encontrado' }
 
   const de = atual.status as StatusAtendimento
-  if (de === DESTINO || atual.concluidoEm) {
+  /**
+   * Quem responde por "já está concluído" é o **status**, e não a data.
+   *
+   * A distinção passou a importar quando o Atendimento ganhou reabertura: um
+   * Atendimento reaberto carrega `concluido_em` da entrega anterior — que é
+   * preservada de propósito — e precisa poder ser concluído de novo. Exigir a
+   * coluna nula aqui tornaria a segunda conclusão impossível e transformaria a
+   * reabertura num beco sem saída.
+   */
+  if (de === DESTINO) {
     return { sucesso: false, motivo: 'ja-concluido' }
   }
   if (!podeTransicionar(de, DESTINO)) {
@@ -206,13 +216,9 @@ export async function concluirAtendimento({
         observacaoFinal: observacao,
         updatedAt: concluidoEm,
       })
-      .where(
-        and(
-          eq(atendimentos.id, atendimentoId),
-          eq(atendimentos.status, de),
-          isNull(atendimentos.concluidoEm),
-        ),
-      )
+      // O status esperado é a trava: dois cliques (ou dois usuários ao mesmo
+      // tempo) disputam esta condição, um vence e o outro não escreve nada.
+      .where(and(eq(atendimentos.id, atendimentoId), eq(atendimentos.status, de)))
       .returning({ id: atendimentos.id })
 
     // Alguém chegou primeiro. Nada foi escrito: nem manifestação, nem aviso,
@@ -230,6 +236,14 @@ export async function concluirAtendimento({
           ),
         )
     }
+
+    // Esta conclusão fecha o ciclo aberto por uma solicitação aceita, quando
+    // houve uma. Pedido ainda pendente não é tocado: ele não reabriu nada.
+    const ajustesEncerrados = await encerrarAjustesResolvidos(
+      tx,
+      atendimentoId,
+      concluidoEm,
+    )
 
     const conteudo = montarTextoDaConclusao({
       observacaoFinal: observacao,
@@ -274,6 +288,11 @@ export async function concluirAtendimento({
         // cópia do mesmo parágrafo.
         temObservacaoFinal: Boolean(observacao),
         etapasPendentes: pendentes,
+        // Verdadeiro quando esta conclusão fecha um ciclo de reabertura: o
+        // Histórico distingue a primeira entrega das que vieram depois de um
+        // ajuste pedido pelo Cliente.
+        conclusaoAposReabertura: Boolean(atual.concluidoEm),
+        ajustesEncerrados,
       },
     })
 

@@ -8,6 +8,7 @@ import {
   atendimentoManifestacoes,
   atendimentoMensagens,
   atendimentos,
+  avaliacoesAtendimento,
   contratacoesServico,
   usuarios,
 } from '@/db/schema'
@@ -20,6 +21,7 @@ import type {
   StatusAtendimento,
   VisibilidadeChecklist,
 } from '../constants/atendimento'
+import { obterUltimosAjustes } from '../lib/solicitacoes-ajuste'
 import type { AtendimentoDoClienteDTO } from '../types/atendimento'
 
 const prestadorConta = alias(usuarios, 'prestador_conta')
@@ -81,7 +83,15 @@ export async function listarAtendimentosDoCliente(
   if (!registros.length) return []
   const ids = registros.map((registro) => registro.id)
 
-  const [eventos, mensagens, manifestacoes, checklist, arquivos] = await Promise.all([
+  const [
+    eventos,
+    mensagens,
+    manifestacoes,
+    checklist,
+    arquivos,
+    avaliacoes,
+    ajustes,
+  ] = await Promise.all([
     db
       .select({
         id: atendimentoEventos.id,
@@ -184,10 +194,35 @@ export async function listarAtendimentosDoCliente(
       )
       .where(inArray(atendimentoArquivos.atendimentoId, ids))
       .orderBy(desc(atendimentoArquivos.createdAt)),
+    // A avaliação do próprio Cliente. O filtro por `cliente_usuario_id` é
+    // redundante com o recorte de cima e fica de propósito: nenhuma avaliação
+    // de outra pessoa pode entrar nesta consulta nem por acidente de junção.
+    db
+      .select({
+        id: avaliacoesAtendimento.id,
+        atendimentoId: avaliacoesAtendimento.atendimentoId,
+        nota: avaliacoesAtendimento.nota,
+        comentario: avaliacoesAtendimento.comentario,
+        criadoEm: avaliacoesAtendimento.createdAt,
+        atualizadoEm: avaliacoesAtendimento.updatedAt,
+      })
+      .from(avaliacoesAtendimento)
+      .where(
+        and(
+          inArray(avaliacoesAtendimento.atendimentoId, ids),
+          eq(avaliacoesAtendimento.clienteUsuarioId, clienteUsuarioId),
+        ),
+      ),
+    // A solicitação de ajuste mais recente de cada Atendimento. Os ids já são
+    // só os deste Cliente — o recorte de propriedade foi feito acima.
+    obterUltimosAjustes(ids),
   ])
 
   return registros.map((registro) => {
     const arquivosDoAtendimento = arquivos.filter(
+      (linha) => linha.atendimentoId === registro.id,
+    )
+    const avaliacao = avaliacoes.find(
       (linha) => linha.atendimentoId === registro.id,
     )
 
@@ -280,6 +315,16 @@ export async function listarAtendimentosDoCliente(
           ).length,
         }
       : null,
+    avaliacao: avaliacao
+      ? {
+          id: avaliacao.id,
+          nota: avaliacao.nota,
+          comentario: avaliacao.comentario,
+          criadoEm: avaliacao.criadoEm.toISOString(),
+          atualizadoEm: avaliacao.atualizadoEm.toISOString(),
+        }
+      : null,
+    ajuste: ajustes.get(registro.id) ?? null,
     }
   })
 }

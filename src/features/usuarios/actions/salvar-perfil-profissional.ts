@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
 import { empresaMembros, empresas, perfisProfissionais } from "@/db/schema";
+import { obterReputacaoDoPrestador } from "@/features/avaliacoes/queries/reputacao";
 import {
   enviarComprovantePrivado,
   removerComprovantePrivado,
@@ -244,6 +245,18 @@ export async function obterMeuPerfilProfissional() {
           )
           .limit(1)
       : [];
+  /**
+   * A avaliação exibida em "Meu Perfil" é a real.
+   *
+   * As colunas `avaliacao_media` / `total_avaliacoes` continuam existindo na
+   * linha (dado legado de demonstração), mas o que sai daqui é a agregação das
+   * avaliações de verdade — a mesma fonte do card público e do perfil público.
+   * A sobrescrita vem depois do espalhamento justamente para que o valor
+   * antigo nunca vaze para a tela, e os nomes dos campos não mudam: o cartão
+   * de "Avaliação" do painel continua idêntico.
+   */
+  const reputacao = await obterReputacaoDoPrestador(usuario.id);
+
   return {
     ...perfil,
     areasAtuacao: perfil.areasAtuacao.join(", "),
@@ -251,5 +264,7 @@ export async function obterMeuPerfilProfissional() {
     certificacoes: perfil.certificacoes.join(", "),
     valorHora: (perfil.valorHoraCentavos ?? 0) / 100,
     empresaVinculada: empresaVinculada ?? null,
+    avaliacaoMedia: reputacao.mediaEmDecimos,
+    totalAvaliacoes: reputacao.total,
   };
 }

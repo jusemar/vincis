@@ -1,6 +1,7 @@
 import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { perfisProfissionais, usuarios } from "@/db/schema";
+import { obterReputacaoDosPrestadores } from "@/features/avaliacoes/queries/reputacao";
 import { condicaoContaVerificada } from "@/features/usuarios/lib/condicao-verificacao";
 import {
   condicaoPrestadorHabilitado,
@@ -82,8 +83,6 @@ export async function pesquisarProfissionaisReais(
         apresentacao: perfisProfissionais.apresentacao,
         modalidade: perfisProfissionais.modalidadeAtuacao,
         valorHoraCentavos: perfisProfissionais.valorHoraCentavos,
-        avaliacaoMedia: perfisProfissionais.avaliacaoMedia,
-        totalAvaliacoes: perfisProfissionais.totalAvaliacoes,
         disponivel: perfisProfissionais.disponivelAtendimento,
       })
       .from(perfisProfissionais)
@@ -98,8 +97,29 @@ export async function pesquisarProfissionaisReais(
       .innerJoin(usuarios, eq(usuarios.id, perfisProfissionais.usuarioId))
       .where(where),
   ]);
+  /**
+   * Reputação real, uma consulta agregada para a página inteira.
+   *
+   * `avaliacao_media` e `total_avaliacoes` de `perfis_profissionais` deixaram de
+   * ser lidas aqui: eram números de demonstração escritos por script, e o card
+   * público mostrava a mesma nota para sempre. Os nomes dos campos devolvidos
+   * continuam os mesmos justamente para que o card não mude uma linha — só a
+   * origem do dado mudou. `mediaEmDecimos` mantém a convenção "valor / 10" que
+   * a tela já aplicava.
+   */
+  const reputacoes = await obterReputacaoDosPrestadores(
+    registros.map(({ id }) => id),
+  );
+
   return {
-    profissionais: registros,
+    profissionais: registros.map((registro) => {
+      const reputacao = reputacoes.get(registro.id);
+      return {
+        ...registro,
+        avaliacaoMedia: reputacao?.mediaEmDecimos ?? null,
+        totalAvaliacoes: reputacao?.total ?? 0,
+      };
+    }),
     total: total?.valor ?? 0,
     pagina: filtros.pagina,
     totalPaginas: Math.max(

@@ -1,3 +1,4 @@
+import type { MinhaAvaliacaoDTO } from '@/features/avaliacoes/types/avaliacao'
 import type {
   AcessoAtendimento,
   FinalidadeArquivo,
@@ -9,6 +10,7 @@ import type {
   PapelParticipante,
   PrioridadeAtendimento,
   StatusAtendimento,
+  StatusSolicitacaoAjuste,
 } from '../constants/atendimento'
 
 /**
@@ -87,6 +89,30 @@ export type ConclusaoDoAtendimentoDTO = {
   arquivosDeEntrega: number
 }
 
+/**
+ * Uma solicitação de ajuste sobre o Atendimento concluído.
+ *
+ * O que o Cliente pediu, em que pé está o pedido e — quando já houve análise —
+ * o que foi respondido, por quem e quando. É o mesmo objeto nos dois lados: o
+ * portal do Cliente e o painel da equipe leem exatamente os mesmos campos,
+ * porque a solicitação é uma comunicação formal e não tem parte secreta.
+ *
+ * `arquivo` traz apenas nome e id: o conteúdo continua atrás da rota autorizada
+ * de sempre.
+ */
+export type SolicitacaoDeAjusteDTO = {
+  id: string
+  status: StatusSolicitacaoAjuste
+  motivo: string
+  /** Resposta de quem analisou. Nula enquanto o pedido está pendente. */
+  resposta: string | null
+  arquivo: { id: string; nome: string } | null
+  solicitanteNome: string
+  analisadoPorNome: string | null
+  analisadoEm: string | null
+  criadoEm: string
+}
+
 export type AtendimentoEventoDTO = {
   id: string
   tipo: string
@@ -161,6 +187,15 @@ export type AtendimentoOperacionalDTO = {
   acoes: { rotulo: string; destino: StatusAtendimento; encerra: boolean }[]
   /** Nulo enquanto o serviço está em execução. */
   conclusao: ConclusaoDoAtendimentoDTO | null
+  /**
+   * A solicitação de ajuste mais recente, quando existe alguma.
+   *
+   * Uma só, e não a lista inteira: o que a equipe precisa ver ao abrir o
+   * Atendimento é o pedido em aberto — ou o último analisado. O histórico de
+   * todos os pedidos já está no Protocolo e no Histórico, que é onde ele
+   * pertence.
+   */
+  ajuste: SolicitacaoDeAjusteDTO | null
   /** Leitura da Conversa, do ponto de vista de quem consultou. */
   naoLidas: NaoLidasDoAtendimentoDTO
 }
@@ -198,4 +233,20 @@ export type AtendimentoDoClienteDTO = {
   arquivos: AtendimentoArquivoDTO[]
   /** A entrega, quando o serviço já foi concluído. Nulo enquanto não foi. */
   conclusao: ConclusaoDoAtendimentoDTO | null
+  /**
+   * A avaliação que este Cliente deu a este Atendimento.
+   *
+   * Nula quando ele ainda não avaliou — e é essa nulidade que a tela usa para
+   * decidir entre pedir a nota e mostrar a que já foi dada. Só existe depois da
+   * conclusão, porque só um Atendimento concluído aceita avaliação.
+   */
+  avaliacao: MinhaAvaliacaoDTO | null
+  /**
+   * A solicitação de ajuste mais recente deste Cliente neste Atendimento.
+   *
+   * É por ela que o portal decide entre oferecer "Solicitar ajuste", mostrar o
+   * pedido em análise ou exibir a resposta que ele recebeu. Nula quando o
+   * Cliente nunca pediu ajuste.
+   */
+  ajuste: SolicitacaoDeAjusteDTO | null
 }

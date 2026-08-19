@@ -11,6 +11,10 @@ export const ACOES_AUDITORIA = {
   atendimentoCriado: 'atendimento_criado',
   arquivoAnexadoAoAtendimento: 'arquivo_anexado_ao_atendimento',
   atendimentoConcluido: 'atendimento_concluido',
+  atendimentoAvaliado: 'atendimento_avaliado',
+  ajusteSolicitado: 'ajuste_solicitado',
+  ajusteAnalisado: 'ajuste_analisado',
+  atendimentoReaberto: 'atendimento_reaberto',
 } as const
 
 export type AcaoAuditoria =
