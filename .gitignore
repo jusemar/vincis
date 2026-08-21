@@ -3,23 +3,71 @@ node_modules/
 vendor/
 __pycache__/
 *.pyc
+
+# Ambiente
+# `.env.example` é versionado de propósito: documenta os nomes das variáveis
+# exigidas pelo deploy. Só os arquivos com valores reais ficam de fora.
 .env
 .env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+!.env.example
 
-# Build e logs
+# Build e artefatos gerados
+.next/
+out/
 dist/
 build/
-*.log
-.DS_Store
+next-env.d.ts.timestamp-*
+*.tsbuildinfo
 
-# IDEs
+# Deploy
+.vercel/
+
+# Caches
+.cache/
+.turbo/
+.swc/
+.eslintcache
+.parcel-cache/
+*.tsbuildinfo.*
+
+# Testes: cobertura, relatórios e mídias geradas pelo Playwright
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.playwright/
+tests/**/__screenshots__/
+tests/**/*-snapshots/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs / editores
 .vscode/
 .idea/
-
-# Outros
+*.iml
+*.sublime-workspace
+*.sublime-project
 *.swp
 *.swo
 *~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
 # Arquivos de download/zip
 *.zip
 *.zip:*
@@ -29,6 +77,3 @@ build/
 # Windows metadata
 *:Zone.Identifier
 *:SmartScreen
-.next/
-*.tsbuildinfo
-*.tsbuildinfo

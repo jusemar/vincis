@@ -41,7 +41,7 @@ export default async function ProfissionalRoute() {
       }
     : undefined;
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),hsl(var(--background))]">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),hsl(var(--background))]">
       <CabecalhoCadastroProfissional nome={usuario.nome} />
       <OnboardingProfissional
         usuarioId={usuario.id}

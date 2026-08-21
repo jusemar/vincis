@@ -27,6 +27,12 @@ export const TIPOS_EVENTO_REALTIME = [
   'convite',
   'negociacao',
   'notificacao',
+  /**
+   * Oportunidade pública: solicitação nova para os prestadores compatíveis, e
+   * proposta recebida para o Cliente dono. Não carrega descrição, valor nem
+   * anexo — como todo evento daqui, é só "algo mudou".
+   */
+  'oportunidade',
 ] as const
 
 export type TipoEventoRealtime = (typeof TIPOS_EVENTO_REALTIME)[number]
@@ -61,6 +67,8 @@ export type EventoRealtime = {
   /** `#AAAA-NNNN` — o que a pessoa lê no toast. */
   protocolo?: string | null
   conviteId?: string | null
+  /** Oportunidade envolvida, quando o aviso é da vitrine pública. */
+  oportunidadeId?: string | null
   /** Canal da Conversa, quando o evento é de mensagem. */
   canalConversa?: 'cliente' | 'interno' | null
   /**

@@ -109,7 +109,7 @@ const MODELOS = [
     ],
     ["CIPD", "SHRM-CP", "Coach Profissional"],
     "Consultor de RH com experiência em gestão de pessoas para empresas de tecnologia e serviços.",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
   ],
   [
     "juliana.costa",

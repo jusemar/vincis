@@ -12,6 +12,13 @@ import { useAuth } from '@/features/usuarios'
 type GestaoVincisInicialProps = {
   nome: string
   cadastrosPendentes: number
+  /**
+   * Configurações da plataforma, injetadas pela rota.
+   *
+   * Entra como slot para que a tela inicial aprovada não precise conhecer cada
+   * parâmetro novo — quem monta o cartão é quem tem os dados no servidor.
+   */
+  configuracoes?: React.ReactNode
 }
 
 function obterIniciais(nome: string): string {
@@ -19,7 +26,7 @@ function obterIniciais(nome: string): string {
   return `${partes[0]?.[0] ?? 'G'}${partes.at(-1)?.[0] ?? ''}`.toUpperCase()
 }
 
-export function GestaoVincisInicial({ nome, cadastrosPendentes }: GestaoVincisInicialProps) {
+export function GestaoVincisInicial({ nome, cadastrosPendentes, configuracoes }: GestaoVincisInicialProps) {
   const router = useRouter()
   const { logout } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
@@ -34,7 +41,7 @@ export function GestaoVincisInicial({ nome, cadastrosPendentes }: GestaoVincisIn
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)/0.35))]">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)/0.35))]">
       <header className="border-b border-border/70 bg-card/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -84,7 +91,7 @@ export function GestaoVincisInicial({ nome, cadastrosPendentes }: GestaoVincisIn
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl items-center px-4 py-16 sm:px-6 sm:py-24">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-16 sm:px-6 sm:py-24">
         <Card className="w-full max-w-2xl border-border/70 bg-card/90 shadow-[var(--shadow-card)] backdrop-blur">
           <CardContent className="p-7 sm:p-10">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -124,6 +131,7 @@ export function GestaoVincisInicial({ nome, cadastrosPendentes }: GestaoVincisIn
             </div>
           </CardContent>
         </Card>
+        {configuracoes}
       </main>
     </div>
   )

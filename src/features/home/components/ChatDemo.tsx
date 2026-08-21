@@ -245,8 +245,10 @@ const ChatInterface = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onTogglePause}
-            className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+            // 44px de alvo de toque; o `p-2` dava 32px.
+            className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted transition-colors hover:bg-muted/80"
             title={isPaused ? "Continuar" : "Pausar"}
+            aria-label={isPaused ? "Continuar demonstração" : "Pausar demonstração"}
           >
             {isPaused ? (
               <Play className="w-4 h-4 text-foreground" />
@@ -256,8 +258,9 @@ const ChatInterface = ({
           </button>
           <button
             onClick={onRestart}
-            className="p-2 rounded-lg bg-primary/20 hover:bg-primary/30 transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/20 transition-colors hover:bg-primary/30"
             title="Reproduzir novamente"
+            aria-label="Reproduzir demonstração novamente"
           >
             <MessageCircle className="w-4 h-4 text-primary" />
           </button>
@@ -372,10 +375,15 @@ const ChatInterface = ({
               placeholder="Digite sua mensagem..."
               className="w-full px-4 py-2.5 pr-10 rounded-lg bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               readOnly
+              tabIndex={-1}
+              aria-hidden="true"
             />
-            <button className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md bg-primary"
+            >
               <Send className="w-3.5 h-3.5 text-primary-foreground" />
-            </button>
+            </span>
           </div>
         </div>
       </div>

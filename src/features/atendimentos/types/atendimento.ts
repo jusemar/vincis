@@ -207,6 +207,16 @@ export type AtendimentoOperacionalDTO = {
  * interna ou dado de equipe chega a existir no objeto que atravessa para o
  * navegador do Cliente.
  */
+/** De onde veio o Atendimento, quando a origem é uma solicitação pública. */
+export type AtendimentoOrigemOportunidadeDTO = {
+  oportunidadeId: string
+  valorAcordadoCentavos: number | null
+  /** Referência do pagamento. `SIM-…` enquanto a etapa for simulada. */
+  pagamentoReferencia: string | null
+  pagamentoOrigem: string | null
+  pagamentoEm: string | null
+}
+
 export type AtendimentoDoClienteDTO = {
   id: string
   protocolo: string
@@ -224,6 +234,15 @@ export type AtendimentoDoClienteDTO = {
   prazoEm: string | null
   prestador: { nome: string }
   contratacao: AtendimentoContratacaoDTO | null
+  /**
+   * A solicitação de orçamento que originou este Atendimento, quando houve uma.
+   *
+   * Exclusivo com `contratacao`: ou o trabalho veio do catálogo do prestador,
+   * ou veio de um acordo numa solicitação pública. O Cliente precisa saber de
+   * onde veio o protocolo dele — e conseguir voltar para a negociação que o
+   * originou sem procurar.
+   */
+  origemOportunidade: AtendimentoOrigemOportunidadeDTO | null
   eventos: AtendimentoEventoDTO[]
   mensagens: AtendimentoMensagemDTO[]
   /** O Cliente lê o Protocolo inteiro: as próprias manifestações e todas as respostas. */

@@ -96,3 +96,23 @@ export { avaliacoesAtendimentoRelations } from './tables/avaliacoes_atendimento/
 
 export { atendimentoAjustes } from './tables/atendimento_ajustes/tabela'
 export { atendimentoAjustesRelations } from './tables/atendimento_ajustes/relacoes'
+
+export { oportunidades } from './tables/oportunidades/tabela'
+export { oportunidadesRelations } from './tables/oportunidades/relacoes'
+
+export { oportunidadePropostas } from './tables/oportunidade_propostas/tabela'
+export { oportunidadePropostasRelations } from './tables/oportunidade_propostas/relacoes'
+
+export { oportunidadeArquivos } from './tables/oportunidade_arquivos/tabela'
+export { oportunidadeArquivosRelations } from './tables/oportunidade_arquivos/relacoes'
+
+export { oportunidadeContrapropostas } from './tables/oportunidade_contrapropostas/tabela'
+export { oportunidadeContrapropostasRelations } from './tables/oportunidade_contrapropostas/relacoes'
+
+export { configuracoesPlataforma } from './tables/configuracoes_plataforma/tabela'
+
+export { oportunidadePagamentos } from './tables/oportunidade_pagamentos/tabela'
+export { oportunidadePagamentosRelations } from './tables/oportunidade_pagamentos/relacoes'
+
+export { oportunidadeDispensas } from './tables/oportunidade_dispensas/tabela'
+export { oportunidadeDispensasRelations } from './tables/oportunidade_dispensas/relacoes'

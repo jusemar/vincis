@@ -339,7 +339,7 @@ function PerfilProfissional() {
   const [whatsapp, setWhatsapp] = useState("");
 
   return (
-    <div className="relative min-h-screen bg-stone-50 dark:bg-navy-900">
+    <div className="relative min-h-dvh bg-stone-50 dark:bg-navy-900">
       <div className="ambient-gold" />
 
       <main className="relative z-10 pt-28 pb-32 px-6 lg:px-8 max-w-[1440px] mx-auto">
@@ -711,7 +711,7 @@ function PerfilProfissional() {
                 className="w-full bg-transparent px-5 py-4 text-sm text-stone-800 dark:text-stone-200 placeholder:text-stone-400 resize-none focus:outline-none rounded-2xl"
               />
               <div className="flex items-center justify-between px-4 py-3 border-t border-stone-200/70 dark:border-stone-700/70">
-                <button type="button" className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                <button type="button" className="alvo-toque-h flex items-center gap-1.5 text-xs text-stone-500 transition-colors hover:text-amber-600 dark:hover:text-amber-400">
                   <Paperclip className="size-3.5" />
                   Anexar contexto (PDF, XML, balanço)
                 </button>
@@ -992,7 +992,7 @@ function PerfilProfissional() {
         initial={{ y: 100 }}
         animate={{ y: 0 }}
         transition={{ delay: 1, duration: 0.5 }}
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-navy-900/90 backdrop-blur-xl border-t border-stone-200 dark:border-stone-800 py-3 px-4"
+        className="pb-safe-3 fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-white/90 px-4 pt-3 backdrop-blur-xl dark:border-stone-800 dark:bg-navy-900/90"
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <p className="text-sm text-stone-600 dark:text-stone-400 hidden sm:block">

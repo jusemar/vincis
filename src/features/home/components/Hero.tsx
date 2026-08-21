@@ -194,7 +194,7 @@ export default function Hero() {
     <section 
       id="hero" 
       ref={containerRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-hero"
+      className="relative min-h-dvh flex items-center justify-center overflow-hidden bg-gradient-hero"
     >
       {/* Background Effects */}
       <BackgroundOrbs />

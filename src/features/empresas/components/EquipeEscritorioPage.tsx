@@ -959,7 +959,7 @@ export default function EquipeEscritorioPage() {
                           {
                             id: profissional.usuarioId,
                             name: profissional.nome,
-                            photo: profissional.avatarUrl ?? "",
+                            photo: profissional.avatarUrl ?? null,
                             // O card público só possui estas três chaves; o
                             // tipo real da pessoa é exibido no badge acima.
                             profession:

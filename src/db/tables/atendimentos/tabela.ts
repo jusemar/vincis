@@ -12,6 +12,7 @@ import {
 import { clientes } from '../clientes/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
 import { empresas } from '../empresas/tabela'
+import { oportunidades } from '../oportunidades/tabela'
 import { usuarios } from '../usuarios/tabela'
 
 /**
@@ -50,6 +51,25 @@ export const atendimentos = pgTable(
     contratacaoId: uuid('contratacao_id').references(
       () => contratacoesServico.id,
     ),
+    /**
+     * Solicitação pública que originou este Atendimento, quando houve uma.
+     *
+     * A segunda porta de entrada do Atendimento, ao lado de `contratacao_id`:
+     * a contratação vem do catálogo do prestador, a oportunidade vem de um
+     * Cliente que ainda não sabia a quem recorrer. As duas terminam no mesmo
+     * lugar operacional — mesmo protocolo, mesmo Kanban, mesmo histórico — e é
+     * por isso que **não** existe um segundo sistema de Atendimento.
+     *
+     * Também único, e pelo mesmo motivo que `contratacao_id`: um acordo pago
+     * produz um Atendimento. Reprocessar o pagamento devolve o mesmo registro
+     * em vez de abrir outro protocolo.
+     *
+     * É este campo que sustenta a rastreabilidade nas duas direções — do
+     * Atendimento para a solicitação de origem e da solicitação para o
+     * Atendimento que ela virou. Guardar também `atendimento_id` na
+     * oportunidade criaria um par de chaves capaz de discordar entre si.
+     */
+    oportunidadeId: uuid('oportunidade_id').references(() => oportunidades.id),
     /** Prestador dono do Atendimento — a fronteira de isolamento da carteira. */
     prestadorId: uuid('prestador_id')
       .notNull()
@@ -111,6 +131,10 @@ export const atendimentos = pgTable(
     // Garante "no máximo um Atendimento por contratação" no próprio banco.
     contratacaoUnica: uniqueIndex('atendimentos_contratacao_unico').on(
       t.contratacaoId,
+    ),
+    // Mesma garantia do lado da oportunidade: um acordo pago, um protocolo.
+    oportunidadeUnica: uniqueIndex('atendimentos_oportunidade_unico').on(
+      t.oportunidadeId,
     ),
     prestadorIdx: index('atendimentos_prestador_idx').on(
       t.prestadorId,

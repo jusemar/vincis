@@ -229,14 +229,14 @@ export default function AdminHeader() {
           <AnimatePresence>
             {showNotifications && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                <div className="fixed inset-0 z-[90]" onClick={() => setShowNotifications(false)} />
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 top-12 w-80 bg-card border rounded-xl shadow-xl z-50 overflow-hidden"
+                  className="fixed right-3 top-16 z-[100] flex max-h-[calc(100dvh-5.5rem)] w-[min(20rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-xl sm:absolute sm:right-0 sm:top-12 sm:max-h-[min(30rem,calc(100dvh-8rem))]"
                 >
-                  <div className="p-4 border-b flex items-center justify-between gap-2">
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-b p-4">
                     <h3 className="font-semibold">Notificações</h3>
                     {/* Já existia visualmente um rodapé de ação; o que faltava
                         era ele fazer alguma coisa. "Marcar todas" atua só nas
@@ -250,7 +250,7 @@ export default function AdminHeader() {
                       </button>
                     )}
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="rolagem-contida min-h-0 flex-1 overflow-y-auto">
                     {linhas.map((linha) => (
                       <motion.div
                         key={linha.chave}
@@ -276,7 +276,7 @@ export default function AdminHeader() {
                       </motion.div>
                     ))}
                   </div>
-                  <div className="p-3 border-t">
+                  <div className="shrink-0 border-t p-3">
                     <button
                       onClick={() => {
                         setShowNotifications(false);

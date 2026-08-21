@@ -2,6 +2,8 @@ import { motion } from 'framer-motion';
 import type { ResumoDoPainelDTO } from '@/features/atendimentos/queries/painel-do-prestador';
 import { VISUAL_TIPO_COMUNICADO } from '@/features/comunicados/constants/comunicado';
 import type { ComunicadoDTO } from '@/features/comunicados/types/comunicado';
+import { BannerOportunidades } from '@/features/oportunidades/components/prestador/BannerOportunidades';
+import { saudacaoDeBoasVindas } from '@/features/usuarios/lib/nome-de-tratamento';
 import {
   Users,
   DollarSign,
@@ -153,9 +155,18 @@ export default function DashboardHome({
   resumo,
   comunicados = [],
   reputacao,
+  oportunidadesDisponiveis = 0,
 }: {
   clientesAtivos: number
   nomeUsuario: string
+  /**
+   * Oportunidades públicas esperando resposta deste prestador.
+   *
+   * Decide o assunto do banner do topo: com pendências ele fala de
+   * oportunidades, sem pendências volta a falar da meta. Individual por
+   * prestador — desconta o que ele já respondeu e o que ele dispensou.
+   */
+  oportunidadesDisponiveis?: number
   /**
    * Reputação real do prestador.
    *
@@ -182,7 +193,9 @@ export default function DashboardHome({
    */
   comunicados?: ComunicadoDTO[]
 }) {
-  const primeiroNome = nomeUsuario.trim().split(/\s+/)[0] || 'Profissional'
+  // "Dr. Ricardo Mendes" vira "Olá, Dr. Ricardo!" — o tratamento vem do nome
+  // cadastrado, nunca de dedução. Sem nome utilizável, a saudação é só "Olá!".
+  const saudacao = saudacaoDeBoasVindas(nomeUsuario)
   /**
    * Os dois cards de avaliação passam a mostrar o número real.
    *
@@ -290,21 +303,36 @@ export default function DashboardHome({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h2 className="mb-1 text-2xl font-bold">Olá, {primeiroNome}!</h2>
+        <h2 className="mb-1 text-2xl font-bold">{saudacao}</h2>
         <p className="text-muted-foreground">
           Veja o resumo da sua atividade e mantenha o controle do seu negócio.
         </p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="bg-gradient-to-r from-amber-500/20 via-amber-500/15 to-amber-500/20 rounded-xl p-5 border border-amber-500/30"
-        style={{ boxShadow: '0 0 30px rgba(240, 165, 0, 0.15)' }}
-      >
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
+      {/*
+        Um banner só, com dois assuntos.
+
+        Sem oportunidade esperando ação, ele é o aviso de meta que o Dashboard
+        sempre teve — inclusive **sem** o botão "Ver Oportunidades", que ali
+        levaria a uma tela vazia. Com oportunidades pendentes, o mesmo espaço
+        passa a falar delas, em verde. Nunca os dois ao mesmo tempo: dois
+        destaques empilhados não são destaque nenhum.
+
+        Os números da meta continuam sendo os mockados de sempre — não existe
+        fonte real de meta no banco, e inventar uma seria pior do que manter o
+        mock aprovado.
+      */}
+      {oportunidadesDisponiveis > 0 ? (
+        <BannerOportunidades pendentes={oportunidadesDisponiveis} />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-gradient-to-r from-amber-500/20 via-amber-500/15 to-amber-500/20 rounded-xl p-5 border border-amber-500/30"
+          style={{ boxShadow: '0 0 30px rgba(240, 165, 0, 0.15)' }}
+        >
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="h-14 w-14 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow">
               <Rocket className="h-7 w-7 text-on-gradient" />
             </div>
@@ -313,19 +341,12 @@ export default function DashboardHome({
                 Faltam <span className="text-amber-500 font-bold">R$ 3.250</span> para bater sua meta mensal!
               </p>
               <p className="text-sm text-muted-foreground">
-                Você está a apenas 2 serviços de atingir seu objetivo. Que tal oferecer um serviço avulso hoje?
+                Você está a apenas 2 serviços de atingir seu objetivo. Que tal criar uma promoção para um serviço avulso hoje?
               </p>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
-          >
-            Ver Oportunidades
-          </motion.button>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metricas.map((metric, index) => {

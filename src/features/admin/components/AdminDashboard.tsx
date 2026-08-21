@@ -19,6 +19,7 @@ import ProfilePage from "./ProfilePage";
 import AchievementsPage from "./AchievementsPage";
 import AtendimentosPage from "./AtendimentosPage";
 import EquipeEscritorioPage from "@/features/empresas/components/EquipeEscritorioPage";
+import OportunidadesPage from "@/features/oportunidades/components/prestador/OportunidadesPage";
 import type { Protocol } from "../types/atendimentos";
 import type { ResumoDoPainelDTO } from "@/features/atendimentos/queries/painel-do-prestador";
 import type { ComunicadoDTO } from "@/features/comunicados/types/comunicado";
@@ -30,8 +31,15 @@ export default function AdminDashboard({
   resumoDoPainel,
   comunicados = [],
   painelDeAvaliacoes,
+  oportunidadesDisponiveis = 0,
 }: {
   clientesAtivos: number
+  /**
+   * Oportunidades abertas e compatíveis que ainda não receberam proposta deste
+   * prestador. Alimenta só o destaque do Dashboard — a lista em si é carregada
+   * pela própria tela de Oportunidades.
+   */
+  oportunidadesDisponiveis?: number
   /**
    * Avaliações reais recebidas pelo prestador.
    *
@@ -92,6 +100,7 @@ export default function AdminDashboard({
             resumo={resumoDoPainel}
             comunicados={comunicados}
             reputacao={reputacao}
+            oportunidadesDisponiveis={oportunidadesDisponiveis}
           />
         );
       case "clients":
@@ -109,6 +118,8 @@ export default function AdminDashboard({
             usuarioId={usuario?.id}
           />
         );
+      case "oportunidades":
+        return <OportunidadesPage />;
       case "financial":
         return <FinancialPage />;
       case "reviews":
@@ -127,6 +138,7 @@ export default function AdminDashboard({
             resumo={resumoDoPainel}
             comunicados={comunicados}
             reputacao={reputacao}
+            oportunidadesDisponiveis={oportunidadesDisponiveis}
           />
         );
     }
@@ -134,7 +146,7 @@ export default function AdminDashboard({
 
   return (
     <div
-      className="admin-dashboard flex h-screen bg-background overflow-hidden"
+      className="admin-dashboard flex h-dvh bg-background overflow-hidden"
       data-theme={theme}
     >
       <div className="hidden lg:contents">
@@ -149,7 +161,7 @@ export default function AdminDashboard({
       <div className="flex-1 flex flex-col overflow-hidden">
         <AdminHeader />
 
-        <main className="flex-1 overflow-y-auto p-4 pb-28 sm:p-6 sm:pb-28 lg:pb-6">
+        <main className="flex-1 overflow-y-auto p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentPage}

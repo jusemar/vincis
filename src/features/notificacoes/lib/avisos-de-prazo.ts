@@ -19,9 +19,16 @@ export const JANELA_AVISO_PRAZO_DIAS = 3
  * é a abertura do painel da própria pessoa: ao entrar, ela descobre o que está
  * apertado na carteira dela, e só na dela.
  *
- * A repetição é evitada por consulta, e não por coluna nova: se já existe aviso
- * do mesmo tipo para aquele Atendimento nas últimas 24 horas, nada é criado. É
- * isso que impede o sino de encher com o mesmo prazo a cada F5.
+ * A repetição é evitada em dois níveis. A consulta das últimas 24 horas evita
+ * o trabalho inútil; a **chave de deduplicação** por Atendimento e dia é o que
+ * garante o resultado, porque ela é conferida pelo índice único do banco no
+ * momento do insert. Só a consulta não bastava: duas aberturas simultâneas do
+ * painel liam "ainda não avisei" antes de qualquer uma gravar, e o mesmo prazo
+ * virava dois avisos idênticos (foi o que aconteceu no #2026-0009).
+ *
+ * Enquanto não existir agendador na infraestrutura, a abertura do painel
+ * continua sendo o gatilho — mas agora ela é idempotente: abrir dez vezes no
+ * mesmo dia produz, no máximo, um aviso por pessoa.
  */
 export async function emitirAvisosDePrazo(usuarioId: string, agora = new Date()) {
   const limiteProximo = new Date(agora.getTime() + JANELA_AVISO_PRAZO_DIAS * UM_DIA)
@@ -78,6 +85,11 @@ export async function emitirAvisosDePrazo(usuarioId: string, agora = new Date())
     const audiencia = await obterAudienciaDoAtendimento(db, atendimento.id)
     if (!audiencia) continue
 
+    // Um aviso por Atendimento, por pessoa, por dia. O dia entra na chave para
+    // que o lembrete possa voltar amanhã se o prazo continuar vencido — sem
+    // ele, o aviso valeria para sempre e a cobrança sumiria depois da primeira.
+    const dia = agora.toISOString().slice(0, 10)
+
     criadas += await emitirNotificacoes(db, {
       // Prazo é cobrança da equipe. O Cliente não é avisado de um
       // compromisso interno que ele não tem como cumprir.
@@ -94,6 +106,7 @@ export async function emitirAvisosDePrazo(usuarioId: string, agora = new Date())
       recursoId: atendimento.id,
       atendimentoId: atendimento.id,
       protocolo: atendimento.protocolo,
+      chaveDedupe: `${TIPOS_NOTIFICACAO.prazoProximo}:${atendimento.id}:${dia}`,
       destino: {
         pagina: 'atendimentos',
         atendimento: atendimento.protocolo,

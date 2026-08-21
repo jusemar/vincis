@@ -1,8 +1,10 @@
+import { sql } from 'drizzle-orm'
 import {
   index,
   jsonb,
   pgTable,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
@@ -61,6 +63,20 @@ export const notificacoes = pgTable(
      * possa mais abrir.
      */
     protocolo: varchar('protocolo', { length: 12 }),
+    /**
+     * Chave de deduplicação do fato que originou o aviso.
+     *
+     * Nula na maioria dos avisos: uma mensagem nova é sempre um fato novo e
+     * deve gerar aviso novo. Preenchida quando o fato é **recorrente por
+     * natureza** — o prazo vencido é o mesmo prazo a cada leitura —, e aí o
+     * índice único abaixo é o que garante um aviso por destinatário.
+     *
+     * A garantia é do banco, e não de uma consulta prévia, porque o padrão
+     * "consulta se já existe, depois insere" perde a corrida quando duas
+     * requisições chegam juntas: foi exatamente assim que o #2026-0009 gerou
+     * dois avisos idênticos com 233ms de diferença.
+     */
+    chaveDedupe: varchar('chave_dedupe', { length: 120 }),
     destino: jsonb('destino').notNull(),
     lidaEm: timestamp('lida_em'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -77,5 +93,15 @@ export const notificacoes = pgTable(
       t.recursoTipo,
       t.recursoId,
     ),
+    /**
+     * Um aviso por destinatário para cada fato recorrente.
+     *
+     * Parcial de propósito: só vale para quem preencheu a chave. Os avisos
+     * comuns continuam podendo se repetir, porque cada um deles corresponde a
+     * um fato distinto.
+     */
+    dedupeUnico: uniqueIndex('notificacoes_dedupe_unico')
+      .on(t.destinatarioId, t.chaveDedupe)
+      .where(sql`chave_dedupe is not null`),
   }),
 )

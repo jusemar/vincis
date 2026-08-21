@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -37,6 +38,14 @@ import { AvaliacaoDoAtendimento } from '@/features/avaliacoes/components/cliente
 import { useTempoReal } from '@/features/tempo-real/components/TempoRealProvider'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
 import { rotuloPreco } from '@/features/servicos/lib/formatar-preco'
+import { formatarDataCurta, resumoDoAtendimento } from '../lib/painel-do-cliente'
+import {
+  CabecalhoSecao,
+  Dado,
+  PainelVazio,
+  Pilula,
+  Progresso,
+} from './ui/primitivos'
 import type { ModeloPreco } from '@/features/servicos/schemas/servico'
 
 type Aba = 'protocolo' | 'conversa' | 'arquivos' | 'historico' | 'informacoes'
@@ -67,6 +76,30 @@ const formatarTamanho = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+const FILTROS_ATENDIMENTO = [
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'andamento', rotulo: 'Em andamento' },
+  { id: 'aguardando', rotulo: 'Aguardando você' },
+  { id: 'concluidos', rotulo: 'Concluídos' },
+] as const
+
+type FiltroAtendimentos = (typeof FILTROS_ATENDIMENTO)[number]['id']
+
+const ENCERRADOS = ['concluido', 'recusado', 'cancelado']
+
+function aplicarFiltroAtendimentos(
+  atendimentos: AtendimentoDoClienteDTO[],
+  filtro: FiltroAtendimentos,
+) {
+  if (filtro === 'andamento')
+    return atendimentos.filter((item) => !ENCERRADOS.includes(item.status))
+  if (filtro === 'aguardando')
+    return atendimentos.filter((item) => item.status === 'aguardando_cliente')
+  if (filtro === 'concluidos')
+    return atendimentos.filter((item) => item.status === 'concluido')
+  return atendimentos
+}
+
 /**
  * Acompanhamento dos Atendimentos na área do Cliente.
  *
@@ -79,14 +112,23 @@ const formatarTamanho = (bytes: number) => {
  */
 export function AtendimentosDoCliente({
   atendimentos,
+  atendimentoInicial = null,
 }: {
   atendimentos: AtendimentoDoClienteDTO[]
+  /** Deep link vindo da Visão Geral (`?atendimento=<id>`). */
+  atendimentoInicial?: string | null
 }) {
   const router = useRouter()
-  const [abertoId, setAbertoId] = useState<string | null>(null)
+  const [abertoId, setAbertoId] = useState<string | null>(atendimentoInicial)
+  const [filtro, setFiltro] = useState<FiltroAtendimentos>('todos')
   const aberto = useMemo(
     () => atendimentos.find((a) => a.id === abertoId) ?? null,
     [atendimentos, abertoId],
+  )
+
+  const visiveis = useMemo(
+    () => aplicarFiltroAtendimentos(atendimentos, filtro),
+    [atendimentos, filtro],
   )
 
   if (aberto) {
@@ -99,56 +141,126 @@ export function AtendimentosDoCliente({
     )
   }
 
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <h2 className="font-semibold">Meus atendimentos</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Acompanhe o andamento dos serviços que você contratou.
-        </p>
+  const aguardando = atendimentos.filter(
+    (item) => item.status === 'aguardando_cliente',
+  ).length
 
-        {atendimentos.length === 0 ? (
-          <div className="mt-4 flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center">
-            <MessageSquare className="size-9 text-muted-foreground" />
-            <p className="mt-3 font-medium">Nenhum atendimento em andamento.</p>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Ao contratar um serviço, o atendimento aparece aqui com protocolo,
-              conversa e arquivos.
-            </p>
-          </div>
-        ) : (
-          <ul className="mt-4 divide-y rounded-xl border">
-            {atendimentos.map((atendimento) => (
-              <li key={atendimento.id}>
-                <button
-                  type="button"
-                  onClick={() => setAbertoId(atendimento.id)}
-                  className="flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {atendimento.protocolo}
-                    </p>
-                    <p className="font-medium">{atendimento.titulo}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {atendimento.prestador.nome} ·{' '}
-                      {new Intl.DateTimeFormat('pt-BR').format(
-                        new Date(atendimento.criadoEm),
-                      )}
-                    </p>
+  return (
+    <div className="space-y-6">
+      <CabecalhoSecao
+        contexto="Atendimentos"
+        titulo="Seus serviços em acompanhamento"
+        descricao={
+          aguardando
+            ? `${aguardando} ${aguardando === 1 ? 'serviço aguarda' : 'serviços aguardam'} um retorno seu.`
+            : 'Protocolo, prazo, progresso e histórico de cada serviço contratado.'
+        }
+      />
+
+      {atendimentos.length >= 3 ? (
+        <nav
+          aria-label="Filtrar atendimentos"
+          className="flex flex-wrap gap-1 border-b pb-1"
+        >
+          {FILTROS_ATENDIMENTO.map((opcao) => {
+            const ativo = opcao.id === filtro
+            return (
+              <button
+                key={opcao.id}
+                type="button"
+                aria-pressed={ativo}
+                onClick={() => setFiltro(opcao.id)}
+                className={`alvo-toque-h rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  ativo
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {opcao.rotulo}
+              </button>
+            )
+          })}
+        </nav>
+      ) : null}
+
+      {visiveis.length === 0 ? (
+        <PainelVazio
+          titulo={
+            atendimentos.length
+              ? 'Nenhum serviço neste filtro'
+              : 'Nenhum atendimento em andamento'
+          }
+          descricao={
+            atendimentos.length
+              ? 'Troque o filtro para ver os demais serviços.'
+              : 'Ao contratar um profissional, o serviço aparece aqui com protocolo, conversa, arquivos e histórico.'
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {visiveis.map((atendimento) => {
+            const resumo = resumoDoAtendimento(atendimento)
+            return (
+              <button
+                key={atendimento.id}
+                type="button"
+                onClick={() => setAbertoId(atendimento.id)}
+                className="block w-full rounded-xl border bg-card p-5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {atendimento.protocolo}
+                  </span>
+                  <Pilula rotulo={resumo.statusRotulo} tom={resumo.tom} />
+                  {resumo.aguardandoCliente ? (
+                    <Pilula rotulo="Precisa de você" tom="atencao" />
+                  ) : null}
+                  {atendimento.conclusao && !atendimento.avaliacao ? (
+                    <Pilula rotulo="Avaliação pendente" tom="info" />
+                  ) : null}
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {formatarDataCurta(atendimento.criadoEm)}
+                  </span>
+                </div>
+
+                <h2 className="mt-3 text-base font-semibold leading-snug">
+                  {atendimento.titulo}
+                </h2>
+
+                <dl className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <Dado rotulo="Profissional" valor={atendimento.prestador.nome} />
+                  <Dado
+                    rotulo="Categoria"
+                    valor={rotuloCategoria(atendimento.categoria)}
+                  />
+                  <Dado rotulo="Prazo" valor={resumo.prazo ?? 'Sem prazo definido'} />
+                  <Dado
+                    rotulo="Mensagens"
+                    valor={String(atendimento.mensagens.length)}
+                  />
+                </dl>
+
+                {resumo.progresso ? (
+                  <div className="mt-4 flex flex-wrap items-end gap-4">
+                    <Progresso
+                      percentual={resumo.progresso.percentual}
+                      rotulo={`${resumo.progresso.done} de ${resumo.progresso.total} etapas concluídas`}
+                    />
                   </div>
-                  <div className="flex items-center gap-3 sm:shrink-0">
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                      {ROTULO_STATUS_ATENDIMENTO[atendimento.status]}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+                ) : null}
+
+                {resumo.ultimaAtualizacao ? (
+                  <p className="mt-3 truncate text-xs text-muted-foreground">
+                    Última atualização: {resumo.ultimaAtualizacao.descricao} ·{' '}
+                    {resumo.ultimaAtualizacao.quando}
+                  </p>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -679,6 +791,22 @@ function DetalheAtendimento({
               rotulo="Serviço"
               valor={contratacao?.nomeServico ?? atendimento.titulo}
             />
+            {/* De onde veio este protocolo. Uma linha, sem poluir: quem
+                contratou do catálogo não precisa ver campo de solicitação, e
+                quem veio da solicitação precisa conseguir voltar até ela. */}
+            {atendimento.origemOportunidade ? (
+              <Informacao
+                rotulo="Origem"
+                valor={
+                  <Link
+                    href={`/cliente?aba=orcamentos&pagar=${atendimento.origemOportunidade.oportunidadeId}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    Solicitação de orçamento
+                  </Link>
+                }
+              />
+            ) : null}
             <Informacao rotulo="Profissional" valor={atendimento.prestador.nome} />
             <Informacao
               rotulo="Categoria"
@@ -689,28 +817,31 @@ function DetalheAtendimento({
               valor={ROTULO_STATUS_ATENDIMENTO[atendimento.status]}
             />
             <Informacao
-              rotulo="Contratado em"
+              rotulo={atendimento.origemOportunidade ? 'Aberto em' : 'Contratado em'}
               valor={formatarData(contratacao?.criadaEm ?? atendimento.criadoEm)}
             />
-            <Informacao
-              rotulo="Valor"
-              valor={
-                contratacao
-                  ? rotuloPreco(
-                      contratacao.modeloPreco as ModeloPreco,
-                      contratacao.valorCentavos,
-                    )
-                  : '—'
-              }
-            />
-            <Informacao
-              rotulo="Modelo de preço"
-              valor={
-                contratacao
-                  ? (ROTULO_MODELO[contratacao.modeloPreco] ?? contratacao.modeloPreco)
-                  : '—'
-              }
-            />
+            {/* Preço e modelo pertencem ao catálogo. Num protocolo nascido de
+                solicitação pública não existe serviço de catálogo por trás, e
+                dois travessões ali pareceriam dado faltando — o valor real
+                aparece logo abaixo, em "Valor acordado". */}
+            {contratacao ? (
+              <>
+                <Informacao
+                  rotulo="Valor"
+                  valor={rotuloPreco(
+                    contratacao.modeloPreco as ModeloPreco,
+                    contratacao.valorCentavos,
+                  )}
+                />
+                <Informacao
+                  rotulo="Modelo de preço"
+                  valor={
+                    ROTULO_MODELO[contratacao.modeloPreco] ??
+                    contratacao.modeloPreco
+                  }
+                />
+              </>
+            ) : null}
             {/*
               Prazo e prioridade são decisões da equipe: aqui aparecem para
               leitura, sem nenhum controle de edição. Quando a profissional
@@ -732,6 +863,35 @@ function DetalheAtendimento({
               valor={ROTULO_PRIORIDADE[atendimento.prioridade]}
               icone={<Flag className="size-3.5" />}
             />
+            {/* Acordo vindo de solicitação pública: o valor combinado e o
+                comprovante ficam aqui, ao lado dos demais dados do protocolo. */}
+            {atendimento.origemOportunidade?.pagamentoReferencia ? (
+              <>
+                <Informacao
+                  rotulo="Valor acordado"
+                  valor={
+                    atendimento.origemOportunidade.valorAcordadoCentavos != null
+                      ? (
+                          atendimento.origemOportunidade.valorAcordadoCentavos /
+                          100
+                        ).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })
+                      : '—'
+                  }
+                />
+                <Informacao
+                  rotulo={
+                    atendimento.origemOportunidade.pagamentoOrigem === 'simulado'
+                      ? 'Pagamento (simulado)'
+                      : 'Pagamento'
+                  }
+                  valor={atendimento.origemOportunidade.pagamentoReferencia}
+                />
+              </>
+            ) : null}
+
             {/* Só depois da conclusão: antes dela não há data nem autor, e um
                 travessão aqui pareceria dado faltando. */}
             {atendimento.conclusao && (
@@ -805,7 +965,8 @@ function Informacao({
   icone,
 }: {
   rotulo: string
-  valor: string
+  /** Texto na maioria dos casos; aceita nó para o raro campo que é link. */
+  valor: React.ReactNode
   icone?: React.ReactNode
 }) {
   return (

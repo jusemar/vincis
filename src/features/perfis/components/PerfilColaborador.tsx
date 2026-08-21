@@ -16,7 +16,7 @@ export function PerfilColaborador() {
 
   return (
     <div
-      className="min-h-screen font-[Inter,system-ui,-apple-system,sans-serif]"
+      className="min-h-dvh font-[Inter,system-ui,-apple-system,sans-serif]"
       style={{
         paddingTop: 72,
         background: `

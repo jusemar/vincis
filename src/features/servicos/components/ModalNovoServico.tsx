@@ -168,7 +168,7 @@ export function ModalNovoServico({
 
   return (
     <Dialog open={aberto} onOpenChange={(estado) => !estado && onFechar()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
             {servico ? 'Editar serviço' : 'Novo serviço'}

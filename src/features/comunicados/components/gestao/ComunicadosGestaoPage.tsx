@@ -136,7 +136,7 @@ export function ComunicadosGestaoPage({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b bg-card/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -288,7 +288,7 @@ export function ComunicadosGestaoPage({
                   {VISUAL_TIPO_COMUNICADO[comunicado.tipo].icone}
                 </div>
 
-                <div className="min-w-[16rem] flex-1">
+                <div className="min-w-0 flex-1 sm:min-w-[16rem]">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{comunicado.titulo}</p>
                     <span

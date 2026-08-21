@@ -20,6 +20,18 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { Professional } from '../types/profissionais';
 
+/** Iniciais para o avatar de quem ainda não enviou foto. */
+function iniciaisDoNome(nome: string) {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0])
+    .join('')
+    .toUpperCase();
+}
+
 interface BookingModalProps {
   professional: Professional;
   isOpen: boolean;
@@ -246,7 +258,7 @@ export default function BookingModal({ professional, isOpen, onClose }: BookingM
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden glass-card rounded-2xl border border-border shadow-elevated"
+            className="relative w-full max-w-2xl max-h-[85dvh] overflow-hidden glass-card rounded-2xl border border-border shadow-elevated"
           >
             {isConfirmed ? (
               // Success Screen
@@ -302,11 +314,22 @@ export default function BookingModal({ professional, isOpen, onClose }: BookingM
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-border">
                   <div className="flex items-center gap-4">
-                    <img 
-                      src={professional.photo} 
-                      alt={professional.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
+                    {/* Sem foto não renderiza `<img>`: `src=""` dispara nova
+                        requisição da página e polui o console. */}
+                    {professional.photo ? (
+                      <img
+                        src={professional.photo}
+                        alt={professional.name}
+                        className="h-12 w-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-gold text-sm font-bold text-on-gradient"
+                      >
+                        {iniciaisDoNome(professional.name)}
+                      </span>
+                    )}
                     <div>
                       <h3 className="font-semibold text-foreground">{professional.name}</h3>
                       <p className="text-sm text-muted-foreground">{professional.specialty}</p>
@@ -339,7 +362,7 @@ export default function BookingModal({ professional, isOpen, onClose }: BookingM
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-y-auto max-h-[50vh]">
+                <div className="p-6 overflow-y-auto max-h-[50dvh]">
                   <AnimatePresence mode="wait">
                     {/* Step 1: Date & Time Selection */}
                     {step === 1 && (
@@ -588,11 +611,20 @@ export default function BookingModal({ professional, isOpen, onClose }: BookingM
                           {/* Summary Card */}
                           <div className="glass-card rounded-2xl p-6 space-y-4">
                             <div className="flex items-center gap-4 pb-4 border-b border-border">
-                              <img 
-                                src={professional.photo} 
-                                alt={professional.name}
-                                className="w-16 h-16 rounded-full object-cover"
-                              />
+                              {professional.photo ? (
+                                <img
+                                  src={professional.photo}
+                                  alt={professional.name}
+                                  className="h-16 w-16 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span
+                                  aria-hidden
+                                  className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-gold text-base font-bold text-on-gradient"
+                                >
+                                  {iniciaisDoNome(professional.name)}
+                                </span>
+                              )}
                               <div>
                                 <h5 className="font-semibold text-foreground">{professional.name}</h5>
                                 <p className="text-sm text-muted-foreground">{professional.specialty}</p>

@@ -123,7 +123,7 @@ export const NewAtendimentoDialog = ({ open, onClose, onCreate }: Props) => {
         className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-in fade-in"
         onClick={onClose}
       />
-      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card shadow-card-hover animate-in fade-in zoom-in-95">
+      <div className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card shadow-card-hover animate-in fade-in zoom-in-95">
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Novo atendimento</h2>

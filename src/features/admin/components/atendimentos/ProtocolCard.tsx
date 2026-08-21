@@ -120,7 +120,7 @@ export const ProtocolCard = ({
                         e.stopPropagation();
                         onAbrirNaoLidas?.();
                       }}
-                      className="ml-1 cursor-pointer rounded-full bg-priority-high px-1.5 py-0 text-[10px] font-semibold text-white"
+                      className="area-toque-expandida ml-1 cursor-pointer rounded-full bg-priority-high px-1.5 py-0 text-[10px] font-semibold text-white"
                     >
                       {p.unread}
                     </span>

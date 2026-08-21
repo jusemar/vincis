@@ -303,7 +303,7 @@ export default function FinancialPage() {
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                  className={`alvo-toque-h px-3 py-1.5 text-sm rounded-md transition-all ${
                     filterStatus === status
                       ? 'bg-background shadow-sm font-medium'
                       : 'text-muted-foreground hover:text-foreground'

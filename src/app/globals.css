@@ -103,6 +103,21 @@
 
 html { scroll-behavior: smooth; }
 
+/*
+  Cor e fundo herdados do tema.
+
+  Faltavam: o `body` nunca recebeu `color`, então todo texto sem classe de cor
+  explícita caía no preto padrão do navegador. No tema claro isso passava
+  despercebido — o preto é quase idêntico ao `--foreground` claro —, mas no
+  escuro qualquer texto que apenas herdasse a cor ficava preto sobre fundo
+  escuro. As telas antigas contornavam o problema declarando a cor em cada
+  elemento, ou vivendo sob `.admin-dashboard`, que força a cor com `!important`.
+
+  Com estas duas linhas o tema volta a ser herdado, como o resto do sistema já
+  supunha: quem não declara cor recebe a do tema vigente, nos dois modos.
+*/
+body { color: hsl(var(--foreground)); background-color: hsl(var(--background)); }
+
 ::selection { background: hsl(var(--primary) / 0.3); color: hsl(var(--foreground)); }
 
 *:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
@@ -116,6 +131,81 @@ html { scroll-behavior: smooth; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
 * { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) hsl(var(--background)); }
+
+/*
+  Alvos de toque no Design System.
+
+  `pointer: coarse` só casa com aparelhos cujo apontador principal é o dedo —
+  celular e tablet. O desktop mantém a densidade atual; no toque, todo botão do
+  Design System passa a ter no mínimo 44px, o piso recomendado pelas WCAG para
+  alvos. Corrigir aqui evita repetir `min-h-11` em dezenas de chamadas.
+
+  `variant="link"` fica de fora da largura mínima: ele é texto dentro de frase,
+  e forçar 44px de largura descolaria o link do parágrafo.
+*/
+@media (pointer: coarse) {
+  [data-slot="button"] { min-height: 2.75rem; }
+  [data-slot="button"][data-size^="icon"] { min-width: 2.75rem; }
+  [data-slot="button"][data-variant="link"] { min-height: 2.75rem; min-width: 0; }
+
+  /*
+    `alvo-toque` para controles fora do componente Button (chips de filtro,
+    abas, alternadores de visualização). Existe para não espalhar a mesma media
+    query em dezenas de arquivos, e para o desktop continuar com a densidade
+    original — no toque o alvo sobe para os 44px recomendados.
+  */
+  .alvo-toque { min-height: 2.75rem; min-width: 2.75rem; }
+  .alvo-toque-h { min-height: 2.75rem; }
+
+  /*
+    Abas: o piso precisa ir no gatilho, não só na lista. O gatilho usa
+    `h-[calc(100%-1px)]`, que só resolve quando a lista tem altura definida —
+    em `TabsList h-auto` ele voltava a 30px. A lista ganha os 6px do próprio
+    padding para o gatilho de 44px caber sem estourar.
+  */
+  [data-slot="tabs-list"] { min-height: 3.125rem; }
+  [data-slot="tabs-trigger"] { min-height: 2.75rem; }
+
+  /*
+    Para marcadores que não podem crescer sem quebrar o layout (um contador
+    dentro de um cartão, por exemplo): a área de toque cresce por pseudo-
+    elemento, o desenho continua do mesmo tamanho.
+  */
+  .area-toque-expandida { position: relative; }
+  .area-toque-expandida::after {
+    content: "";
+    position: absolute;
+    inset: 50% 50% 50% 50%;
+    margin: -1.375rem;
+    /* Sem isto, irmãos posteriores do cartão pintam por cima e engolem o toque. */
+    z-index: 1;
+  }
+}
+
+@layer utilities {
+  /*
+    Safe area — só tem efeito porque o layout declara `viewportFit: "cover"`.
+    Onde não há inset (desktop, Android sem gestos) `env()` devolve 0 e as
+    classes viram no-ops, então podem ser aplicadas sem condicional.
+  */
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+  .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+  .px-safe { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+
+  /* Somam o inset a um respiro próprio — para barras de ação fixas/sticky. */
+  .pb-safe-3 { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+  .pb-safe-4 { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+  .pb-safe-6 { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
+  .mb-safe { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /*
+    Rolagem contida: o gesto que chega ao fim de um painel (modal, drawer,
+    lista interna) não deve "vazar" e arrastar a página atrás dele.
+  */
+  .rolagem-contida { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+}
 
 @layer components {
   .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.2); }

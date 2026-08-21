@@ -299,7 +299,7 @@ export function GestaoUsuariosPage({
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.1),transparent_32%),hsl(var(--background))]">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.1),transparent_32%),hsl(var(--background))]">
       <header className="border-b bg-card/90 backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">

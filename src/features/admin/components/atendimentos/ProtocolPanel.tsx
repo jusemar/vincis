@@ -546,7 +546,7 @@ const ProtocolTab = ({
         )}
       </div>
 
-      <div className="border-t border-border bg-card p-3">
+      <div className="pb-safe-3 border-t border-border bg-card px-3 pt-3">
         <div className="rounded-xl border border-border bg-background transition-colors">
           <textarea
             value={texto}
@@ -770,7 +770,7 @@ const ConversationTab = ({
       )}
       </div>
 
-      <div className="border-t border-border bg-card p-3">
+      <div className="pb-safe-3 border-t border-border bg-card px-3 pt-3">
         <div
           className={cn(
             "rounded-xl border bg-background transition-colors",
@@ -794,8 +794,8 @@ const ConversationTab = ({
           />
           <div className="flex items-center justify-between border-t border-border/60 px-2 py-1.5">
             <div className="flex items-center gap-1 text-muted-foreground">
-              <button className="rounded-md p-1.5 hover:bg-muted hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
-              <button className="rounded-md p-1.5 hover:bg-muted hover:text-foreground"><Smile className="h-4 w-4" /></button>
+              <button aria-label="Anexar arquivo" className="alvo-toque flex items-center justify-center rounded-md p-1.5 hover:bg-muted hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
+              <button aria-label="Inserir emoji" className="alvo-toque flex items-center justify-center rounded-md p-1.5 hover:bg-muted hover:text-foreground"><Smile className="h-4 w-4" /></button>
             </div>
             <Button
               size="sm"

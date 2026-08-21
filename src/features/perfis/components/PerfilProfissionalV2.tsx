@@ -251,7 +251,7 @@ export default function PerfilProfissionalV2({
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         <div className="border-b border-border bg-muted/10 animate-pulse">
           <div className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8 space-y-4">
             <div className="h-3 w-40 bg-muted rounded" />
@@ -292,7 +292,7 @@ export default function PerfilProfissionalV2({
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
             <Shield className="h-8 w-8 text-destructive" />
@@ -316,7 +316,7 @@ export default function PerfilProfissionalV2({
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-dvh bg-background relative overflow-hidden">
       {/* Background glows & grid */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute inset-0 bg-grid opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
@@ -338,9 +338,9 @@ export default function PerfilProfissionalV2({
                 transition={{ duration: 0.4 }}
                 className="flex items-center gap-2 text-xs text-muted-foreground mb-4"
               >
-                <Link href="/" className="hover:text-primary transition-colors">Início</Link>
+                <Link href="/" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Início</Link>
                 <ChevronRight className="h-3 w-3" />
-                <Link href="/profissionais" className="hover:text-primary transition-colors">Profissionais</Link>
+                <Link href="/profissionais" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Profissionais</Link>
                 <ChevronRight className="h-3 w-3" />
                 <span className="text-foreground font-semibold">{nomeExibido}</span>
               </motion.nav>
@@ -510,7 +510,7 @@ export default function PerfilProfissionalV2({
                 />
                 <div className="flex items-center gap-2 mt-2 text-muted-foreground text-sm">
                   <Paperclip className="h-4 w-4" />
-                  <button className="hover:underline text-xs">Anexar contexto (PDF, XML, balanço)</button>
+                  <button className="alvo-toque-h inline-flex items-center text-xs hover:underline">Anexar contexto (PDF, XML, balanço)</button>
                 </div>
               </div>
 
@@ -878,8 +878,15 @@ export default function PerfilProfissionalV2({
                   </div>
 
                   <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold mb-4">
-                    {availabilityData.weekDays.map((d) => (
-                      <span key={d} className="opacity-50 text-muted-foreground">{d}</span>
+                    {/*
+                      A chave é a posição, e não a letra: as iniciais dos dias
+                      em português repetem (D S T Q Q S S) e duas colunas com a
+                      mesma chave fazem o React descartar uma delas.
+                    */}
+                    {availabilityData.weekDays.map((d, indice) => (
+                      <span key={indice} className="opacity-50 text-muted-foreground">
+                        {d}
+                      </span>
                     ))}
                     {Array.from({ length: availabilityData.leadingBlanks }).map((_, i) => (
                       <span key={`blank-${i}`} />

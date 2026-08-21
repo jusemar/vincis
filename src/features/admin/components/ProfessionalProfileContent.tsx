@@ -755,7 +755,7 @@ export function ProfessionalProfileContent({
         </TabsContent>
       </Tabs>
 
-      <div className="sticky bottom-4 flex justify-end rounded-2xl border border-amber-500/20 bg-card/95 p-3 shadow-card backdrop-blur">
+      <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] flex justify-end rounded-2xl border border-amber-500/20 bg-card/95 p-3 shadow-card backdrop-blur">
         <Button
           type="submit"
           disabled={isSubmitting}

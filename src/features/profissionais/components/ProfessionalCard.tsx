@@ -1,9 +1,22 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Circle, Briefcase, GraduationCap, Star } from "lucide-react";
 import type { Professional } from "../types/profissionais";
+
+/** Iniciais para o avatar de quem ainda não enviou foto. */
+function iniciais(nome: string) {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0])
+    .join("")
+    .toUpperCase();
+}
 
 interface ProfessionalCardProps {
   professional: Professional;
@@ -19,6 +32,7 @@ const ProfessionalCard = ({
   adminControls,
 }: ProfessionalCardProps) => {
   const router = useRouter();
+  const [fotoFalhou, setFotoFalhou] = useState(false);
 
   const {
     name,
@@ -77,14 +91,29 @@ const ProfessionalCard = ({
               style={{ background: "var(--gradient-gold)" }}
               aria-hidden
             />
-            <div className="relative h-28 w-28 overflow-hidden rounded-full ring-2 ring-border transition-transform duration-500 group-hover:scale-105 shadow-card">
-              <img
-                src={photo}
-                alt={name}
-                width={256}
-                height={256}
-                className="h-full w-full object-cover"
-              />
+            {/*
+              Sem foto não existe `<img>`: `src=""` faz o navegador reemitir a
+              requisição da própria página e polui o console. O recuo é o mesmo
+              das demais telas — iniciais sobre o gradiente da marca.
+            */}
+            <div className="relative grid h-28 w-28 place-items-center overflow-hidden rounded-full ring-2 ring-border transition-transform duration-500 group-hover:scale-105 shadow-card">
+              {photo && !fotoFalhou ? (
+                <img
+                  src={photo}
+                  alt={name}
+                  width={256}
+                  height={256}
+                  onError={() => setFotoFalhou(true)}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="grid h-full w-full place-items-center bg-gradient-gold text-2xl font-bold text-on-gradient"
+                >
+                  {iniciais(name)}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -168,7 +197,7 @@ const ProfessionalCard = ({
           <button
             type="button"
             disabled={!professional.isAvailable}
-            className="rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+            className="alvo-toque-h inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
             onClick={(e) => {
               e.stopPropagation();
               if (!professional.isAvailable) return;

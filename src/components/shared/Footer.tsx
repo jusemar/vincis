@@ -82,13 +82,13 @@ export default function Footer() {
 
             {/* Contact Info */}
             <div className="space-y-3 mb-6">
-              <a href="mailto:contato@vincis.com.br" className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors group">
+              <a href="mailto:contato@vincis.com.br" className="alvo-toque-h group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <Mail className="w-4 h-4" />
                 </div>
                 contato@vincis.com.br
               </a>
-              <a href="tel:+551140045678" className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors group">
+              <a href="tel:+551140045678" className="alvo-toque-h group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <Phone className="w-4 h-4" />
                 </div>
@@ -130,7 +130,7 @@ export default function Footer() {
                 <li key={link.name}>
                   <a 
                     href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors text-sm flex items-center gap-1 group"
+                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.name}
                     <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -148,7 +148,7 @@ export default function Footer() {
                 <li key={link.name}>
                   <a 
                     href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors text-sm flex items-center gap-1 group"
+                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.name}
                     <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -166,7 +166,7 @@ export default function Footer() {
                 <li key={link.name}>
                   <a 
                     href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors text-sm flex items-center gap-1 group"
+                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.name}
                     <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -202,13 +202,13 @@ export default function Footer() {
 
             {/* Legal Links */}
             <div className="flex items-center gap-6 text-sm">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#" className="alvo-toque-h inline-flex items-center text-muted-foreground transition-colors hover:text-foreground">
                 Termos
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#" className="alvo-toque-h inline-flex items-center text-muted-foreground transition-colors hover:text-foreground">
                 Privacidade
               </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#" className="alvo-toque-h inline-flex items-center text-muted-foreground transition-colors hover:text-foreground">
                 Cookies
               </a>
             </div>

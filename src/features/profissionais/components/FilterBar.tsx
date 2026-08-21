@@ -9,6 +9,7 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
+import { ESPECIALIDADES_POR_CATEGORIA } from "../constants/taxonomia-profissional";
 import type { FilterState } from "../types/profissionais";
 
 interface FilterBarProps {
@@ -24,33 +25,26 @@ const professions = [
   { value: "tecnico", label: "Técnicos" },
 ];
 
+/**
+ * Mesmas especialidades de sempre, agora lidas da taxonomia compartilhada.
+ *
+ * As chaves aqui são as da interface de busca (`contador`, `advogado`,
+ * `tecnico`); as da taxonomia são as categorias reais do cadastro. O de-para
+ * fica nesta linha e em nenhum outro lugar.
+ */
 const specialties = {
   all: ["Todas as Especialidades"],
   contador: [
     "Todas as Especialidades",
-    "Contabilidade Geral",
-    "Fiscal",
-    "Trabalhista",
-    "Societário",
-    "Auditoria",
-    "Planejamento Tributário",
+    ...ESPECIALIDADES_POR_CATEGORIA.contabilidade,
   ],
   advogado: [
     "Todas as Especialidades",
-    "Direito Civil",
-    "Direito Trabalhista",
-    "Direito Tributário",
-    "Direito Empresarial",
-    "Direito Contratual",
-    "Propriedade Intelectual",
+    ...ESPECIALIDADES_POR_CATEGORIA.advocacia,
   ],
   tecnico: [
     "Todas as Especialidades",
-    "RH e Departamento Pessoal",
-    "TI e Sistemas",
-    "Marketing Digital",
-    "Gestão de Projetos",
-    "Consultoria Financeira",
+    ...ESPECIALIDADES_POR_CATEGORIA.especialista_fiscal,
   ],
 };
 

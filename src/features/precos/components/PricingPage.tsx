@@ -262,7 +262,7 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
-    <div className="min-h-screen bg-background py-20">
+    <div className="relative min-h-dvh overflow-hidden bg-background py-20">
       {/* Background */}
       <div className="absolute inset-0 bg-grid opacity-30" />
       

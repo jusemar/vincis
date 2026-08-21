@@ -622,7 +622,7 @@ export default function ClientsPage() {
           if (!aberto) setClienteDetalhe(null);
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           {carregandoDetalhe || !clienteDetalhe ? (
             <div className="flex min-h-60 items-center justify-center">
               <RefreshCw className="size-6 animate-spin text-primary" />
@@ -787,7 +787,7 @@ export default function ClientsPage() {
       </Dialog>
 
       <Dialog open={formularioAberto} onOpenChange={setFormularioAberto}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl">
               {clienteEditadoId ? "Editar cliente" : "Novo cliente"}

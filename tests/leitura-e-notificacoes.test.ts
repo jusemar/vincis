@@ -43,6 +43,8 @@ import {
 import { criarServico } from '@/features/servicos/actions/catalogo'
 import { contratarServico } from '@/features/servicos/actions/contratar'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
+import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
+import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
 import { limparAtendimentosDosPrestadores } from './setup/limpeza-atendimentos'
 import { entrarComo, sairDaSessao } from './setup/sessao'
 
@@ -956,5 +958,114 @@ describe('fluxo completo de negociação — Ana e Ricardo', () => {
     expect(depois.card.unread).toBeUndefined()
     // …e o total de mensagens continua o mesmo: são números diferentes.
     expect(depois.card.messages).toBe(1)
+  })
+})
+
+/**
+ * Idempotência do aviso de prazo.
+ *
+ * O caso real que originou estes testes: o `#2026-0009` gerou dois avisos
+ * idênticos de "prazo vencido" para cada integrante, com 233ms de diferença.
+ * A causa era o padrão "consulta se já avisei, depois insiro" — duas aberturas
+ * simultâneas do painel liam "ainda não avisei" antes de qualquer uma gravar.
+ * A garantia agora é do banco, por chave de deduplicação.
+ */
+describe('avisos de prazo não se repetem', () => {
+  /** Coloca o Atendimento com prazo vencido, sem tocar em mais nada. */
+  async function comPrazoVencido(atendimentoId: string) {
+    await db
+      .update(atendimentos)
+      .set({ prazoEm: new Date(Date.now() - 60 * 60 * 1000) })
+      .where(eq(atendimentos.id, atendimentoId))
+  }
+
+  async function avisosDePrazoDe(usuarioId: string) {
+    return db
+      .select({ id: notificacoes.id })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, usuarioId),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.prazoProximo),
+        ),
+      )
+  }
+
+  it('abrir o painel várias vezes gera um aviso, não vários', async () => {
+    const atendimentoId = await criarAtendimento()
+    await comPrazoVencido(atendimentoId)
+
+    await emitirAvisosDePrazo(contas.ana.id)
+    await emitirAvisosDePrazo(contas.ana.id)
+    await emitirAvisosDePrazo(contas.ana.id)
+
+    expect(await avisosDePrazoDe(contas.ana.id)).toHaveLength(1)
+  })
+
+  it('duas aberturas simultâneas também produzem um só', async () => {
+    const atendimentoId = await criarAtendimento()
+    await comPrazoVencido(atendimentoId)
+
+    // É a corrida do caso real: as duas leem "ainda não avisei" juntas.
+    await Promise.all([
+      emitirAvisosDePrazo(contas.ana.id),
+      emitirAvisosDePrazo(contas.ana.id),
+    ])
+
+    expect(await avisosDePrazoDe(contas.ana.id)).toHaveLength(1)
+  })
+
+  it('o aviso vai para a equipe do Atendimento, e não para o Cliente', async () => {
+    const atendimentoId = await criarAtendimento()
+    const conviteId = await convidarRicardo(atendimentoId)
+    await responderConvite({
+      conviteId,
+      usuarioId: contas.ricardo.id,
+      resposta: 'aceitar',
+    })
+    await comPrazoVencido(atendimentoId)
+
+    await emitirAvisosDePrazo(contas.ana.id)
+
+    // Ana é responsável e Ricardo é participante aceito: os dois são equipe do
+    // mesmo protocolo, e é por isso que ambos recebem — não é vazamento.
+    expect(await avisosDePrazoDe(contas.ana.id)).toHaveLength(1)
+    expect(await avisosDePrazoDe(contas.ricardo.id)).toHaveLength(1)
+    // Prazo é cobrança interna: o Cliente não recebe.
+    expect(await avisosDePrazoDe(contas.marina.id)).toHaveLength(0)
+  })
+
+  it('quem não tem vínculo com o Atendimento não recebe nada', async () => {
+    const atendimentoId = await criarAtendimento()
+    await comPrazoVencido(atendimentoId)
+
+    // O painel de quem não alcança o Atendimento não produz aviso nenhum.
+    expect(await emitirAvisosDePrazo(contas.ricardo.id)).toBe(0)
+    expect(await avisosDePrazoDe(contas.ricardo.id)).toHaveLength(0)
+  })
+
+  it('ler a caixa do sino não cria notificação', async () => {
+    const atendimentoId = await criarAtendimento()
+    await comPrazoVencido(atendimentoId)
+    await emitirAvisosDePrazo(contas.ana.id)
+
+    const antes = await listarNotificacoesDoUsuario(contas.ana.id)
+    await listarNotificacoesDoUsuario(contas.ana.id)
+    await contarNaoLidasDoUsuario(contas.ana.id)
+    const depois = await listarNotificacoesDoUsuario(contas.ana.id)
+
+    expect(depois).toHaveLength(antes.length)
+  })
+
+  it('carregar o Atendimento não recria notificação', async () => {
+    const atendimentoId = await criarAtendimento()
+    await comPrazoVencido(atendimentoId)
+    await emitirAvisosDePrazo(contas.ana.id)
+
+    const antes = (await listarNotificacoesDoUsuario(contas.ana.id)).length
+    await listarAtendimentosDoPrestador(contas.ana.id)
+    await obterResumoDoPainel(contas.ana.id)
+
+    expect(await listarNotificacoesDoUsuario(contas.ana.id)).toHaveLength(antes)
   })
 })

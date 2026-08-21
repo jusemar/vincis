@@ -4,9 +4,16 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Headset } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
-import { BotoesAuth, ModalEntrar, ModalCadastro, useControleModais } from "@/features/usuarios";
+import {
+  BotoesAuth,
+  ModalEntrar,
+  ModalCadastro,
+  useAuth,
+  useControleModais,
+} from "@/features/usuarios";
+import { MenuUsuarioPublico } from "@/features/usuarios/components/MenuUsuarioPublico";
 
 const navLinks = [
   { name: "Início", href: "/", type: "route" },
@@ -22,17 +29,28 @@ export default function NavigationNext() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { modalAberto, abrir, fechar, alternarPara } = useControleModais();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { usuario, estaCarregando } = useAuth();
+
+  /**
+   * `?entrar=1` abre o login em **qualquer** página pública, e não só na home.
+   *
+   * Quem foi mandado para cá a partir da solicitação de orçamento precisa
+   * continuar em `/profissionais` depois de entrar — e o parâmetro chega por
+   * navegação do lado do cliente, sem recarregar a página. Por isso o efeito
+   * observa a query, e não apenas o caminho: dependendo só do `pathname`, ir de
+   * `/profissionais` para `/profissionais?entrar=1` não dispararia nada.
+   */
+  const pedidoDeEntrar = searchParams.get("entrar") === "1";
 
   useEffect(() => {
-    if (pathname !== "/") return;
-
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("entrar") !== "1") return;
+    if (!pedidoDeEntrar) return;
 
     abrir("entrar");
+    const url = new URL(window.location.href);
     url.searchParams.delete("entrar");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [abrir, pathname]);
+  }, [abrir, pathname, pedidoDeEntrar]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,11 +83,12 @@ export default function NavigationNext() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        // `pt-safe` mantém o cabeçalho abaixo do notch quando o viewport é `cover`.
+        className={`pt-safe fixed left-0 right-0 top-0 z-50 transition-all duration-500 ${
           isScrolled ? "glass py-3" : "bg-transparent py-5"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-safe mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -84,7 +103,7 @@ export default function NavigationNext() {
             </motion.div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {navLinks.map((link, index) => {
                 const active = isLinkActive(link);
                 return (
@@ -129,7 +148,7 @@ export default function NavigationNext() {
             </div>
 
             {/* Right side buttons */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
               <Link
                 href="/suporte"
                 className="p-2 text-foreground/70 hover:text-primary transition-colors"
@@ -138,17 +157,27 @@ export default function NavigationNext() {
                 <Headset className="w-5 h-5" />
               </Link>
               <ThemeToggle />
-              <BotoesAuth
-                onAbrirEntrar={() => abrir("entrar")}
-                onAbrirCadastro={() => abrir("cadastro")}
-              />
+              {/* Autenticado, o cabeçalho público mostra o estado logado em
+                  vez de Entrar/Criar conta: o Cliente continua navegando pelo
+                  marketplace e alcança a própria área pelo menu. */}
+              {!estaCarregando && usuario ? (
+                <MenuUsuarioPublico />
+              ) : (
+                <BotoesAuth
+                  onAbrirEntrar={() => abrir("entrar")}
+                  onAbrirCadastro={() => abrir("cadastro")}
+                />
+              )}
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <ThemeToggle />
               <motion.button
-                className="p-2 text-foreground"
+                aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+                aria-expanded={isMobileMenuOpen}
+                // 44px de alvo de toque — o `p-2` anterior dava 40px.
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-foreground"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 whileTap={{ scale: 0.9 }}
               >
@@ -171,19 +200,26 @@ export default function NavigationNext() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 md:hidden"
+            className="fixed inset-0 z-40 lg:hidden"
           >
             <div
               className="absolute inset-0 bg-background/95 backdrop-blur-xl"
               onClick={() => setIsMobileMenuOpen(false)}
             />
+            {/*
+              O painel precisa de teto de altura e rolagem própria: com seis
+              links mais as ações de conta ele ultrapassa a tela em celular
+              deitado (375px de altura) e, sem isto, "Entrar"/"Criar conta"
+              ficavam fora do alcance. `dvh` desconta as barras do navegador e
+              `bottom-4` garante respiro mesmo quando o conteúdo é curto.
+            */}
             <motion.div
-              className="absolute top-20 left-4 right-4 glass-card rounded-2xl p-6"
+              className="rolagem-contida absolute left-4 right-4 top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-2xl glass-card p-4 sm:p-6"
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
             >
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 {navLinks.map((link, index) => (
                   <motion.div
                     key={link.name}
@@ -195,7 +231,7 @@ export default function NavigationNext() {
                       <Link
                         href={link.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="px-4 py-3 text-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg flex items-center gap-3"
+                        className="flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         {link.name}
                       </Link>
@@ -206,7 +242,7 @@ export default function NavigationNext() {
                           e.preventDefault();
                           scrollToSection(link.href);
                         }}
-                        className="px-4 py-3 text-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg flex items-center gap-3"
+                        className="flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         {link.name}
                       </a>
@@ -219,17 +255,24 @@ export default function NavigationNext() {
                   transition={{ delay: 0.4 }}
                   className="mt-4 flex flex-col gap-2"
                 >
-                  <BotoesAuth
-                    variant="mobile"
-                    onAbrirEntrar={() => {
-                      setIsMobileMenuOpen(false);
-                      abrir("entrar");
-                    }}
-                    onAbrirCadastro={() => {
-                      setIsMobileMenuOpen(false);
-                      abrir("cadastro");
-                    }}
-                  />
+                  {!estaCarregando && usuario ? (
+                    <MenuUsuarioPublico
+                      variant="mobile"
+                      aoNavegar={() => setIsMobileMenuOpen(false)}
+                    />
+                  ) : (
+                    <BotoesAuth
+                      variant="mobile"
+                      onAbrirEntrar={() => {
+                        setIsMobileMenuOpen(false);
+                        abrir("entrar");
+                      }}
+                      onAbrirCadastro={() => {
+                        setIsMobileMenuOpen(false);
+                        abrir("cadastro");
+                      }}
+                    />
+                  )}
                 </motion.div>
               </div>
             </motion.div>

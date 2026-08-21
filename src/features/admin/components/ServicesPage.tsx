@@ -335,7 +335,7 @@ export default function ServicesPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-card rounded-2xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 border-b flex items-center justify-between">

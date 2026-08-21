@@ -134,7 +134,7 @@ const SupportPage = () => {
   }, [searchQuery])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Content */}
       <section className="pt-32 pb-24">
         <div className="max-w-6xl mx-auto px-gutter">

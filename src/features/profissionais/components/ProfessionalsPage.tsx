@@ -4,6 +4,7 @@ import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Users } from "lucide-react";
 import Footer from "@/components/shared/Footer";
+import { ChamadaSolicitarOrcamento } from "@/features/oportunidades/components/cliente/ChamadaSolicitarOrcamento";
 import { pesquisarProfissionaisPublicos } from "../actions/pesquisar-profissionais";
 import type { FilterState, Professional } from "../types/profissionais";
 import FilterBar from "./FilterBar";
@@ -76,7 +77,7 @@ export default function ProfessionalsPage() {
           .map((item) => ({
             id: item.id,
             name: item.nome,
-            photo: item.avatarUrl ?? "",
+            photo: item.avatarUrl ?? null,
             profession: (item.profissao === "advocacia"
               ? "advogado"
               : item.profissao === "contabilidade"
@@ -119,7 +120,7 @@ export default function ProfessionalsPage() {
   }, [filtrosAdiados, pagina]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="relative overflow-hidden bg-background pt-24 pb-12">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent" />
         <div className="relative z-10 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
@@ -139,6 +140,10 @@ export default function ProfessionalsPage() {
         </div>
       </div>
       <div className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+        {/* Etapa anterior à escolha: quem ainda não sabe a quem recorrer
+            descreve a necessidade e recebe propostas. A vitrine abaixo
+            permanece exatamente como estava. */}
+        <ChamadaSolicitarOrcamento />
         <FilterBar
           filters={filters}
           onFilterChange={(valor) => {

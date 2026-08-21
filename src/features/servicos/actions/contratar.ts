@@ -4,7 +4,8 @@ import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db/connection'
-import { clientes, contratacoesServico, servicos, usuarios } from '@/db/schema'
+import { contratacoesServico, servicos } from '@/db/schema'
+import { garantirClienteNaCarteira } from '@/features/clientes/lib/garantir-cliente-na-carteira'
 import { garantirAtendimentoDaContratacao } from '@/features/atendimentos/lib/criar-atendimento-da-contratacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
@@ -195,64 +196,4 @@ export async function contratarServico(entrada: unknown) {
       precisaEntrar: false,
     }
   }
-}
-
-/**
- * Liga a conta do Cliente à carteira daquele prestador.
- *
- * A busca é por `usuario_id` — referência explícita —, nunca por e-mail ou
- * telefone: casar por contato juntaria pessoas diferentes em silêncio. Se o
- * prestador já tem esse cliente na carteira, reaproveita; senão cria uma vez.
- */
-async function garantirClienteNaCarteira(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  { prestadorId, clienteUsuarioId }: { prestadorId: string; clienteUsuarioId: string },
-) {
-  const [existente] = await tx
-    .select({ id: clientes.id })
-    .from(clientes)
-    .where(
-      and(
-        eq(clientes.profissionalId, prestadorId),
-        eq(clientes.usuarioId, clienteUsuarioId),
-      ),
-    )
-    .limit(1)
-
-  if (existente) return existente.id
-
-  const [conta] = await tx
-    .select({
-      nome: usuarios.nome,
-      email: usuarios.email,
-      whatsapp: usuarios.whatsapp,
-      empresaId: usuarios.empresaId,
-    })
-    .from(usuarios)
-    .where(eq(usuarios.id, clienteUsuarioId))
-    .limit(1)
-
-  const [prestador] = await tx
-    .select({ empresaId: usuarios.empresaId })
-    .from(usuarios)
-    .where(eq(usuarios.id, prestadorId))
-    .limit(1)
-
-  const [criado] = await tx
-    .insert(clientes)
-    .values({
-      profissionalId: prestadorId,
-      usuarioId: clienteUsuarioId,
-      empresaId: prestador?.empresaId ?? null,
-      nome: conta.nome,
-      email: conta.email,
-      telefone: conta.whatsapp ?? '',
-      area: 'contabil',
-      status: 'ativo',
-      tipoAtendimento: 'avulso',
-      valorReferenciaCentavos: 0,
-    })
-    .returning({ id: clientes.id })
-
-  return criado.id
 }

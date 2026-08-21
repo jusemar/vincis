@@ -15,6 +15,14 @@ export const ACOES_AUDITORIA = {
   ajusteSolicitado: 'ajuste_solicitado',
   ajusteAnalisado: 'ajuste_analisado',
   atendimentoReaberto: 'atendimento_reaberto',
+  oportunidadeCriada: 'oportunidade_criada',
+  propostaOportunidadeEnviada: 'proposta_oportunidade_enviada',
+  propostaOportunidadeAceita: 'proposta_oportunidade_aceita',
+  contrapropostaCriada: 'contraproposta_oportunidade_criada',
+  contrapropostaAceita: 'contraproposta_oportunidade_aceita',
+  contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
+  /** Pagamento **simulado** aprovado. O nome diz o que é, no próprio registro. */
+  pagamentoSimuladoAprovado: 'pagamento_simulado_aprovado',
 } as const
 
 export type AcaoAuditoria =

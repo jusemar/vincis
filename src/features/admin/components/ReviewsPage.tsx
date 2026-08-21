@@ -249,11 +249,11 @@ export default function ReviewsPage({ painel }: { painel?: PainelDeAvaliacoesDTO
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <button className="alvo-toque-h flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
                       <ThumbsUp className="w-4 h-4" />
                       Útil ({review.helpful})
                     </button>
-                    <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <button className="alvo-toque-h flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
                       <MessageSquare className="w-4 h-4" />
                       Responder
                     </button>

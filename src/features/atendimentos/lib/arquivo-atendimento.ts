@@ -1,59 +1,36 @@
 import { randomUUID } from 'node:crypto'
-import { put } from '@vercel/blob'
-
-export const TAMANHO_MAXIMO_ARQUIVO_ATENDIMENTO = 10 * 1024 * 1024
+import {
+  TAMANHO_MAXIMO_ANEXO,
+  enviarAnexoPrivado,
+  extensaoDoArquivo,
+  validarAnexoPrivado,
+} from '@/lib/anexos-privados'
 
 /**
- * Tipos aceitos no anexo de Atendimento.
+ * Anexos do Atendimento.
  *
- * Lista fechada, casada com a extensão do nome: aceitar qualquer `content-type`
- * enviado pelo navegador transformaria o anexo numa porta de entrada. É a mesma
- * política já usada no comprovante de registro profissional.
+ * A política (tipos aceitos, tamanho, armazenamento privado) mora em
+ * `@/lib/anexos-privados` desde que a solicitação de orçamento passou a aceitar
+ * arquivos também: uma política, um lugar. Este módulo continua sendo a porta
+ * do domínio — o que ele acrescenta é o caminho onde o arquivo do Atendimento
+ * é guardado.
  */
-const TIPOS_ACEITOS = new Map([
-  ['text/plain', ['txt']],
-  ['application/pdf', ['pdf']],
-  ['image/jpeg', ['jpg', 'jpeg']],
-  ['image/png', ['png']],
-])
 
-export function extensaoDoArquivo(nome: string) {
-  return nome.split('.').pop()?.toLowerCase() ?? ''
-}
+export const TAMANHO_MAXIMO_ARQUIVO_ATENDIMENTO = TAMANHO_MAXIMO_ANEXO
+
+export { extensaoDoArquivo }
 
 export function validarArquivoAtendimento(arquivo: File) {
-  const extensoes = TIPOS_ACEITOS.get(arquivo.type)
-  if (!extensoes?.includes(extensaoDoArquivo(arquivo.name))) {
-    throw new Error('Envie um arquivo TXT, PDF, JPG, JPEG ou PNG válido.')
-  }
-  if (arquivo.size <= 0 || arquivo.size > TAMANHO_MAXIMO_ARQUIVO_ATENDIMENTO) {
-    throw new Error('O arquivo deve ter no máximo 10 MB.')
-  }
+  validarAnexoPrivado(arquivo)
 }
 
-/**
- * Sobe o anexo para o armazenamento privado.
- *
- * Mesmo destino dos comprovantes de registro (Vercel Blob com `access:
- * 'private'`): o conteúdo não tem URL pública e só sai por rota autorizada. O
- * banco guarda a chave, nunca o arquivo nem um caminho de disco local.
- */
 export async function enviarArquivoAtendimento(
   atendimentoId: string,
   arquivo: File,
 ) {
-  validarArquivoAtendimento(arquivo)
-  const extensao = extensaoDoArquivo(arquivo.name)
-  const chave = `atendimentos/${atendimentoId}/arquivos/${randomUUID()}.${extensao}`
-  const blob = await put(chave, arquivo, {
-    access: 'private',
-    addRandomSuffix: false,
-    contentType: arquivo.type,
-  })
-  return {
-    chave: blob.pathname,
-    nome: arquivo.name.slice(0, 255),
-    tipoMime: arquivo.type,
-    tamanhoBytes: arquivo.size,
-  }
+  return enviarAnexoPrivado(
+    `atendimentos/${atendimentoId}/arquivos`,
+    arquivo,
+    randomUUID(),
+  )
 }

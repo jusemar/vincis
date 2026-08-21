@@ -130,7 +130,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
           (perfilProfissional && estado === 'sem_tenant'))))
   ) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
         <div className="text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <RefreshCw className="size-5 animate-spin" />
@@ -157,7 +157,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     estado !== 'colaborador'
   ) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="px-6">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">

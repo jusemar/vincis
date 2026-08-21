@@ -198,7 +198,7 @@ export function OnboardingProfissional({
 
   if (dadosIniciais.statusAnalise === "rejeitado")
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-dvh items-center justify-center bg-background p-4">
         <Card className="w-full max-w-xl">
           <CardContent className="p-8 text-center">
             <AlertTriangle className="mx-auto size-12 text-destructive" />
@@ -241,7 +241,7 @@ export function OnboardingProfissional({
 
   if (analisando && !editando)
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-dvh items-center justify-center bg-background p-4">
         <Card className="w-full max-w-2xl">
           <CardContent className="p-8 text-center">
             <Clock3 className="mx-auto size-12 text-primary" />
@@ -283,7 +283,7 @@ export function OnboardingProfissional({
       </p>
     );
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_38%)] px-4 py-8">
+    <div className="min-h-dvh bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_38%)] px-4 py-8">
       <Card className="mx-auto max-w-4xl overflow-hidden shadow-card">
         <CardContent className="p-5 sm:p-8">
           <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-background to-amber-500/5 p-5 sm:p-7">
@@ -504,6 +504,7 @@ export function OnboardingProfissional({
                   <label className="flex items-center gap-2 self-end rounded-lg border p-3 text-sm">
                     <input
                       type="checkbox"
+                      className="size-5 accent-primary"
                       {...register("disponivelAtendimento")}
                     />
                     Disponível para atendimento
@@ -519,6 +520,7 @@ export function OnboardingProfissional({
                           >
                             <input
                               type="checkbox"
+                              className="size-5 accent-primary"
                               value={regime}
                               {...register("regimesAtendidos")}
                             />
@@ -662,7 +664,7 @@ export function OnboardingProfissional({
                 )}
               </p>
             )}
-            <div className="sticky bottom-3 flex flex-col-reverse justify-between gap-2 rounded-2xl border bg-card/95 p-3 shadow-card backdrop-blur sm:flex-row">
+            <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] flex flex-col-reverse justify-between gap-2 rounded-2xl border bg-card/95 p-3 shadow-card backdrop-blur sm:flex-row">
               <Button type="button" variant="ghost" onClick={() => void sair()}>
                 Sair
               </Button>

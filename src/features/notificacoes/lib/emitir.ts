@@ -19,6 +19,15 @@ export type NovaNotificacao = {
   atendimentoId?: string | null
   protocolo?: string | null
   destino: DestinoNotificacao
+  /**
+   * Chave do fato, quando ele é recorrente por natureza.
+   *
+   * Preenchida, o índice único de `notificacoes` garante um aviso por
+   * destinatário e o insert repetido vira no-op. Ausente (o normal), cada
+   * chamada gera um aviso — que é o correto para mensagem, arquivo e
+   * manifestação, onde repetir o fato significa um fato novo.
+   */
+  chaveDedupe?: string | null
 }
 
 /**
@@ -35,6 +44,12 @@ export type NovaNotificacao = {
  * Recebe um `ExecutorDb` para poder gravar dentro da mesma transação do fato
  * que a originou: ou o convite e o aviso existem, ou nenhum dos dois. Sem isso
  * uma falha no meio deixaria a pessoa avisada de algo que não aconteceu.
+ *
+ * Com `chaveDedupe`, a terceira regra entra: **um aviso por fato recorrente**.
+ * Ela é aplicada pelo índice único do banco, e não por uma consulta anterior ao
+ * insert — duas requisições simultâneas passariam pelas duas consultas antes de
+ * qualquer uma inserir, que foi como o mesmo prazo virou dois avisos idênticos
+ * com 233ms de diferença.
  */
 export async function emitirNotificacoes(
   executor: ExecutorDb,
@@ -45,22 +60,29 @@ export async function emitirNotificacoes(
   )
   if (!alvos.length) return 0
 
-  await executor.insert(notificacoes).values(
-    alvos.map((destinatarioId) => ({
-      destinatarioId,
-      autorId: entrada.autorId,
-      tipo: entrada.tipo,
-      titulo: entrada.titulo.slice(0, 160),
-      resumo: entrada.resumo.slice(0, 240),
-      recursoTipo: entrada.recursoTipo,
-      recursoId: entrada.recursoId,
-      atendimentoId: entrada.atendimentoId ?? null,
-      protocolo: entrada.protocolo ?? null,
-      destino: entrada.destino,
-    })),
-  )
+  const criadas = await executor
+    .insert(notificacoes)
+    .values(
+      alvos.map((destinatarioId) => ({
+        destinatarioId,
+        autorId: entrada.autorId,
+        tipo: entrada.tipo,
+        titulo: entrada.titulo.slice(0, 160),
+        resumo: entrada.resumo.slice(0, 240),
+        recursoTipo: entrada.recursoTipo,
+        recursoId: entrada.recursoId,
+        atendimentoId: entrada.atendimentoId ?? null,
+        protocolo: entrada.protocolo ?? null,
+        chaveDedupe: entrada.chaveDedupe ?? null,
+        destino: entrada.destino,
+      })),
+    )
+    // Sem chave, nada colide e todas entram. Com chave, a repetida é
+    // descartada pelo banco em vez de virar aviso duplicado.
+    .onConflictDoNothing()
+    .returning({ id: notificacoes.id })
 
-  return alvos.length
+  return criadas.length
 }
 
 /** Atalho para quem emite fora de uma transação em andamento. */

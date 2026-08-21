@@ -18,5 +18,7 @@ export function rotaDoDestino(destino: DestinoNotificacao) {
   if (destino.aba) parametros.set('aba', destino.aba)
   if (destino.canal) parametros.set('canal', destino.canal)
   if (destino.conviteId) parametros.set('convite', destino.conviteId)
+  if (destino.oportunidadeId)
+    parametros.set('oportunidade', destino.oportunidadeId)
   return `/admin?${parametros.toString()}`
 }

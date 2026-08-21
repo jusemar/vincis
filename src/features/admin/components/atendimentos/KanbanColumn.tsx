@@ -44,7 +44,10 @@ export const KanbanColumn = ({ column, protocols, total, activeId, onSelect, onA
             {totalDaColuna}
           </span>
         </div>
-        <button className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-card hover:text-foreground">
+        <button
+          aria-label={`Novo atendimento em ${column.title}`}
+          className="alvo-toque flex items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+        >
           <Plus className="h-4 w-4" />
         </button>
       </div>

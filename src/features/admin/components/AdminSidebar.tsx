@@ -12,6 +12,7 @@ import {
   Award,
   Settings,
   Headphones,
+  Target,
   UsersRound,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -47,6 +48,9 @@ const navItems = [
   { id: "tickets", label: "Mensagens", icon: Ticket, badge: 3 },
   { id: "appointments", label: "Agenda", icon: Calendar },
   { id: "atendimentos", label: "Atendimentos", icon: Headphones },
+  // Oportunidade é a etapa anterior à contratação: entra como destino próprio,
+  // vizinho de Atendimentos, e nunca dentro deles.
+  { id: "oportunidades", label: "Oportunidades", icon: Target },
   { id: "financial", label: "Financeiro", icon: DollarSign },
   { id: "reviews", label: "Avaliações", icon: Star },
   { id: "profile", label: "Meu Perfil", icon: User },

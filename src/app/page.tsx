@@ -10,7 +10,7 @@ import { Pricing } from "@/features/home";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-dvh">
       <Hero />
       <ChatDemo />
       <SimpleSteps />

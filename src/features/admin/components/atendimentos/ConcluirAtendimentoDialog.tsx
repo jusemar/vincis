@@ -125,7 +125,7 @@ export const ConcluirAtendimentoDialog = ({
         className="absolute inset-0 bg-foreground/30 backdrop-blur-[2px] animate-in fade-in"
         onClick={onClose}
       />
-      <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-card shadow-card-hover animate-in fade-in zoom-in-95">
+      <div className="relative flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-card shadow-card-hover animate-in fade-in zoom-in-95">
         <header className="flex items-start justify-between gap-2 border-b border-border px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">

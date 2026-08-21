@@ -10,6 +10,8 @@ import {
   atendimentos,
   avaliacoesAtendimento,
   contratacoesServico,
+  oportunidadePagamentos,
+  oportunidadePropostas,
   usuarios,
 } from '@/db/schema'
 import type {
@@ -69,6 +71,12 @@ export async function listarAtendimentosDoCliente(
       contratacaoPrazoDias: contratacoesServico.prazoEstimadoDias,
       contratacaoStatus: contratacoesServico.status,
       contratacaoCriadaEm: contratacoesServico.createdAt,
+      // A outra porta de entrada: acordo fechado numa solicitação pública.
+      oportunidadeId: atendimentos.oportunidadeId,
+      acordoValorCentavos: oportunidadePropostas.valorAcordadoCentavos,
+      pagamentoReferencia: oportunidadePagamentos.referencia,
+      pagamentoOrigem: oportunidadePagamentos.origem,
+      pagamentoEm: oportunidadePagamentos.aprovadoEm,
     })
     .from(atendimentos)
     .innerJoin(prestadorConta, eq(prestadorConta.id, atendimentos.prestadorId))
@@ -76,6 +84,17 @@ export async function listarAtendimentosDoCliente(
     .leftJoin(
       contratacoesServico,
       eq(contratacoesServico.id, atendimentos.contratacaoId),
+    )
+    .leftJoin(
+      oportunidadePagamentos,
+      eq(oportunidadePagamentos.oportunidadeId, atendimentos.oportunidadeId),
+    )
+    .leftJoin(
+      oportunidadePropostas,
+      and(
+        eq(oportunidadePropostas.oportunidadeId, atendimentos.oportunidadeId),
+        eq(oportunidadePropostas.status, 'aceita'),
+      ),
     )
     .where(eq(atendimentos.clienteUsuarioId, clienteUsuarioId))
     .orderBy(desc(atendimentos.createdAt))
@@ -247,6 +266,15 @@ export async function listarAtendimentosDoCliente(
           criadaEm: (
             registro.contratacaoCriadaEm ?? registro.criadoEm
           ).toISOString(),
+        }
+      : null,
+    origemOportunidade: registro.oportunidadeId
+      ? {
+          oportunidadeId: registro.oportunidadeId,
+          valorAcordadoCentavos: registro.acordoValorCentavos,
+          pagamentoReferencia: registro.pagamentoReferencia,
+          pagamentoOrigem: registro.pagamentoOrigem,
+          pagamentoEm: registro.pagamentoEm?.toISOString() ?? null,
         }
       : null,
     eventos: eventos

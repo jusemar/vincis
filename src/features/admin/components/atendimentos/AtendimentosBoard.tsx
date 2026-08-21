@@ -352,7 +352,7 @@ export const AtendimentosBoard = ({
   const counts = contarIndicadores(filtered);
 
   return (
-    <div className="flex h-full min-h-screen w-full bg-background">
+    <div className="flex h-full min-h-dvh w-full bg-background">
       <main className="flex min-w-0 flex-1 flex-col">
         <div className="border-b border-border bg-card/40 px-8 py-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -457,7 +457,7 @@ export const AtendimentosBoard = ({
                 aria-pressed={vista === "kanban"}
                 onClick={() => setVista("kanban")}
                 className={cn(
-                  "rounded-md p-1.5 transition-colors",
+                  "alvo-toque flex h-8 w-8 items-center justify-center rounded-md transition-colors",
                   vista === "kanban"
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -470,7 +470,7 @@ export const AtendimentosBoard = ({
                 aria-pressed={vista === "lista"}
                 onClick={() => setVista("lista")}
                 className={cn(
-                  "rounded-md p-1.5 transition-colors",
+                  "alvo-toque flex h-8 w-8 items-center justify-center rounded-md transition-colors",
                   vista === "lista"
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -659,7 +659,7 @@ const FilterChip = ({
   <button
     onClick={onClick}
     className={cn(
-      "inline-flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+      "alvo-toque-h inline-flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
       active
         ? "border-primary bg-primary text-primary-foreground"
         : "border-border bg-background text-foreground hover:bg-muted",

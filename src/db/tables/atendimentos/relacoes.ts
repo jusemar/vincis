@@ -11,12 +11,18 @@ import { avaliacoesAtendimento } from '../avaliacoes_atendimento/tabela'
 import { clientes } from '../clientes/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
 import { empresas } from '../empresas/tabela'
+import { oportunidades } from '../oportunidades/tabela'
 import { usuarios } from '../usuarios/tabela'
 
 export const atendimentosRelations = relations(atendimentos, ({ one, many }) => ({
   contratacao: one(contratacoesServico, {
     fields: [atendimentos.contratacaoId],
     references: [contratacoesServico.id],
+  }),
+  /** A solicitação pública de onde este Atendimento nasceu, quando houve uma. */
+  oportunidade: one(oportunidades, {
+    fields: [atendimentos.oportunidadeId],
+    references: [oportunidades.id],
   }),
   prestador: one(usuarios, {
     fields: [atendimentos.prestadorId],

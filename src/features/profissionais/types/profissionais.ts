@@ -1,7 +1,8 @@
 export interface Professional {
   id: string;
   name: string;
-  photo: string;
+  /** `null` quando o profissional ainda não enviou foto — nunca string vazia. */
+  photo: string | null;
   profession: "contador" | "advogado" | "tecnico";
   specialty: string;
   location: string;

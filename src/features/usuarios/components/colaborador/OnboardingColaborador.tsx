@@ -170,7 +170,7 @@ export function OnboardingColaborador({
       className={
         editando
           ? ""
-          : "min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_38%)] px-4 py-8"
+          : "min-h-dvh bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_38%)] px-4 py-8"
       }
     >
       <Card className="mx-auto max-w-4xl overflow-hidden shadow-card">
@@ -297,6 +297,7 @@ export function OnboardingColaborador({
                   <label className="flex items-center gap-2 rounded-lg border p-3 text-sm sm:col-span-2">
                     <input
                       type="checkbox"
+                      className="size-5 accent-primary"
                       {...register("disponivelAtendimento")}
                     />
                     Disponível para atendimento
@@ -311,6 +312,7 @@ export function OnboardingColaborador({
                         >
                           <input
                             type="checkbox"
+                            className="size-5 accent-primary"
                             value={regime}
                             {...register("regimesAtendidos")}
                           />
@@ -433,7 +435,7 @@ export function OnboardingColaborador({
               <p className="rounded-lg border p-3 text-sm">{mensagem}</p>
             )}
 
-            <div className="sticky bottom-3 flex flex-col-reverse justify-between gap-2 rounded-2xl border bg-card/95 p-3 shadow-card backdrop-blur sm:flex-row">
+            <div className="sticky bottom-[calc(0.75rem+env(safe-area-inset-bottom))] flex flex-col-reverse justify-between gap-2 rounded-2xl border bg-card/95 p-3 shadow-card backdrop-blur sm:flex-row">
               {editando ? (
                 <span />
               ) : (

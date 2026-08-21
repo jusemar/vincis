@@ -27,12 +27,24 @@ export const TIPOS_NOTIFICACAO = {
   conviteAceito: 'convite_aceito',
   conviteRecusado: 'convite_recusado',
   conviteCancelado: 'convite_cancelado',
+  // Oportunidades públicas — etapa anterior à contratação.
+  oportunidadeDisponivel: 'oportunidade_disponivel',
+  contrapropostaOportunidade: 'contraproposta_oportunidade',
+  contrapropostaAceita: 'contraproposta_oportunidade_aceita',
+  contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
+  propostaAceita: 'proposta_oportunidade_aceita',
+  pagamentoAprovado: 'pagamento_oportunidade_aprovado',
+  atendimentoCriadoDaOportunidade: 'atendimento_criado_da_oportunidade',
 } as const
 
 export type TipoNotificacao =
   (typeof TIPOS_NOTIFICACAO)[keyof typeof TIPOS_NOTIFICACAO]
 
-export const RECURSOS_NOTIFICACAO = ['atendimento', 'convite'] as const
+export const RECURSOS_NOTIFICACAO = [
+  'atendimento',
+  'convite',
+  'oportunidade',
+] as const
 export type RecursoNotificacao = (typeof RECURSOS_NOTIFICACAO)[number]
 
 /**
@@ -60,6 +72,13 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.conviteAceito]: '✅',
   [TIPOS_NOTIFICACAO.conviteRecusado]: '🚫',
   [TIPOS_NOTIFICACAO.conviteCancelado]: '🚫',
+  [TIPOS_NOTIFICACAO.oportunidadeDisponivel]: '🎯',
+  [TIPOS_NOTIFICACAO.contrapropostaOportunidade]: '💰',
+  [TIPOS_NOTIFICACAO.contrapropostaAceita]: '🤝',
+  [TIPOS_NOTIFICACAO.contrapropostaRecusada]: '↩️',
+  [TIPOS_NOTIFICACAO.propostaAceita]: '🤝',
+  [TIPOS_NOTIFICACAO.pagamentoAprovado]: '💳',
+  [TIPOS_NOTIFICACAO.atendimentoCriadoDaOportunidade]: '📋',
 }
 
 export function iconeDaNotificacao(tipo: string) {
@@ -75,13 +94,15 @@ export function iconeDaNotificacao(tipo: string) {
  * cair na Conversa certa em vez de só abrir o Atendimento.
  */
 export type DestinoNotificacao = {
-  pagina: 'atendimentos' | 'dashboard'
+  pagina: 'atendimentos' | 'dashboard' | 'oportunidades'
   /** Protocolo (`#AAAA-NNNN`) ou id — o que o deep-link do quadro aceita. */
   atendimento?: string
   aba?: 'protocolo' | 'conversa' | 'arquivos' | 'historico' | 'info'
   canal?: 'cliente' | 'interno'
   /** Abre direto a negociação daquele convite. */
   conviteId?: string
+  /** Abre a lista de Oportunidades já destacando esta. */
+  oportunidadeId?: string
 }
 
 /** Teto da caixa carregada de uma vez: o sino é uma fila, não um arquivo. */

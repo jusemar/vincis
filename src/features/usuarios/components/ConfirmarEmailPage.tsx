@@ -75,7 +75,7 @@ export function ConfirmarEmailPage({ token }: ConfirmarEmailPageProps) {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background px-4 pb-16 pt-28 sm:px-6 sm:pt-32">
+    <div className="relative min-h-dvh overflow-hidden bg-background px-4 pb-16 pt-28 sm:px-6 sm:pt-32">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-28 top-24 size-80 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -right-24 bottom-0 size-96 rounded-full bg-amber-300/10 blur-3xl" />

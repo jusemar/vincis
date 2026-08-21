@@ -6,6 +6,7 @@ import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-p
 import { obterPainelDeAvaliacoes } from '@/features/avaliacoes/queries/painel-de-avaliacoes'
 import { listarComunicadosDoMural } from '@/features/comunicados/queries/listar-comunicados'
 import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
+import { contarOportunidadesDisponiveis } from '@/features/oportunidades/queries/listar-oportunidades-do-prestador'
 import { contarClientesAtivosProfissional } from '@/features/clientes/queries/listar-clientes'
 import { garantirEscritorioProfissional } from '@/features/empresas/lib/garantir-escritorio-profissional'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
@@ -41,11 +42,17 @@ export default async function AdminRoute() {
   // As avaliações reais entram na mesma carga: média, quantidade, distribuição
   // e comentários recebidos. Um dado só alimenta a tela de Avaliações, o rodapé
   // da barra lateral e os dois indicadores de reputação do Dashboard.
-  const [resumoDoPainel, comunicados, painelDeAvaliacoes] = await Promise.all([
-    obterResumoDoPainel(usuario.id),
-    listarComunicadosDoMural(acesso.perfil),
-    obterPainelDeAvaliacoes(usuario.id),
-  ])
+  //
+  // As Oportunidades entram só como número: o destaque do Dashboard precisa
+  // saber quantas esperam resposta, e a lista em si é carregada pela própria
+  // tela de Oportunidades quando a pessoa vai até lá.
+  const [resumoDoPainel, comunicados, painelDeAvaliacoes, oportunidadesDisponiveis] =
+    await Promise.all([
+      obterResumoDoPainel(usuario.id),
+      listarComunicadosDoMural(acesso.perfil),
+      obterPainelDeAvaliacoes(usuario.id),
+      contarOportunidadesDisponiveis(usuario.id),
+    ])
 
   return (
     <AdminDashboard
@@ -54,6 +61,7 @@ export default async function AdminRoute() {
       resumoDoPainel={resumoDoPainel}
       comunicados={comunicados}
       painelDeAvaliacoes={painelDeAvaliacoes}
+      oportunidadesDisponiveis={oportunidadesDisponiveis}
     />
   )
 }
