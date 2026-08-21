@@ -594,7 +594,13 @@ export const AtendimentosBoard = ({
                   <div
                     role="tabpanel"
                     aria-label={col.title}
-                    className="flex flex-1 flex-col gap-2.5 px-4 py-4"
+                    /*
+                      No celular o card encosta nas bordas: a margem negativa
+                      cancela o respiro do painel administrativo (`p-4`) menos
+                      1px, que é a margem visual mínima. A partir de `sm` o
+                      enquadramento do tablet fica exatamente como estava.
+                    */
+                    className="-mx-[calc(1rem-1px)] flex flex-1 flex-col gap-2.5 px-0 py-4 sm:mx-0 sm:px-4"
                   >
                     {mostrados.length === 0 ? (
                       <p className="py-12 text-center text-xs text-muted-foreground">
