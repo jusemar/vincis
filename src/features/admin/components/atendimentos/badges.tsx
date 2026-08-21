@@ -34,8 +34,12 @@ export const DeadlineBadge = ({ deadline, label }: { deadline: Deadline; label: 
     vencido: "bg-rose-50 text-priority-high",
   } as const;
   const Icon = deadline === "vencido" ? AlertTriangle : deadline === "proximo" ? Clock : CheckCircle2;
+  const tom = deadline === "vencido" ? "high" : deadline === "proximo" ? "waiting" : "neutral";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium", styles[deadline])}>
+    <span
+      data-badge={tom}
+      className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium", styles[deadline])}
+    >
       <Icon className="h-3 w-3" />
       {label}
     </span>
@@ -54,8 +58,18 @@ export const CategoryBadge = ({ category }: { category: Category }) => {
   // design system: o badge continua idêntico e exibe o nome verdadeiro, em vez
   // de ser convertido em outra categoria só para caber na paleta.
   const neutro = "bg-muted text-muted-foreground";
+  const tons: Record<string, string> = {
+    Fiscal: "new",
+    RH: "progress",
+    "Jurídico": "waiting",
+    "Societário": "done",
+    "Contábil": "neutral",
+  };
   return (
-    <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium", map[category] ?? neutro)}>
+    <span
+      data-badge={tons[category] ?? "neutral"}
+      className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium", map[category] ?? neutro)}
+    >
       {category}
     </span>
   );
@@ -64,8 +78,12 @@ export const CategoryBadge = ({ category }: { category: Category }) => {
 // Mesmas classes de sempre; agora vindas do mapa único de identidade dos
 // status, o mesmo que pinta a bolinha da coluna do Kanban.
 export const StatusBadge = ({ status }: { status: Status }) => {
-  const { rotulo, badge } = IDENTIDADE_STATUS[status];
-  return <span className={cn("rounded-md px-2 py-1 text-xs font-medium", badge)}>{rotulo}</span>;
+  const { rotulo, badge, tom } = IDENTIDADE_STATUS[status];
+  return (
+    <span data-badge={tom} className={cn("rounded-md px-2 py-1 text-xs font-medium", badge)}>
+      {rotulo}
+    </span>
+  );
 };
 
 export const AccessBadge = ({ access }: { access: Access }) => {

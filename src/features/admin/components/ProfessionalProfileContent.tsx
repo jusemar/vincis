@@ -357,31 +357,38 @@ export function ProfessionalProfileContent({
       </Card>
 
       <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="gap-4">
-        <TabsList className="grid h-auto w-full grid-cols-4 rounded-xl border border-amber-500/15 bg-muted/70 p-1.5">
+        {/*
+          No celular a grade de 4 colunas dava 86px por aba — "Dados e profissão"
+          não cabe nisso e os rótulos se sobrepunham. Vira uma faixa rolável
+          horizontalmente, cada aba com a largura do próprio conteúdo, como a
+          barra de categorias de um aplicativo. A grade volta a partir de `lg`,
+          onde as quatro cabem sem apertar.
+        */}
+        <TabsList className="rolagem-contida hide-scrollbar -mx-1 flex h-auto w-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border border-amber-500/15 bg-muted/70 p-1.5 lg:mx-0 lg:grid lg:w-full lg:grid-cols-4 lg:overflow-visible">
           <TabsTrigger
             value="dados"
-            className="h-11 gap-2 rounded-lg text-xs sm:text-sm"
+            className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
           >
             <BriefcaseBusiness />
             Dados e profissão
           </TabsTrigger>
           <TabsTrigger
             value="especialidades"
-            className="h-11 gap-2 rounded-lg text-xs sm:text-sm"
+            className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
           >
             <GraduationCap />
             Especialidades
           </TabsTrigger>
           <TabsTrigger
             value="valores"
-            className="h-11 gap-2 rounded-lg text-xs sm:text-sm"
+            className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
           >
             <DollarSign />
             Valores
           </TabsTrigger>
           <TabsTrigger
             value="servicos"
-            className="h-11 gap-2 rounded-lg text-xs sm:text-sm"
+            className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
           >
             <Package />
             Serviços
@@ -755,11 +762,18 @@ export function ProfessionalProfileContent({
         </TabsContent>
       </Tabs>
 
-      <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] flex justify-end rounded-2xl border border-amber-500/20 bg-card/95 p-3 shadow-card backdrop-blur">
+      {/*
+        No celular a barra sai do fluxo flutuante: grudada, ela cobria campos e
+        mensagens de validação enquanto a pessoa rolava, e ainda disputava
+        espaço com o menu inferior. Aqui ela fica no fim natural do formulário.
+        A partir de `lg` — onde não há menu inferior e sobra altura — volta a
+        acompanhar a rolagem, como no desktop já aprovado.
+      */}
+      <div className="flex justify-end rounded-2xl border border-amber-500/20 bg-card/95 p-3 shadow-card backdrop-blur lg:sticky lg:bottom-[calc(1rem+env(safe-area-inset-bottom))]">
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="bg-gradient-gold font-semibold text-on-gradient shadow-glow hover:shadow-glow-lg"
+          className="w-full bg-gradient-gold font-semibold text-on-gradient shadow-glow hover:shadow-glow-lg sm:w-auto"
         >
           <Save />
           {isSubmitting ? "Salvando..." : "Salvar alterações"}

@@ -13,6 +13,7 @@ import type { ConviteAtendimentoDTO } from "@/features/atendimentos/queries/conv
 import { useEventoRealtime } from "@/features/tempo-real/components/TempoRealProvider";
 import { ConvitesRecebidosDialog } from "./ConvitesRecebidosDialog";
 import { KanbanColumn } from "./KanbanColumn";
+import { ProtocolCard } from "./ProtocolCard";
 import { ProtocolList } from "./ProtocolList";
 import { ProtocolPanel } from "./ProtocolPanel";
 import { NewAtendimentoDialog } from "./NewAtendimentoDialog";
@@ -85,6 +86,16 @@ export const AtendimentosBoard = ({
   const [pagina, setPagina] = useState(1);
   /** Quantos cards cada coluna do quadro já revelou. */
   const [paginaDaColuna, setPaginaDaColuna] = useState<Record<string, number>>({});
+  /**
+   * Coluna visível no celular.
+   *
+   * Fora do desktop o quadro não mostra as cinco colunas lado a lado: elas
+   * ficariam com ~60px cada e nenhum card seria legível. Em vez disso a pessoa
+   * escolhe um status na faixa do topo e vê aquela coluna inteira, em lista
+   * vertical de largura cheia. É o mesmo recorte de dados do quadro — só a
+   * forma de apresentar muda.
+   */
+  const [statusMobile, setStatusMobile] = useState<Status>(COLUMNS[0].id);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
@@ -354,7 +365,7 @@ export const AtendimentosBoard = ({
   return (
     <div className="flex h-full min-h-dvh w-full bg-background">
       <main className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-card/40 px-8 py-6">
+        <div className="border-b border-border bg-card/40 px-4 py-5 lg:px-8 lg:py-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -501,48 +512,149 @@ export const AtendimentosBoard = ({
         </div>
 
         {vista === "kanban" ? (
-          <div className="scrollbar-thin flex flex-1 gap-4 overflow-x-auto px-8 py-6">
-            {COLUMNS.map((col) => {
-              const { todos, mostrados } = colunaPaginada(col.id);
-              return (
-                <KanbanColumn
-                  key={col.id}
-                  column={col}
-                  protocols={mostrados}
-                  total={todos.length}
-                  activeId={activeId ?? undefined}
-                  onSelect={setActiveId}
-                  onAbrirNaoLidas={abrirNaoLidas}
-                  onDrop={moveCard}
-                  draggingId={draggingId}
-                  setDraggingId={setDraggingId}
-                  onVerMais={() =>
-                    setPaginaDaColuna((atual) => ({
-                      ...atual,
-                      [col.id]: (atual[col.id] ?? 1) + 1,
-                    }))
-                  }
-                />
-              );
-            })}
-          </div>
+          <>
+            {/* Quadro do desktop: as cinco colunas lado a lado, como sempre. */}
+            <div className="scrollbar-thin hidden flex-1 gap-4 overflow-x-auto px-8 py-6 lg:flex">
+              {COLUMNS.map((col) => {
+                const { todos, mostrados } = colunaPaginada(col.id);
+                return (
+                  <KanbanColumn
+                    key={col.id}
+                    column={col}
+                    protocols={mostrados}
+                    total={todos.length}
+                    activeId={activeId ?? undefined}
+                    onSelect={setActiveId}
+                    onAbrirNaoLidas={abrirNaoLidas}
+                    onDrop={moveCard}
+                    draggingId={draggingId}
+                    setDraggingId={setDraggingId}
+                    onVerMais={() =>
+                      setPaginaDaColuna((atual) => ({
+                        ...atual,
+                        [col.id]: (atual[col.id] ?? 1) + 1,
+                      }))
+                    }
+                  />
+                );
+              })}
+            </div>
+
+            {/* Quadro do celular e do tablet: um status por vez. */}
+            <div className="flex flex-1 flex-col lg:hidden">
+              {/*
+                Faixa de status rolável. `role="tablist"` porque é exatamente
+                isso: seleciona qual painel aparece abaixo. A rolagem horizontal
+                é do próprio contêiner — nada é comprimido para caber.
+              */}
+              <div
+                role="tablist"
+                aria-label="Status do quadro"
+                className="rolagem-contida hide-scrollbar flex gap-2 overflow-x-auto border-b border-border px-4 pb-3"
+              >
+                {COLUMNS.map((col) => {
+                  const total = byColumn(col.id).length;
+                  const ativo = col.id === statusMobile;
+                  return (
+                    <button
+                      key={col.id}
+                      role="tab"
+                      type="button"
+                      aria-selected={ativo}
+                      onClick={() => setStatusMobile(col.id)}
+                      className={cn(
+                        "alvo-toque-h inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors",
+                        ativo
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground",
+                      )}
+                    >
+                      {/* O ponto repete a cor da coluna: o estado ativo não
+                          depende só de cor, mas a identidade do status sim. */}
+                      <span className={cn("h-2 w-2 rounded-full", col.accent)} />
+                      {col.title}
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
+                          ativo ? "bg-primary-foreground/20" : "bg-muted",
+                        )}
+                      >
+                        {total}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {(() => {
+                const col = COLUMNS.find((c) => c.id === statusMobile) ?? COLUMNS[0];
+                const { todos, mostrados } = colunaPaginada(col.id);
+                const restantes = todos.length - mostrados.length;
+                return (
+                  <div
+                    role="tabpanel"
+                    aria-label={col.title}
+                    className="flex flex-1 flex-col gap-2.5 px-4 py-4"
+                  >
+                    {mostrados.length === 0 ? (
+                      <p className="py-12 text-center text-xs text-muted-foreground">
+                        Nenhum atendimento em {col.title.toLowerCase()}.
+                      </p>
+                    ) : (
+                      mostrados.map((p) => (
+                        <ProtocolCard
+                          key={p.id}
+                          protocol={p}
+                          active={p.id === activeId}
+                          onClick={() => setActiveId(p.id)}
+                          onAbrirNaoLidas={() => abrirNaoLidas(p)}
+                        />
+                      ))
+                    )}
+                    {restantes > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaginaDaColuna((atual) => ({
+                            ...atual,
+                            [col.id]: (atual[col.id] ?? 1) + 1,
+                          }))
+                        }
+                        className="alvo-toque-h w-full rounded-xl border border-border bg-card text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        Ver mais {restantes}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </>
         ) : (
-          <div className="flex flex-1 px-8 py-6">
+          /*
+            A listagem encosta nas bordas no celular. As margens negativas
+            cancelam o respiro do painel administrativo (`p-4`, `sm:p-6`) menos
+            1px, que é a margem visual mínima pedida. A partir de `lg` volta o
+            enquadramento com respiro do desktop.
+          */
+          <div className="flex flex-1 px-0 py-4 lg:px-8 lg:py-6">
             {/* Mesma lista filtrada do quadro: nenhuma consulta a mais — só a
                 fatia da página atual. */}
-            <ProtocolList
-              protocols={listaPaginada.itens}
-              activeId={activeId ?? undefined}
-              onSelect={setActiveId}
-              paginacao={{
-                pagina: listaPaginada.pagina,
-                totalPaginas: listaPaginada.totalPaginas,
-                total: listaPaginada.total,
-                primeiro: listaPaginada.primeiro,
-                ultimo: listaPaginada.ultimo,
-                irPara: setPagina,
-              }}
-            />
+            <div className="-mx-[calc(1rem-1px)] flex min-w-0 flex-1 sm:-mx-[calc(1.5rem-1px)] lg:mx-0">
+              <ProtocolList
+                protocols={listaPaginada.itens}
+                activeId={activeId ?? undefined}
+                onSelect={setActiveId}
+                paginacao={{
+                  pagina: listaPaginada.pagina,
+                  totalPaginas: listaPaginada.totalPaginas,
+                  total: listaPaginada.total,
+                  primeiro: listaPaginada.primeiro,
+                  ultimo: listaPaginada.ultimo,
+                  irPara: setPagina,
+                }}
+              />
+            </div>
           </div>
         )}
       </main>

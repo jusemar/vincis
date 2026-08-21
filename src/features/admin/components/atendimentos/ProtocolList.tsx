@@ -32,20 +32,29 @@ interface Props {
  * própria no quadro.
  */
 export const ProtocolList = ({ protocols, activeId, onSelect, paginacao }: Props) => (
-  <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+  <div className="min-w-0 flex-1 overflow-hidden border-y border-border bg-card shadow-card lg:rounded-2xl lg:border-x">
     <div className="scrollbar-thin overflow-x-auto">
-      <table className="w-full min-w-[980px] border-collapse text-left">
+      {/*
+        `min-w-[980px]` só a partir de `lg`. No celular a tabela usa a largura
+        real da tela e mostra as quatro colunas que importam — Protocolo,
+        Serviço, Status e Prazo. As demais não somem do produto: continuam na
+        tabela completa do desktop e no detalhe do Atendimento.
+      */}
+      <table className="w-full table-fixed border-collapse text-left lg:min-w-[980px] lg:table-auto">
         <thead>
           <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            <th className="px-4 py-3">Protocolo</th>
-            <th className="px-4 py-3">Serviço</th>
-            <th className="px-4 py-3">Cliente</th>
-            <th className="px-4 py-3">Categoria</th>
-            <th className="px-4 py-3">Responsável</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Prioridade</th>
-            <th className="px-4 py-3">Prazo</th>
-            <th className="px-4 py-3">Atualizado</th>
+            <th className="hidden whitespace-nowrap px-4 py-3 lg:table-cell">Protocolo</th>
+            <th className="px-2 py-3 lg:px-4">
+              <span className="lg:hidden">Protocolo · Serviço</span>
+              <span className="hidden lg:inline">Serviço</span>
+            </th>
+            <th className="hidden px-4 py-3 lg:table-cell">Cliente</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Categoria</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Responsável</th>
+            <th className="w-[92px] px-1 py-3 lg:w-auto lg:px-4">Status</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Prioridade</th>
+            <th className="w-[96px] px-1 py-3 lg:w-auto lg:px-4">Prazo</th>
+            <th className="hidden px-4 py-3 lg:table-cell">Atualizado</th>
           </tr>
         </thead>
         <tbody>
@@ -58,34 +67,51 @@ export const ProtocolList = ({ protocols, activeId, onSelect, paginacao }: Props
                 p.id === activeId && "bg-muted/60",
               )}
             >
-              <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] font-medium text-muted-foreground">
+              <td className="hidden whitespace-nowrap px-4 py-3 font-mono text-[11px] font-medium text-muted-foreground lg:table-cell">
                 {p.number}
               </td>
-              <td className="max-w-[260px] px-4 py-3 font-medium text-foreground">
-                <span className="line-clamp-1">{p.title}</span>
+              {/*
+                Serviço é a coluna que recebe a sobra: `w-full` faz as demais
+                ficarem no tamanho do conteúdo e esta ocupar o resto. O corte é
+                por reticências — o registro completo abre no Atendimento.
+              */}
+              <td className="w-full min-w-0 max-w-0 px-2 py-3 align-top font-medium text-foreground lg:max-w-[260px] lg:px-4 lg:align-middle">
+                {/* Protocolo e cliente viram linhas desta célula no celular. */}
+                <span className="mb-0.5 block font-mono text-[11px] font-medium text-muted-foreground lg:hidden">
+                  {p.number}
+                </span>
+                <span className="line-clamp-2 lg:line-clamp-1">{p.title}</span>
+                <span className="mt-0.5 flex items-center gap-1 text-xs font-normal text-muted-foreground lg:hidden">
+                  <span className="line-clamp-1">{p.client}</span>
+                  {p.access === "privado" && <Lock className="h-3 w-3 shrink-0" />}
+                </span>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">
+              <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="line-clamp-1">{p.client}</span>
                   {p.access === "privado" && <Lock className="h-3 w-3 shrink-0" />}
                 </span>
               </td>
-              <td className="px-4 py-3">
+              <td className="hidden px-4 py-3 lg:table-cell">
                 <CategoryBadge category={p.category} />
               </td>
-              <td className="px-4 py-3">
+              <td className="hidden px-4 py-3 lg:table-cell">
                 <AvatarStack users={p.assignees} />
               </td>
-              <td className="px-4 py-3">
-                <StatusBadge status={p.status} />
+              <td className="w-[92px] px-1 py-3 align-top lg:w-auto lg:px-4 lg:align-middle">
+                <span className="inline-block max-w-full [&>span]:block [&>span]:whitespace-normal lg:[&>span]:inline lg:[&>span]:whitespace-nowrap">
+                  <StatusBadge status={p.status} />
+                </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
+              <td className="hidden whitespace-nowrap px-4 py-3 lg:table-cell">
                 <PriorityDot priority={p.priority} />
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <DeadlineBadge deadline={p.deadline} label={p.deadlineLabel} />
+              <td className="w-[96px] px-1 py-3 align-top lg:w-auto lg:whitespace-nowrap lg:px-4 lg:align-middle">
+                <span className="inline-block max-w-full [&>span]:max-w-full [&>span]:items-start [&>span]:whitespace-normal lg:[&>span]:items-center lg:[&>span]:whitespace-nowrap">
+                  <DeadlineBadge deadline={p.deadline} label={p.deadlineLabel} />
+                </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+              <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted-foreground lg:table-cell">
                 {p.updatedAtLabel ?? p.createdAt}
               </td>
             </tr>

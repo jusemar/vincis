@@ -297,6 +297,38 @@ html[data-theme="dark"] .admin-dashboard input, html[data-theme="dark"] .admin-d
 [data-theme="dark"] .admin-dashboard .badge-red { background: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; border: 1px solid rgba(239, 68, 68, 0.2) !important; }
 [data-theme="dark"] .admin-dashboard .badge-blue { background: rgba(59, 130, 246, 0.1) !important; color: #3b82f6 !important; border: 1px solid rgba(59, 130, 246, 0.2) !important; }
 [data-theme="dark"] .admin-dashboard .badge-gray { background: rgba(255, 255, 255, 0.05) !important; color: #8888a0 !important; border: 1px solid rgba(255, 255, 255, 0.06) !important; }
+
+/*
+  Badges de status, prazo e categoria dos Atendimentos no tema escuro.
+
+  As regras acima forçam `color: #f0f0f5 !important` em todo descendente do
+  painel, e estas tintas de fundo são claras e fixas — a soma dava texto branco
+  sobre fundo branco, ilegível no quadro e na lista. Aqui o fundo vira o próprio
+  matiz do status com transparência e o texto volta a ser o matiz, claro o
+  bastante para o fundo escuro. Mesma paleta de sempre, só adaptada ao tema, e
+  na mesma convenção que `.badge-gold`/`.badge-green` acima já usam.
+*/
+html[data-theme="dark"] .admin-dashboard [data-badge],
+.admin-dashboard[data-theme="dark"] [data-badge] {
+  border: 1px solid transparent;
+}
+html[data-theme="dark"] .admin-dashboard [data-badge="new"],
+.admin-dashboard[data-theme="dark"] [data-badge="new"] { background: rgba(59, 130, 246, 0.16) !important; color: #93c5fd !important; border-color: rgba(59, 130, 246, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="progress"],
+.admin-dashboard[data-theme="dark"] [data-badge="progress"] { background: rgba(139, 92, 246, 0.16) !important; color: #c4b5fd !important; border-color: rgba(139, 92, 246, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="waiting"],
+.admin-dashboard[data-theme="dark"] [data-badge="waiting"] { background: rgba(245, 158, 11, 0.16) !important; color: #fcd34d !important; border-color: rgba(245, 158, 11, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="sign"],
+.admin-dashboard[data-theme="dark"] [data-badge="sign"] { background: rgba(6, 182, 212, 0.16) !important; color: #67e8f9 !important; border-color: rgba(6, 182, 212, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="done"],
+.admin-dashboard[data-theme="dark"] [data-badge="done"] { background: rgba(34, 197, 94, 0.16) !important; color: #86efac !important; border-color: rgba(34, 197, 94, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="high"],
+.admin-dashboard[data-theme="dark"] [data-badge="high"] { background: rgba(239, 68, 68, 0.16) !important; color: #fca5a5 !important; border-color: rgba(239, 68, 68, 0.28); }
+html[data-theme="dark"] .admin-dashboard [data-badge="neutral"],
+.admin-dashboard[data-theme="dark"] [data-badge="neutral"] { background: rgba(255, 255, 255, 0.07) !important; color: #b8b8cc !important; border-color: rgba(255, 255, 255, 0.1); }
+/* O ícone dentro do badge acompanha o texto, em vez do cinza global. */
+html[data-theme="dark"] .admin-dashboard [data-badge] svg,
+.admin-dashboard[data-theme="dark"] [data-badge] svg { color: currentColor !important; }
 [data-theme="dark"] .admin-dashboard .activity-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
 [data-theme="dark"] .admin-dashboard .activity-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 [data-theme="dark"] .admin-dashboard .btn-ghost { background: transparent !important; color: #8888a0 !important; border: 1px solid rgba(255, 255, 255, 0.06) !important; }
