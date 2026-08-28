@@ -105,18 +105,3 @@ export function montarGradeDoMes({ ano, mes }: MesDaAgenda): GradeDoMes {
     ultimoDia: dataLocalDe(ano, mes, total),
   }
 }
-
-/**
- * Os meses que o Cliente pode alcançar.
- *
- * Do mês corrente da agenda até o mês em que o horizonte da consultoria acaba.
- * Não existe navegação para trás além de hoje — não há o que agendar no passado
- * — nem para frente além do horizonte, que é o limite que o Profissional
- * configurou.
- */
-export function limitesDeNavegacao(
-  hojeLocal: DataLocal,
-  ultimoDiaDoHorizonte: DataLocal,
-): { minimo: MesDaAgenda; maximo: MesDaAgenda } {
-  return { minimo: mesDaData(hojeLocal), maximo: mesDaData(ultimoDiaDoHorizonte) }
-}

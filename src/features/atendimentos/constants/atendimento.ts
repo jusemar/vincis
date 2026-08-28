@@ -285,6 +285,18 @@ export const TIPOS_EVENTO_ATENDIMENTO = {
   conviteAceito: 'convite_aceito',
   conviteRecusado: 'convite_recusado',
   conviteRevogado: 'convite_revogado',
+  /**
+   * O ciclo da Consultoria Agendada, no histórico do protocolo.
+   *
+   * Ficam aqui, e não numa tabela própria de consultoria, porque o Atendimento
+   * já é a fonte histórica da plataforma: é onde o Cliente e o Profissional
+   * procuram "o que aconteceu com isto". Eventos são imutáveis — remarcar
+   * acrescenta uma linha, nunca reescreve a anterior, e é isso que permite
+   * reconstruir a sequência inteira de horários pelos quais a consulta passou.
+   */
+  consultoriaRemarcada: 'consultoria_remarcada',
+  consultoriaCancelada: 'consultoria_cancelada',
+  consultoriaConcluida: 'consultoria_concluida',
 } as const
 
 export type TipoEventoAtendimento =

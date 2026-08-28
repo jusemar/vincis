@@ -9,6 +9,7 @@ import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import {
   MENSAGENS_DA_JANELA,
   MENSAGEM_FALHA_VIDEOCHAMADA,
+  MENSAGEM_CONSULTORIA_CANCELADA,
   MENSAGEM_SEM_ACESSO_A_VIDEOCHAMADA,
   MENSAGEM_SESSAO_NECESSARIA,
 } from '../constants/videochamada'
@@ -93,6 +94,7 @@ export async function entrarNaVideochamada(
       fimEm: consultoriaAgendamentos.fimEm,
       clienteUsuarioId: consultoriaAgendamentos.clienteUsuarioId,
       prestadorId: consultoriaAgendamentos.prestadorId,
+      status: consultoriaAgendamentos.status,
       nomeDoUsuario: usuarios.nome,
     })
     .from(atendimentos)
@@ -118,6 +120,18 @@ export async function entrarNaVideochamada(
   // três chutes chegou mais perto.
   if (!consultoria) {
     return { situacao: 'sem_acesso', mensagem: MENSAGEM_SEM_ACESSO_A_VIDEOCHAMADA }
+  }
+
+  /**
+   * Consultoria desmarcada não tem sala.
+   *
+   * Antes da janela, e não junto com ela: o horário de uma consultoria
+   * cancelada continua existindo na linha, então a janela dela continua
+   * "abrindo" — o que abriria a porta de um encontro que ninguém mais espera.
+   * Quem desmarcou não deve encontrar o outro lado esperando na sala.
+   */
+  if (consultoria.status === 'cancelada') {
+    return { situacao: 'sem_acesso', mensagem: MENSAGEM_CONSULTORIA_CANCELADA }
   }
 
   const agora = new Date()

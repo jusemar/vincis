@@ -438,8 +438,18 @@ export function CardConsultoria({
           */}
           <p className="text-xs font-bold text-muted-foreground">Tem um cupom?</p>
           <div className="flex flex-col sm:flex-row gap-2">
+            {/*
+              `min-w-0` no campo.
+
+              Um item de flex não encolhe abaixo do próprio `min-content`, e a
+              largura intrínseca de um `<input>` é generosa: na largura de
+              tablet o campo empurrava o botão "Aplicar" para fora do cartão,
+              que tem `overflow-hidden` e o escondia sem produzir rolagem — um
+              botão inalcançável e invisível ao mesmo tempo. `flex-1` sozinho
+              não resolve; é o `min-w-0` que devolve a decisão ao contêiner.
+            */}
             <input
-              className="flex-1 bg-muted/30 border border-border rounded-lg text-sm font-bold text-center text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none px-3 py-2"
+              className="min-w-0 flex-1 bg-muted/30 border border-border rounded-lg text-sm font-bold text-center text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none px-3 py-2"
               type="text"
               defaultValue=""
             />

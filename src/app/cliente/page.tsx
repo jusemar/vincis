@@ -65,7 +65,18 @@ export default async function ClienteRoute({
       pagarOportunidade={texto('pagar') ?? null}
       contratacoes={contratacoes.dados ?? []}
       atendimentos={atendimentos}
-      consultorias={consultorias.futuras}
+      /**
+       * As futuras e um punhado das encerradas.
+       *
+       * Uma consultoria concluída sai de `futuras` no instante em que o horário
+       * passa — mas é justamente nesse momento que o Cliente precisa dela na
+       * tela: para ver que foi concluída e para avaliar. Sem as passadas, a
+       * consultoria simplesmente desaparecia da Área do Cliente ao terminar.
+       *
+       * O corte em três é o que impede o bloco de virar um arquivo: o histórico
+       * completo continua sendo o Atendimento, que tem tela própria para isso.
+       */
+      consultorias={[...consultorias.futuras, ...consultorias.passadas.slice(0, 3)]}
       oportunidades={oportunidades}
     />
   )

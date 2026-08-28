@@ -3,10 +3,13 @@ import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
 import {
   atendimentos,
+  avaliacoesAtendimento,
   consultoriaAgendamentos,
   consultoriaPagamentos,
   usuarios,
 } from '@/db/schema'
+import type { PapelDoCiclo } from '../constants/ciclo'
+import { avaliarAlteracao } from '../lib/ciclo'
 import {
   dataLocalDoInstante,
   horaDeMinutos,
@@ -64,6 +67,15 @@ export async function listarConsultoriasDoCliente(
     duracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
     valorCentavos: consultoriaAgendamentos.valorCentavos,
     status: consultoriaAgendamentos.status,
+    canceladoEm: consultoriaAgendamentos.canceladoEm,
+    canceladoPor: consultoriaAgendamentos.canceladoPor,
+    motivoCancelamento: consultoriaAgendamentos.motivoCancelamento,
+    remarcacoes: consultoriaAgendamentos.remarcacoes,
+    concluidoEm: consultoriaAgendamentos.concluidoEm,
+    avaliacaoNota: avaliacoesAtendimento.nota,
+    avaliacaoComentario: avaliacoesAtendimento.comentario,
+    prestadorId: consultoriaAgendamentos.prestadorId,
+    clienteUsuarioId: consultoriaAgendamentos.clienteUsuarioId,
     prestadorNome: prestadorConta.nome,
     atendimentoId: atendimentos.id,
     protocolo: atendimentos.protocolo,
@@ -89,6 +101,21 @@ export async function listarConsultoriasDoCliente(
         consultoriaPagamentos,
         eq(consultoriaPagamentos.agendamentoId, consultoriaAgendamentos.id),
       )
+      /**
+       * A avaliação vem da tabela oficial da plataforma.
+       *
+       * Não há nota própria de consultoria: a reputação do Profissional é uma
+       * só, e criar uma segunda média para este caminho faria o perfil público
+       * discordar de si mesmo. O vínculo é pelo Atendimento — o mesmo que a
+       * tela de avaliação já usa — e pelo Profissional avaliado.
+       */
+      .leftJoin(
+        avaliacoesAtendimento,
+        and(
+          eq(avaliacoesAtendimento.atendimentoId, atendimentos.id),
+          eq(avaliacoesAtendimento.prestadorId, consultoriaAgendamentos.prestadorId),
+        ),
+      )
 
   const [futuras, passadas] = await Promise.all([
     base()
@@ -110,8 +137,8 @@ export async function listarConsultoriasDoCliente(
   ])
 
   return {
-    futuras: futuras.map(vestirParaCliente),
-    passadas: passadas.map(vestirParaCliente),
+    futuras: futuras.map((r) => vestirParaCliente(r, agora)),
+    passadas: passadas.map((r) => vestirParaCliente(r, agora)),
   }
 }
 
@@ -131,6 +158,15 @@ export async function listarConsultoriasDoPrestador(
     duracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
     valorCentavos: consultoriaAgendamentos.valorCentavos,
     status: consultoriaAgendamentos.status,
+    canceladoEm: consultoriaAgendamentos.canceladoEm,
+    canceladoPor: consultoriaAgendamentos.canceladoPor,
+    motivoCancelamento: consultoriaAgendamentos.motivoCancelamento,
+    remarcacoes: consultoriaAgendamentos.remarcacoes,
+    concluidoEm: consultoriaAgendamentos.concluidoEm,
+    avaliacaoNota: avaliacoesAtendimento.nota,
+    avaliacaoComentario: avaliacoesAtendimento.comentario,
+    prestadorId: consultoriaAgendamentos.prestadorId,
+    clienteUsuarioId: consultoriaAgendamentos.clienteUsuarioId,
     descricao: consultoriaAgendamentos.descricao,
     clienteNome: clienteConta.nome,
     atendimentoId: atendimentos.id,
@@ -154,6 +190,21 @@ export async function listarConsultoriasDoPrestador(
         consultoriaPagamentos,
         eq(consultoriaPagamentos.agendamentoId, consultoriaAgendamentos.id),
       )
+      /**
+       * A avaliação vem da tabela oficial da plataforma.
+       *
+       * Não há nota própria de consultoria: a reputação do Profissional é uma
+       * só, e criar uma segunda média para este caminho faria o perfil público
+       * discordar de si mesmo. O vínculo é pelo Atendimento — o mesmo que a
+       * tela de avaliação já usa — e pelo Profissional avaliado.
+       */
+      .leftJoin(
+        avaliacoesAtendimento,
+        and(
+          eq(avaliacoesAtendimento.atendimentoId, atendimentos.id),
+          eq(avaliacoesAtendimento.prestadorId, consultoriaAgendamentos.prestadorId),
+        ),
+      )
 
   const [futuras, passadas] = await Promise.all([
     base()
@@ -175,8 +226,8 @@ export async function listarConsultoriasDoPrestador(
   ])
 
   return {
-    futuras: futuras.map(vestirParaPrestador),
-    passadas: passadas.map(vestirParaPrestador),
+    futuras: futuras.map((r) => vestirParaPrestador(r, agora)),
+    passadas: passadas.map((r) => vestirParaPrestador(r, agora)),
   }
 }
 
@@ -211,20 +262,31 @@ function vestirParaCliente(registro: {
   duracaoMinutos: number
   valorCentavos: number
   status: string
+  canceladoEm: Date | null
+  canceladoPor: string | null
+  motivoCancelamento: string | null
+  remarcacoes: number
+  concluidoEm: Date | null
+  avaliacaoNota: number | null
+  avaliacaoComentario: string | null
+  prestadorId: string
+  clienteUsuarioId: string
   prestadorNome: string
   atendimentoId: string | null
   protocolo: string | null
   pagamentoStatus: string | null
-}): ConsultoriaDoClienteDTO {
+}, agora: Date): ConsultoriaDoClienteDTO {
   return {
     id: registro.id,
     prestadorNome: registro.prestadorNome,
     ...horariosLocais(registro),
     inicioEm: registro.inicioEm.toISOString(),
+    fimEm: registro.fimEm.toISOString(),
     timezone: registro.timezone,
     duracaoMinutos: registro.duracaoMinutos,
     valorCentavos: registro.valorCentavos,
     status: registro.status,
+    ...cicloDoRegistro(registro, 'cliente', agora),
     pagamentoStatus: registro.pagamentoStatus,
     atendimentoId: registro.atendimentoId,
     protocolo: registro.protocolo,
@@ -239,17 +301,27 @@ function vestirParaPrestador(registro: {
   duracaoMinutos: number
   valorCentavos: number
   status: string
+  canceladoEm: Date | null
+  canceladoPor: string | null
+  motivoCancelamento: string | null
+  remarcacoes: number
+  concluidoEm: Date | null
+  avaliacaoNota: number | null
+  avaliacaoComentario: string | null
+  prestadorId: string
+  clienteUsuarioId: string
   descricao: string
   clienteNome: string
   atendimentoId: string | null
   protocolo: string | null
   pagamentoStatus: string | null
-}): ConsultoriaDoPrestadorDTO2 {
+}, agora: Date): ConsultoriaDoPrestadorDTO2 {
   return {
     id: registro.id,
     clienteNome: registro.clienteNome,
     ...horariosLocais(registro),
     inicioEm: registro.inicioEm.toISOString(),
+    fimEm: registro.fimEm.toISOString(),
     timezone: registro.timezone,
     duracaoMinutos: registro.duracaoMinutos,
     valorCentavos: registro.valorCentavos,
@@ -258,8 +330,72 @@ function vestirParaPrestador(registro: {
     // não a consulta. Truncar aqui perderia informação que o Profissional
     // precisa para se preparar, e ele já tem direito de ler.
     descricao: registro.descricao,
+    ...cicloDoRegistro(registro, 'prestador', agora),
     pagamentoStatus: registro.pagamentoStatus,
     atendimentoId: registro.atendimentoId,
     protocolo: registro.protocolo,
+  }
+}
+
+/**
+ * A parte do DTO que fala do ciclo: cancelamento, remarcações e prazo.
+ *
+ * Uma função só para as duas visões porque a regra é uma só — mudar o prazo do
+ * Cliente não pode deixar a tela do Profissional dizendo outra coisa. O papel
+ * entra como parâmetro justamente porque é o que diferencia o prazo, e não a
+ * forma de calculá-lo.
+ *
+ * `podeAlterar` é desenho, nunca permissão: a ação recheca tudo no clique, com
+ * o relógio dela. Uma tela aberta há uma hora mostra um botão desatualizado —
+ * e o servidor recusa mesmo assim.
+ */
+function cicloDoRegistro(
+  registro: {
+    inicioEm: Date
+    fimEm: Date
+    status: string
+    canceladoEm: Date | null
+    canceladoPor: string | null
+    motivoCancelamento: string | null
+    remarcacoes: number
+    concluidoEm: Date | null
+    avaliacaoNota: number | null
+    avaliacaoComentario: string | null
+    prestadorId: string
+    clienteUsuarioId: string
+  },
+  papel: PapelDoCiclo,
+  agora: Date,
+) {
+  const canceladoPorPapel = !registro.canceladoPor
+    ? null
+    : registro.canceladoPor === registro.prestadorId
+      ? ('prestador' as const)
+      : registro.canceladoPor === registro.clienteUsuarioId
+        ? ('cliente' as const)
+        : null
+
+  return {
+    canceladoEm: registro.canceladoEm?.toISOString() ?? null,
+    canceladoPorPapel,
+    motivoCancelamento: registro.motivoCancelamento,
+    remarcacoes: registro.remarcacoes,
+    concluidoEm: registro.concluidoEm?.toISOString() ?? null,
+    avaliacao:
+      registro.avaliacaoNota === null
+        ? null
+        : { nota: registro.avaliacaoNota, comentario: registro.avaliacaoComentario },
+    podeAlterar: avaliarAlteracao(registro, papel, agora).pode,
+    /**
+     * Concluir é do Profissional, e só depois do fim contratado.
+     *
+     * A fronteira é fechada: no instante exato do término já vale. O papel
+     * entra porque o Cliente nunca conclui — mostrar-lhe o botão desabilitado
+     * sugeriria um poder que ele não tem em momento nenhum.
+     */
+    podeConcluir:
+      papel === 'prestador' &&
+      registro.status === 'agendada' &&
+      agora.getTime() >= registro.fimEm.getTime(),
   }
 }

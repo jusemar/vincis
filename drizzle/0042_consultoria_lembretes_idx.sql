@@ -1,0 +1,1 @@
+CREATE INDEX "consultoria_agendamentos_lembretes_idx" ON "consultoria_agendamentos" USING btree ("inicio_em") WHERE status = 'agendada';

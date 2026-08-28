@@ -111,6 +111,9 @@ export async function listarAtendimentosDoPrestador(
       consultoriaFimEm: consultoriaAgendamentos.fimEm,
       consultoriaTimezone: consultoriaAgendamentos.timezone,
       consultoriaDuracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
+      consultoriaStatus: consultoriaAgendamentos.status,
+      consultoriaMotivoCancelamento: consultoriaAgendamentos.motivoCancelamento,
+      consultoriaValorCentavos: consultoriaAgendamentos.valorCentavos,
     })
     .from(atendimentos)
     .innerJoin(
@@ -372,7 +375,7 @@ export async function listarAtendimentosDoPrestador(
           ).toISOString(),
         }
       : null,
-    consultoria: consultoriaDoAtendimento(registro),
+    consultoria: consultoriaDoAtendimento(registro, 'prestador'),
     participantes: participantes
       .filter((linha) => linha.atendimentoId === registro.id)
       .map((linha) => ({

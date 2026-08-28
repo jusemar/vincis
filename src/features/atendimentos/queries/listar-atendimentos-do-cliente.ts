@@ -85,6 +85,9 @@ export async function listarAtendimentosDoCliente(
       consultoriaFimEm: consultoriaAgendamentos.fimEm,
       consultoriaTimezone: consultoriaAgendamentos.timezone,
       consultoriaDuracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
+      consultoriaStatus: consultoriaAgendamentos.status,
+      consultoriaMotivoCancelamento: consultoriaAgendamentos.motivoCancelamento,
+      consultoriaValorCentavos: consultoriaAgendamentos.valorCentavos,
     })
     .from(atendimentos)
     .innerJoin(prestadorConta, eq(prestadorConta.id, atendimentos.prestadorId))
@@ -289,7 +292,7 @@ export async function listarAtendimentosDoCliente(
           pagamentoEm: registro.pagamentoEm?.toISOString() ?? null,
         }
       : null,
-    consultoria: consultoriaDoAtendimento(registro),
+    consultoria: consultoriaDoAtendimento(registro, 'cliente'),
     eventos: eventos
       .filter((linha) => linha.atendimentoId === registro.id)
       .map((linha) => ({

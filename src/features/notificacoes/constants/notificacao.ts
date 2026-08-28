@@ -63,6 +63,27 @@ export const TIPOS_NOTIFICACAO = {
    * ganhou hora marcada sem estar olhando.
    */
   consultoriaAgendada: 'consultoria_agendada',
+  /**
+   * Consultoria Agendada: o compromisso mudou de horário ou deixou de existir.
+   *
+   * Tipos próprios porque o que a pessoa precisa entender ao ler o sino é
+   * específico — há uma data no aviso, e ela é a informação principal.
+   * `status_alterado`, que é o tipo genérico do Atendimento, diria "algo mudou"
+   * sobre a única coisa cujo detalhe importa.
+   */
+  consultoriaCancelada: 'consultoria_cancelada',
+  consultoriaRemarcada: 'consultoria_remarcada',
+  /**
+   * O aviso de que a consulta está chegando.
+   *
+   * Um tipo só para as três antecedências (24h, 1h, 10min): do ponto de vista
+   * de quem lê o sino é sempre o mesmo assunto — "sua consultoria está
+   * próxima" —, e o que distingue os três é o texto e a chave de dedupe, não a
+   * natureza do aviso. Três tipos obrigariam toda tela e todo filtro a
+   * conhecer os três para tratá-los igual.
+   */
+  consultoriaLembrete: 'consultoria_lembrete',
+  consultoriaConcluida: 'consultoria_concluida',
 } as const
 
 export type TipoNotificacao =
@@ -93,6 +114,10 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.ajusteSolicitado]: '🔧',
   [TIPOS_NOTIFICACAO.ajusteAnalisado]: '🔧',
   [TIPOS_NOTIFICACAO.prazoProximo]: '⏰',
+  [TIPOS_NOTIFICACAO.consultoriaCancelada]: '🚫',
+  [TIPOS_NOTIFICACAO.consultoriaRemarcada]: '📅',
+  [TIPOS_NOTIFICACAO.consultoriaLembrete]: '⏰',
+  [TIPOS_NOTIFICACAO.consultoriaConcluida]: '✅',
   [TIPOS_NOTIFICACAO.conviteRecebido]: '🤝',
   [TIPOS_NOTIFICACAO.mensagemNegociacao]: '💬',
   [TIPOS_NOTIFICACAO.contrapropostaRecebida]: '💰',

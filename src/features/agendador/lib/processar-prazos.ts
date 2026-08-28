@@ -1,6 +1,7 @@
 import { expirarConvitesVencidos } from '@/features/atendimentos/lib/convites'
 import { processarAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
 import { processarOportunidadesVencidas } from '@/features/oportunidades/lib/processar-vencidas'
+import { processarLembretesDeConsultoria } from './processar-lembretes-consultoria'
 
 /**
  * O que uma execução do agendador fez.
@@ -16,6 +17,8 @@ export type ResumoDoAgendador = {
   avisosDeExpiracao: number
   convitesExpirados: number
   avisosDePrazo: number
+  /** Lembretes de consultoria emitidos (soma dos dois lados). */
+  lembretesDeConsultoria: number
   /** Rotinas que falharam, pelo nome. A causa vai para o log do servidor. */
   falhas: string[]
 }
@@ -105,12 +108,31 @@ export async function processarPrazos(agora = new Date()): Promise<ResumoDoAgend
     falhas,
   )
 
+  /**
+   * Os lembretes das consultorias.
+   *
+   * Entram na rotina que já existe em vez de ganharem um cron próprio: é o
+   * mesmo endpoint, a mesma autorização e o mesmo isolamento de falhas, e um
+   * segundo agendamento seria mais uma coisa para configurar, monitorar e
+   * esquecer. Como todas as rotinas daqui, esta é idempotente — repetir o
+   * disparo não repete o aviso.
+   */
+  const lembretesDeConsultoria = await isolar(
+    {
+      nome: 'lembretes-consultoria',
+      executar: () => processarLembretesDeConsultoria(agora),
+    },
+    0,
+    falhas,
+  )
+
   return {
     duracaoMs: Date.now() - inicio,
     oportunidadesExpiradas: oportunidades.expiradas,
     avisosDeExpiracao: oportunidades.avisos,
     convitesExpirados,
     avisosDePrazo,
+    lembretesDeConsultoria,
     falhas,
   }
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Building2, ChevronDown, LogOut, Megaphone, ShieldCheck, Users } from 'lucide-react'
+import { Building2, CalendarClock, ChevronDown, LogOut, Megaphone, ShieldCheck, Users } from 'lucide-react'
 import ThemeToggle from '@/components/shared/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -123,6 +123,14 @@ export function GestaoVincisInicial({ nome, cadastrosPendentes, configuracoes }:
               <Link href="/gestao/comunicados">
                 <Megaphone className="size-4" />
                 Comunicados
+              </Link>
+            </Button>
+            {/* Acompanhamento operacional das Consultorias Agendadas: leitura,
+                nunca intervenção — cancelar e remarcar seguem com as partes. */}
+            <Button asChild variant="outline" className="mt-8 ml-3">
+              <Link href="/gestao/consultorias">
+                <CalendarClock className="size-4" />
+                Consultorias
               </Link>
             </Button>
             <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border bg-background/70 p-4">

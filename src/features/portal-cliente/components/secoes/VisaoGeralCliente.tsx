@@ -136,7 +136,7 @@ export function VisaoGeralCliente({
         )}
       </section>
 
-      <ConsultoriasDoCliente futuras={consultorias} />
+      <ConsultoriasDoCliente consultorias={consultorias} />
 
       {/*
         `min-w-0` nas duas colunas.

@@ -51,6 +51,18 @@ export const consultoriaExcecoes = pgTable(
     horaFim: time('hora_fim'),
     /** Anotação interna do Profissional. Nunca sai para o Cliente. */
     motivo: varchar('motivo', { length: 240 }),
+    /**
+     * O bloqueio de vários dias que originou esta exceção.
+     *
+     * Férias de dez dias são dez linhas — uma por data —, porque a agenda
+     * raciocina por dia e reescrever isso para guardar intervalos obrigaria
+     * todo o gerador de horários a entender um segundo formato. O que faltava
+     * era só o laço: sem ele, desfazer as férias seria apagar dez exceções
+     * soltas, uma a uma, sem nada dizendo que pertenciam ao mesmo motivo.
+     *
+     * Nulo para a exceção avulsa — um feriado, um encaixe —, que é a maioria.
+     */
+    grupoId: uuid('grupo_id'),
     ativo: boolean('ativo').notNull().default(true),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -63,6 +75,8 @@ export const consultoriaExcecoes = pgTable(
       foreignColumns: [consultoriaConfiguracoes.id],
       name: 'consultoria_excecoes_configuracao_fk',
     }).onDelete('cascade'),
+    /** Desfazer um bloqueio inteiro é encontrar todas as datas dele de uma vez. */
+    grupoIdx: index('consultoria_excecoes_grupo_idx').on(t.grupoId),
     agendaIdx: index('consultoria_excecoes_agenda_idx').on(
       t.configuracaoId,
       t.data,

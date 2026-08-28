@@ -23,6 +23,12 @@ export const ACOES_AUDITORIA = {
   contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
   /** Pagamento **simulado** aprovado. O nome diz o que é, no próprio registro. */
   pagamentoSimuladoAprovado: 'pagamento_simulado_aprovado',
+  /** Ciclo pós-agendamento da Consultoria: desfeita, ou movida de horário. */
+  consultoriaCancelada: 'consultoria_cancelada',
+  consultoriaRemarcada: 'consultoria_remarcada',
+  consultoriaConcluida: 'consultoria_concluida',
+  /** O Profissional mexeu na própria agenda: faixas, bloqueios, preço, duração. */
+  agendaConsultoriaAlterada: 'agenda_consultoria_alterada',
 } as const
 
 export type AcaoAuditoria =

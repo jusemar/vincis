@@ -32,8 +32,3 @@ export const NOME_DE_SALA_VALIDO = /^[A-Za-z0-9_-]{1,128}$/
 export function gerarNomeDeSala(): string {
   return `${PREFIXO}${randomBytes(BYTES_DE_ENTROPIA).toString('base64url')}`
 }
-
-/** Reconhece uma sala criada por esta plataforma. Usado pela limpeza de demo. */
-export function ehSalaDaVincis(nome: string): boolean {
-  return nome.startsWith(PREFIXO)
-}

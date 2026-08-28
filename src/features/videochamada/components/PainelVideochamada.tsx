@@ -50,6 +50,8 @@ export type PainelVideochamadaProps = {
     timezone: string
     janelaAbreEm: string
     janelaFechaEm: string
+    status: string
+    motivoCancelamento: string | null
   }
 }
 
@@ -94,7 +96,17 @@ export function PainelVideochamada({
     inicioEm: new Date(consultoria.inicioEm),
     fimEm: new Date(consultoria.fimEm),
   })
-  const situacao = situacaoDaJanela(janela, new Date(instante))
+  /**
+   * Consultoria desfeita não tem janela.
+   *
+   * O horário continua na linha, então a janela continuaria "abrindo" sozinha —
+   * e a tela ofereceria a porta de um encontro que ninguém mais espera. O
+   * servidor já recusa; aqui a tela para de prometer.
+   */
+  const cancelada = consultoria.status === 'cancelada'
+  const situacao = cancelada
+    ? ('encerrada' as const)
+    : situacaoDaJanela(janela, new Date(instante))
   const naSala = entrada?.situacao === 'autorizado'
 
   /**
@@ -142,12 +154,19 @@ export function PainelVideochamada({
               {TITULO_VIDEOCHAMADA}
             </h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {MENSAGENS_DA_JANELA[situacao]}
+              {cancelada
+                ? 'Esta consultoria foi cancelada. A videochamada não está mais disponível.'
+                : MENSAGENS_DA_JANELA[situacao]}
             </p>
+            {cancelada && consultoria.motivoCancelamento ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Motivo: {consultoria.motivoCancelamento}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        {situacao === 'aberta' ? (
+        {situacao === 'aberta' && !cancelada ? (
           <button
             type="button"
             onClick={abrir}
@@ -176,6 +195,7 @@ export function PainelVideochamada({
         )}
       </div>
 
+      {cancelada ? null : (
       <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
         <CalendarClock className="size-3.5 shrink-0" aria-hidden />
         <span>
@@ -188,6 +208,7 @@ export function PainelVideochamada({
               : ''}
         </span>
       </p>
+      )}
 
       {erro ? (
         <p

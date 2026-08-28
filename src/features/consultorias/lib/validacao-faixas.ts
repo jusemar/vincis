@@ -77,8 +77,3 @@ export function conferirFaixasSemanais(
 
   return problemas
 }
-
-/** Atalho para quem só precisa saber se pode gravar. */
-export function faixasSemanaisCoerentes(faixas: FaixaSemanal[]): boolean {
-  return conferirFaixasSemanais(faixas).length === 0
-}

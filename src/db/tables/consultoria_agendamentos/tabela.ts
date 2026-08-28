@@ -83,7 +83,59 @@ export const consultoriaAgendamentos = pgTable(
      * declarar os valores agora só ensaiaria uma máquina de estados que ninguém
      * ainda escreveu.
      */
+    /**
+     * Estado do compromisso.
+     *
+     * `agendada` é o compromisso de pé; `cancelada` é o compromisso desfeito,
+     * que continua existindo como registro e deixa de ocupar a agenda. Não há
+     * `remarcada`: remarcar muda **quando**, não **se** — a consultoria segue
+     * agendada, no horário novo, e o que aconteceu fica no histórico do
+     * Atendimento. Um estado para isso criaria uma consultoria que é ao mesmo
+     * tempo válida e "remarcada", e toda consulta de agenda teria de lembrar de
+     * aceitar os dois.
+     *
+     * `concluida` é a consultoria que o Profissional declarou realizada. Um
+     * único nome para um único significado: não existem `finalizada`,
+     * `encerrada` nem `realizada` ao lado dela.
+     */
     status: varchar('status', { length: 20 }).notNull().default('agendada'),
+    /**
+     * O cancelamento, registrado e não apagado.
+     *
+     * As três colunas andam juntas: quando, por quem e por quê. Apagar a linha
+     * seria mais simples e destruiria a única prova de que o compromisso
+     * existiu — o Cliente pagou, o protocolo foi aberto, e essa história não
+     * pode depender de ninguém ter tirado print.
+     *
+     * `cancelado_por` é o usuário da sessão que cancelou, e é o que permite a
+     * tela dizer "cancelada pelo Profissional" sem inferir pelo motivo estar
+     * preenchido ou não.
+     */
+    canceladoEm: timestamp('cancelado_em'),
+    canceladoPor: uuid('cancelado_por'),
+    /** Opcional para o Cliente, obrigatório para o Profissional. Regra na ação. */
+    motivoCancelamento: varchar('motivo_cancelamento', { length: 500 }),
+    /**
+     * A conclusão, declarada por uma pessoa.
+     *
+     * Nunca deduzida. O horário ter passado não conclui nada — a consulta pode
+     * não ter acontecido —, e ter entrado na sala Daily também não: presença
+     * não é atendimento prestado. Quem afirma que a consultoria foi realizada é
+     * o Profissional responsável, num clique explícito, e é essa afirmação que
+     * fica gravada aqui com autor e instante.
+     */
+    concluidoEm: timestamp('concluido_em'),
+    concluidoPor: uuid('concluido_por'),
+    /**
+     * A última remarcação — quando, e quantas houve.
+     *
+     * O relato completo de cada mudança (de que horário para qual, por quem)
+     * vive nos eventos do Atendimento, que são imutáveis e já são a fonte
+     * histórica da plataforma. Aqui ficam só os dois dados que as telas e as
+     * regras precisam ler sem varrer histórico.
+     */
+    remarcadoEm: timestamp('remarcado_em'),
+    remarcacoes: integer('remarcacoes').notNull().default(0),
     /**
      * A sala Daily desta consultoria — o **nome**, e nada além dele.
      *
@@ -165,6 +217,18 @@ export const consultoriaAgendamentos = pgTable(
       t.status,
       t.inicioEm,
     ),
+    /**
+     * A varredura dos lembretes, que roda a cada dez minutos.
+     *
+     * Ela pergunta "quais consultorias de pé começam nas próximas 25 horas?" —
+     * uma pergunta global, sem `configuracao_id`, que os outros índices não
+     * atendem. Parcial porque só interessa o estado `agendada`: cancelada e
+     * concluída não recebem lembrete, e mantê-las fora deixa o índice pequeno
+     * mesmo depois de anos de histórico.
+     */
+    lembretesIdx: index('consultoria_agendamentos_lembretes_idx')
+      .on(t.inicioEm)
+      .where(sql`status = 'agendada'`),
     clienteIdx: index('consultoria_agendamentos_cliente_idx').on(
       t.clienteUsuarioId,
       t.inicioEm,
@@ -173,9 +237,43 @@ export const consultoriaAgendamentos = pgTable(
       t.prestadorId,
       t.inicioEm,
     ),
+    canceladoPorFk: foreignKey({
+      columns: [t.canceladoPor],
+      foreignColumns: [usuarios.id],
+      name: 'consultoria_agendamentos_cancelado_por_fk',
+    }),
+    concluidoPorFk: foreignKey({
+      columns: [t.concluidoPor],
+      foreignColumns: [usuarios.id],
+      name: 'consultoria_agendamentos_concluido_por_fk',
+    }),
     statusValido: check(
       'consultoria_agendamentos_status_valido',
-      sql`status in ('agendada')`,
+      sql`status in ('agendada', 'cancelada', 'concluida')`,
+    ),
+    /**
+     * Concluída implica os dois carimbos; qualquer outro estado, nenhum.
+     *
+     * Mesma defesa do cancelamento: o banco recusa tanto o estado trocado sem
+     * registro de autoria quanto o carimbo de conclusão numa consultoria que
+     * ainda não foi concluída.
+     */
+    conclusaoCoerente: check(
+      'consultoria_agendamentos_conclusao_coerente',
+      sql`(status = 'concluida' and concluido_em is not null and concluido_por is not null)
+          or (status <> 'concluida' and concluido_em is null and concluido_por is null)`,
+    ),
+    /**
+     * Cancelada implica os três dados do cancelamento; agendada implica nenhum.
+     *
+     * É a regra que impede o estado meio-gravado — status trocado sem registrar
+     * quem e quando, ou carimbo de cancelamento numa consultoria que segue de
+     * pé. O banco recusa as duas formas de mentira.
+     */
+    cancelamentoCoerente: check(
+      'consultoria_agendamentos_cancelamento_coerente',
+      sql`(status = 'cancelada' and cancelado_em is not null and cancelado_por is not null)
+          or (status <> 'cancelada' and cancelado_em is null and cancelado_por is null)`,
     ),
     periodoCoerente: check(
       'consultoria_agendamentos_periodo_coerente',

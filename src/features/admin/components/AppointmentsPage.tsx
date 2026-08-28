@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { rotaDoAtendimentoNoPainel } from '@/features/consultorias/constants/contratacao';
+import { AcoesDaConsultoria } from '@/features/consultorias/components/ciclo/AcoesDaConsultoria';
+import { ConfiguracaoDaConsultoria } from '@/features/consultorias/components/prestador/ConfiguracaoDaConsultoria';
+import { AVISO_PAGAMENTO_NO_CANCELAMENTO } from '@/features/consultorias/constants/ciclo';
 import {
   duracaoPorExtenso,
   formatarPreco,
@@ -71,6 +74,14 @@ export default function AppointmentsPage({
    */
   consultorias?: ConsultoriaDoPrestadorDTO2[];
 }) {
+  /**
+   * Duas vistas da mesma agenda, e não duas telas.
+   *
+   * "Quem eu atendo?" e "quando eu atendo?" são a mesma coisa vista de dois
+   * ângulos. Um item novo na barra lateral separaria as duas e obrigaria a
+   * pessoa a lembrar em qual delas está o que ela quer.
+   */
+  const [vista, setVista] = useState<'agenda' | 'configuracao'>('agenda');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [selecionada, setSelecionada] = useState<ConsultoriaDoPrestadorDTO2 | null>(null);
@@ -109,9 +120,29 @@ export default function AppointmentsPage({
   const selo = (status: string) =>
     status === 'agendada' ? (
       <span className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-600 dark:text-green-400">Agendada</span>
+    ) : status === 'cancelada' ? (
+      <span className="px-2 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">Cancelada</span>
+    ) : status === 'concluida' ? (
+      <span className="px-2 py-0.5 rounded text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400">Concluída</span>
     ) : (
       <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">{status}</span>
     );
+
+  /** O recorte que os modais de cancelar/remarcar consomem. */
+  const paraAcoes = (item: ConsultoriaDoPrestadorDTO2) => ({
+    id: item.id,
+    data: item.data,
+    inicio: item.inicio,
+    fim: item.fim,
+    timezone: item.timezone,
+    duracaoMinutos: item.duracaoMinutos,
+    valorCentavos: item.valorCentavos,
+    status: item.status,
+    protocolo: item.protocolo,
+    podeAlterar: item.podeAlterar,
+    podeConcluir: item.podeConcluir,
+    outraParte: item.clienteNome,
+  });
 
   const diaExibido = selectedDate ?? today.getDate();
   const listaDoDia = consultoriasDoDia(diaExibido);
@@ -126,10 +157,43 @@ export default function AppointmentsPage({
         <div>
           <h2 className="text-2xl font-bold">Agenda</h2>
           <p className="text-muted-foreground">
-            Suas consultorias agendadas pelos clientes.
+            {vista === 'agenda'
+              ? 'Suas consultorias agendadas pelos clientes.'
+              : 'Preço, duração, horários e bloqueios da sua consultoria.'}
           </p>
         </div>
+
+        <div
+          role="tablist"
+          aria-label="Vistas da agenda"
+          className="flex gap-1 rounded-lg border border-border p-1"
+        >
+          {(
+            [
+              { id: 'agenda', rotulo: 'Consultorias' },
+              { id: 'configuracao', rotulo: 'Configuração da consultoria' },
+            ] as const
+          ).map(({ id, rotulo }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={vista === id}
+              onClick={() => setVista(id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                vista === id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
       </motion.div>
+
+      {vista === 'configuracao' ? <ConfiguracaoDaConsultoria /> : (
+      <>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
@@ -195,7 +259,13 @@ export default function AppointmentsPage({
                     {doDia.slice(0, 2).map((item) => (
                       <div
                         key={item.id}
-                        className="text-xs p-1 rounded truncate bg-blue-500/10 text-blue-600"
+                        className={`text-xs p-1 rounded truncate ${
+                          item.status === 'cancelada'
+                            ? 'bg-muted text-muted-foreground line-through'
+                            : item.status === 'concluida'
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-blue-500/10 text-blue-600'
+                        }`}
                       >
                         {item.inicio} {item.clienteNome.split(' ')[0]}
                       </div>
@@ -274,6 +344,9 @@ export default function AppointmentsPage({
         </motion.div>
       </div>
 
+      </>
+      )}
+
       <AnimatePresence>
         {selecionada && (
           <motion.div
@@ -342,14 +415,84 @@ export default function AppointmentsPage({
                     <p className="font-medium">Online</p>
                     {/*
                       Sem link de reunião: a videochamada da Vincis acontece
-                      dentro da Vincis e é etapa própria. Um endereço externo
-                      aqui seria informação falsa.
+                      dentro da Vincis, e abre no Atendimento na hora marcada.
+                      Numa consultoria desfeita não há chamada a anunciar.
                     */}
                     <p className="text-xs text-muted-foreground">
-                      Videochamada disponível em breve
+                      {selecionada.status === 'cancelada'
+                        ? 'Consultoria cancelada — sem videochamada.'
+                        : selecionada.status === 'concluida'
+                          ? 'Consultoria concluída.'
+                          : 'A videochamada abre no atendimento, no horário marcado.'}
                     </p>
                   </div>
                 </div>
+
+                {selecionada.status === 'concluida' ? (
+                  <div className="rounded-lg border border-border bg-muted/50 p-4">
+                    <p className="text-sm font-medium">
+                      Concluída
+                      {selecionada.concluidoEm
+                        ? ` em ${new Date(selecionada.concluidoEm).toLocaleDateString('pt-BR')}`
+                        : ''}
+                      .
+                    </p>
+                    {/*
+                      A nota que o Cliente deu, quando já deu. Sem nome nem
+                      dado pessoal dele: aqui interessa o retorno, não quem o
+                      escreveu — o protocolo já diz de quem é o atendimento.
+                    */}
+                    {selecionada.avaliacao ? (
+                      <>
+                        <p className="mt-1 text-sm">
+                          <span aria-hidden className="text-amber-500">
+                            {'★'.repeat(selecionada.avaliacao.nota)}
+                            <span className="text-muted-foreground">
+                              {'★'.repeat(5 - selecionada.avaliacao.nota)}
+                            </span>
+                          </span>{' '}
+                          <span className="text-muted-foreground">
+                            {selecionada.avaliacao.nota} de 5
+                          </span>
+                        </p>
+                        {selecionada.avaliacao.comentario ? (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            “{selecionada.avaliacao.comentario}”
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        O cliente ainda não avaliou este atendimento.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+
+                {selecionada.status === 'cancelada' ? (
+                  <div className="rounded-lg border border-border bg-muted/50 p-4">
+                    <p className="text-sm font-medium">
+                      Cancelada
+                      {selecionada.canceladoPorPapel === 'cliente'
+                        ? ' pelo cliente'
+                        : selecionada.canceladoPorPapel === 'prestador'
+                          ? ' por você'
+                          : ''}
+                      {selecionada.canceladoEm
+                        ? ` em ${new Date(selecionada.canceladoEm).toLocaleDateString('pt-BR')}`
+                        : ''}
+                      .
+                    </p>
+                    {selecionada.motivoCancelamento ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Motivo: {selecionada.motivoCancelamento}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {AVISO_PAGAMENTO_NO_CANCELAMENTO}
+                    </p>
+                  </div>
+                ) : null}
 
                 {selecionada.protocolo && (
                   <div className="flex items-center gap-3">
@@ -394,7 +537,13 @@ export default function AppointmentsPage({
                 </div>
               </div>
 
-              <div className="p-6 border-t flex flex-wrap justify-end gap-3">
+              <div className="p-6 border-t flex flex-wrap items-center justify-between gap-3">
+                <AcoesDaConsultoria
+                  consultoria={paraAcoes(selecionada)}
+                  papel="prestador"
+                  compacto
+                />
+                <div className="flex flex-wrap justify-end gap-3">
                 <button
                   onClick={() => setSelecionada(null)}
                   className="px-5 py-2.5 rounded-lg border hover:bg-muted transition-colors"
@@ -409,6 +558,7 @@ export default function AppointmentsPage({
                     Ver atendimento
                   </Link>
                 )}
+                </div>
               </div>
             </motion.div>
           </motion.div>

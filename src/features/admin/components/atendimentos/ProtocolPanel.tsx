@@ -40,6 +40,7 @@ import { SolicitacaoDeAjusteCard } from "./SolicitacaoDeAjusteCard";
 import { useRolagemDaConversa } from "@/features/atendimentos/hooks/useRolagemDaConversa";
 import { useTempoReal } from "@/features/tempo-real/components/TempoRealProvider";
 import { PainelVideochamada } from "@/features/videochamada/components/PainelVideochamada";
+import { AcoesDaConsultoria } from "@/features/consultorias/components/ciclo/AcoesDaConsultoria";
 import type { FocoDoPainel, Protocol, RealChecklistItem } from "../../types/atendimentos";
 
 type Tab = "protocolo" | "conversa" | "arquivos" | "historico" | "info";
@@ -343,12 +344,38 @@ export const ProtocolPanel = ({
         entrar.
       */}
       {real?.consultoria && (
-        <div className="shrink-0 border-b border-border p-3 sm:p-4">
+        <div className="shrink-0 space-y-3 border-b border-border p-3 sm:p-4">
           <PainelVideochamada
             atendimentoId={real.atendimentoId}
             protocolo={protocol.number}
             nomeDaOutraParte={protocol.client}
             consultoria={real.consultoria}
+          />
+          {/*
+            Cancelar e remarcar também aqui, e não só na Agenda.
+
+            Quem está lendo o protocolo é quem acabou de descobrir o motivo para
+            desmarcar — mandá-lo procurar a mesma consultoria noutra tela seria
+            um desvio sem propósito. Mesmo componente, mesma ação, mesma regra:
+            não há uma segunda implementação para divergir.
+          */}
+          <AcoesDaConsultoria
+            consultoria={{
+              id: real.consultoria.agendamentoId,
+              data: real.consultoria.data,
+              inicio: real.consultoria.inicio,
+              fim: real.consultoria.fim,
+              timezone: real.consultoria.timezone,
+              duracaoMinutos: real.consultoria.duracaoMinutos,
+              valorCentavos: real.consultoria.valorCentavos,
+              status: real.consultoria.status,
+              protocolo: protocol.number,
+              podeAlterar: real.consultoria.podeAlterar,
+              podeConcluir: real.consultoria.podeConcluir,
+              outraParte: protocol.client,
+            }}
+            papel="prestador"
+            compacto
           />
         </div>
       )}

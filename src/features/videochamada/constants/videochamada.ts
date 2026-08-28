@@ -56,3 +56,13 @@ export const MENSAGEM_SEM_ACESSO_A_VIDEOCHAMADA =
 
 export const MENSAGEM_SESSAO_NECESSARIA =
   'Entre na sua conta para acessar a videochamada.'
+
+/**
+ * A consultoria foi desmarcada — não há sala para entrar.
+ *
+ * Mensagem própria, e não a recusa genérica: quem chega aqui é uma das duas
+ * partes legítimas, e dizer "não está disponível para a sua conta" mandaria a
+ * pessoa procurar um problema de acesso que não existe.
+ */
+export const MENSAGEM_CONSULTORIA_CANCELADA =
+  'Esta consultoria foi cancelada. A videochamada não está mais disponível.'

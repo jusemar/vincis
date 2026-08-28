@@ -223,12 +223,29 @@ export type AtendimentoOperacionalDTO = {
  */
 export type AtendimentoConsultoriaDTO = {
   agendamentoId: string
+  /** `agendada` ou `cancelada`. A tela usa para não oferecer o que não existe. */
+  status: string
+  motivoCancelamento: string | null
   inicioEm: string
   fimEm: string
   timezone: string
   duracaoMinutos: number
   janelaAbreEm: string
   janelaFechaEm: string
+  /** Horas de parede no fuso contratado — o que os modais do ciclo exibem. */
+  data: string
+  inicio: string
+  fim: string
+  valorCentavos: number
+  /**
+   * Se **este** Profissional ainda está no prazo de alterar.
+   *
+   * Calculado no servidor com o prazo do papel `prestador`, porque este DTO só
+   * chega ao painel dele. A tela do Cliente tem o seu, com o prazo dela.
+   */
+  podeAlterar: boolean
+  /** Só o Profissional, e só depois do término contratado. */
+  podeConcluir: boolean
 }
 
 /** De onde veio o Atendimento, quando a origem é uma solicitação pública. */

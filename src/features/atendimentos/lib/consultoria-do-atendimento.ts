@@ -1,3 +1,10 @@
+import type { PapelDoCiclo } from '@/features/consultorias/constants/ciclo'
+import { avaliarAlteracao } from '@/features/consultorias/lib/ciclo'
+import {
+  dataLocalDoInstante,
+  horaDeMinutos,
+  minutosLocaisDoInstante,
+} from '@/features/consultorias/lib/tempo'
 import { janelaDaVideochamada } from '@/features/videochamada/lib/janela'
 import type { AtendimentoConsultoriaDTO } from '../types/atendimento'
 
@@ -25,7 +32,10 @@ export function consultoriaDoAtendimento(registro: {
   consultoriaFimEm: Date | null
   consultoriaTimezone: string | null
   consultoriaDuracaoMinutos: number | null
-}): AtendimentoConsultoriaDTO | null {
+  consultoriaStatus: string | null
+  consultoriaMotivoCancelamento: string | null
+  consultoriaValorCentavos: number | null
+}, papel: PapelDoCiclo = 'prestador'): AtendimentoConsultoriaDTO | null {
   if (
     !registro.consultoriaId ||
     !registro.consultoriaInicioEm ||
@@ -34,6 +44,7 @@ export function consultoriaDoAtendimento(registro: {
     return null
   }
 
+  const fuso = registro.consultoriaTimezone ?? 'America/Sao_Paulo'
   const janela = janelaDaVideochamada({
     inicioEm: registro.consultoriaInicioEm,
     fimEm: registro.consultoriaFimEm,
@@ -41,11 +52,28 @@ export function consultoriaDoAtendimento(registro: {
 
   return {
     agendamentoId: registro.consultoriaId,
+    status: registro.consultoriaStatus ?? 'agendada',
+    motivoCancelamento: registro.consultoriaMotivoCancelamento,
     inicioEm: registro.consultoriaInicioEm.toISOString(),
     fimEm: registro.consultoriaFimEm.toISOString(),
-    timezone: registro.consultoriaTimezone ?? 'America/Sao_Paulo',
+    timezone: fuso,
     duracaoMinutos: registro.consultoriaDuracaoMinutos ?? 0,
     janelaAbreEm: janela.abreEm.toISOString(),
     janelaFechaEm: janela.fechaEm.toISOString(),
+    data: dataLocalDoInstante(registro.consultoriaInicioEm, fuso),
+    inicio: horaDeMinutos(
+      minutosLocaisDoInstante(registro.consultoriaInicioEm, fuso),
+    ),
+    fim: horaDeMinutos(minutosLocaisDoInstante(registro.consultoriaFimEm, fuso)),
+    valorCentavos: registro.consultoriaValorCentavos ?? 0,
+    podeAlterar: avaliarAlteracao(
+      { inicioEm: registro.consultoriaInicioEm, status: registro.consultoriaStatus ?? 'agendada' },
+      papel,
+      new Date(),
+    ).pode,
+    podeConcluir:
+      papel === 'prestador' &&
+      (registro.consultoriaStatus ?? 'agendada') === 'agendada' &&
+      Date.now() >= registro.consultoriaFimEm.getTime(),
   }
 }

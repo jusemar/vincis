@@ -45,11 +45,6 @@ export type ResultadoPreparacao =
   | { situacao: 'horario_indisponivel'; mensagem: string }
   | { situacao: 'dados_invalidos'; mensagem: string }
 
-/** Situações em que a tela deve levar a pessoa ao login central da Vincis. */
-export function pedeAutenticacao(resultado: ResultadoPreparacao): boolean {
-  return resultado.situacao === 'precisa_entrar'
-}
-
 /** A reserva temporária como a tela precisa dela. */
 export type ReservaDTO = {
   id: string

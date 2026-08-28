@@ -230,6 +230,7 @@ async function carregarOcupacoes(
   timezone: string,
   agora: Date,
   ignorarClienteId?: string,
+  ignorarAgendamentoId?: string,
 ): Promise<Ocupacao[]> {
   // A janela consultada em instantes, com um dia de folga de cada lado para
   // que uma reserva que atravessa a borda do recorte ainda seja vista.
@@ -276,6 +277,17 @@ async function carregarOcupacoes(
         eq(consultoriaAgendamentos.status, 'agendada'),
         lt(consultoriaAgendamentos.inicioEm, fimJanela),
         gt(consultoriaAgendamentos.fimEm, inicioJanela),
+        /**
+         * A consultoria que está sendo remarcada não bloqueia a si mesma.
+         *
+         * Sem isto, quem tenta mover as 14:00 para as 14:30 recebe "horário
+         * indisponível" — porque o horário está ocupado por ele próprio, e a
+         * folga entre consultas ainda alcança os vizinhos do slot atual. É o
+         * mesmo papel que `ignorarClienteId` cumpre para as reservas.
+         */
+        ignorarAgendamentoId
+          ? ne(consultoriaAgendamentos.id, ignorarAgendamentoId)
+          : undefined,
       ),
     )
 
@@ -333,6 +345,14 @@ export type ConsultaDeDias = {
    * impedido pela própria reserva. Consulta pública nunca informa.
    */
   ignorarClienteId?: string
+  /**
+   * A consultoria que está mudando de horário não conta como ocupação.
+   *
+   * Só a remarcação usa. Sem isto, mover as 14:00 para as 14:30 esbarraria na
+   * própria consultoria — e nos vizinhos que a folga entre consultas alcança a
+   * partir dela. Consulta pública nunca informa.
+   */
+  ignorarAgendamentoId?: string
 }
 
 /**
@@ -349,6 +369,7 @@ export async function listarDiasDisponiveis({
   agora = new Date(),
   ocupacoes = [],
   ignorarClienteId,
+  ignorarAgendamentoId,
 }: ConsultaDeDias): Promise<AgendaDeDiasDTO> {
   const configuracao = await carregarConfiguracao(prestadorId)
   if (!configuracao) return { consultoria: null, dias: [] }
@@ -367,6 +388,7 @@ export async function listarDiasDisponiveis({
       configuracao.timezone,
       agora,
       ignorarClienteId,
+      ignorarAgendamentoId,
     ),
   ])
   const ocupadas = [...reservadas, ...ocupacoes]
@@ -396,6 +418,8 @@ export type ConsultaDeHorarios = {
   ocupacoes?: Ocupacao[]
   /** Ver `ConsultaDeDias.ignorarClienteId`. */
   ignorarClienteId?: string
+  /** Ver `ConsultaDeDias.ignorarAgendamentoId`. */
+  ignorarAgendamentoId?: string
 }
 
 /**
@@ -411,6 +435,7 @@ export async function listarHorariosDoDia({
   agora = new Date(),
   ocupacoes = [],
   ignorarClienteId,
+  ignorarAgendamentoId,
 }: ConsultaDeHorarios): Promise<AgendaDoDiaDTO> {
   const configuracao = await carregarConfiguracao(prestadorId)
   if (!configuracao) return { consultoria: null, data, horarios: [] }
@@ -429,6 +454,7 @@ export async function listarHorariosDoDia({
       configuracao.timezone,
       agora,
       ignorarClienteId,
+      ignorarAgendamentoId,
     ),
   ])
 
@@ -471,6 +497,7 @@ export async function obterAgendaDoMes({
   agora = new Date(),
   ocupacoes = [],
   ignorarClienteId,
+  ignorarAgendamentoId,
 }: {
   prestadorId: string
   mes: MesDaAgenda
@@ -478,6 +505,8 @@ export async function obterAgendaDoMes({
   ocupacoes?: Ocupacao[]
   /** Ver `ConsultaDeDias.ignorarClienteId`. */
   ignorarClienteId?: string
+  /** Ver `ConsultaDeDias.ignorarAgendamentoId`. */
+  ignorarAgendamentoId?: string
 }): Promise<AgendaDoMesDTO> {
   const grade = montarGradeDoMes(mes)
   const { consultoria, dias } = await listarDiasDisponiveis({
@@ -487,6 +516,7 @@ export async function obterAgendaDoMes({
     agora,
     ocupacoes,
     ignorarClienteId,
+    ignorarAgendamentoId,
   })
 
   if (!consultoria) {
