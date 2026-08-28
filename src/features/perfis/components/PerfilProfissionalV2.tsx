@@ -1,23 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   BadgeCheck, Headphones, GraduationCap, Award,
   CheckCircle2, Lock, Users, Send,
   ChevronRight, ShieldCheck, Shield, FileText,
+  Pencil, X, Check, Plus, ChevronUp, ChevronDown, Trash2, Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../../../components/shared/Footer';
 import { contratarServico } from '@/features/servicos/actions/contratar';
 import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
+import { salvarVitrineProfissional } from '@/features/usuarios/actions/salvar-vitrine-profissional';
+import { REGIMES_TRIBUTARIOS } from '@/features/usuarios/schemas/perfil-profissional';
+import {
+  salvarCasosSucesso,
+  salvarExperiencias,
+  salvarPerguntasFrequentes,
+} from '@/features/perfis/actions/salvar-conteudo-vitrine';
+import { salvarAvatarProfissional } from '@/features/perfis/actions/salvar-avatar-profissional';
 import {
   FormularioSolicitarOrcamento,
   type DestinatarioDaSolicitacao,
 } from '@/features/oportunidades/components/cliente/FormularioSolicitarOrcamento';
 import { ConsultoriaPublica } from '@/features/consultorias/components/publico/ConsultoriaPublica';
-import type { AgendaDoMesDTO } from '@/features/consultorias/types/consultoria';
+import { obterMinhaConsultoria, salvarConsultoria } from '@/features/consultorias/actions/consultoria';
+import type { AgendaDoMesDTO, ConsultoriaDoPrestadorDTO } from '@/features/consultorias/types/consultoria';
 
 const successCases = [
   { type: 'IRPF', title: 'Declaração com pendências anteriores', desc: 'Organização de documentos e envio correto após inconsistências.' },
@@ -36,6 +47,41 @@ const faqItems = [
   { q: 'O atendimento é totalmente online?', a: 'Sim. O atendimento pode acontecer por ticket, envio de documentos pela plataforma e videochamada em consultorias agendadas.' },
   { q: 'Posso tirar uma dúvida antes de contratar?', a: 'Use "Consultar especialistas" para enviar uma pergunta privada para este contador ou pública para profissionais da categoria.' },
 ];
+
+/** Rótulos amigáveis para os únicos valores que `regimesAtendidos` aceita. */
+const ROTULO_REGIME: Record<(typeof REGIMES_TRIBUTARIOS)[number], string> = {
+  mei: 'MEI',
+  simples_nacional: 'Simples Nacional',
+  lucro_presumido: 'Lucro Presumido',
+  lucro_real: 'Lucro Real',
+};
+
+/**
+ * Substantivo do kicker "Sobre o ___", por `tipoProfissional`. Nunca gravado
+ * no banco — é apresentação, derivada do cadastro (campo protegido).
+ */
+const ROTULO_TIPO_PROFISSIONAL: Record<string, string> = {
+  contabilidade: 'Contador',
+  especialista_fiscal: 'Especialista Fiscal',
+  advocacia: 'Advogado',
+};
+
+/** Chave estável para itens novos do rascunho, antes de existirem no banco. */
+function chaveLocal(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2);
+}
+
+/** Troca um item de posição com o vizinho — a reordenação inteira é isso. */
+function mover<T>(lista: T[], indice: number, direcao: -1 | 1): T[] {
+  const alvo = indice + direcao;
+  if (alvo < 0 || alvo >= lista.length) return lista;
+  const copia = [...lista];
+  const troca = copia[indice];
+  copia[indice] = copia[alvo];
+  copia[alvo] = troca;
+  return copia;
+}
 
 const reviews = [
   { stars: 5, text: 'Organizou meu imposto de renda com clareza e explicou tudo sem complicar.', author: 'Mariana Costa' },
@@ -78,6 +124,115 @@ const services = [
   },
 ];
 
+/**
+ * Rascunho local do modo edição. Vive só no navegador enquanto o dono edita —
+ * nada aqui é persistido nesta etapa. `salvarEdicao` é intencionalmente um
+ * placeholder honesto: a gravação real fica para a etapa seguinte.
+ */
+type RascunhoPerfil = {
+  apresentacao: string;
+  especialidades: string[];
+  certificacoes: string[];
+  formacao: string;
+  instituicaoEnsino: string;
+  anoFormacao: string;
+  areasAtuacao: string[];
+  cidade: string;
+  estado: string;
+  disponivelAtendimento: boolean;
+  regimesAtendidos: string[];
+  sobreTitulo: string;
+  sobreTexto: string;
+};
+
+function construirRascunho(identidade?: IdentidadePublica): RascunhoPerfil {
+  return {
+    apresentacao: identidade?.apresentacao ?? '',
+    especialidades: identidade?.especialidades ?? [],
+    certificacoes: identidade?.certificacoes ?? [],
+    formacao: identidade?.formacao ?? '',
+    instituicaoEnsino: identidade?.instituicaoEnsino ?? '',
+    anoFormacao: identidade?.anoFormacao ? String(identidade.anoFormacao) : '',
+    areasAtuacao: identidade?.areasAtuacao ?? [],
+    cidade: identidade?.cidade ?? '',
+    estado: identidade?.estado ?? '',
+    disponivelAtendimento: identidade?.disponivelAtendimento ?? true,
+    regimesAtendidos: identidade?.regimesAtendidos ?? [],
+    sobreTitulo: identidade?.sobreTitulo ?? '',
+    sobreTexto: identidade?.sobreTexto ?? '',
+  };
+}
+
+/**
+ * Rascunhos dos três blocos ordenáveis (Casos de sucesso, Experiência, FAQ).
+ *
+ * `chave` é só do navegador — existe para o React ter uma key estável mesmo
+ * antes do item ter `id` (ele nasce sem `id`, a action grava e devolve um
+ * novo do zero na próxima leitura). `id`, quando presente, é o registro real;
+ * ausente significa "item novo, ainda não gravado".
+ */
+type RascunhoCaso = { chave: string; id?: string; tipo: string; titulo: string; descricao: string };
+type RascunhoExperiencia = { chave: string; id?: string; periodo: string; titulo: string; descricao: string };
+type RascunhoPergunta = { chave: string; id?: string; pergunta: string; resposta: string };
+
+function construirRascunhoCasos(itens?: CasoSucessoPublico[]): RascunhoCaso[] {
+  return (itens ?? []).map((item) => ({ ...item, chave: item.id }));
+}
+function construirRascunhoExperiencias(itens?: ExperienciaPublica[]): RascunhoExperiencia[] {
+  return (itens ?? []).map((item) => ({ ...item, chave: item.id }));
+}
+function construirRascunhoFaq(itens?: FaqPublico[]): RascunhoPergunta[] {
+  return (itens ?? []).map((item) => ({ ...item, chave: item.id }));
+}
+
+/** Lista de chips com remoção e um campo discreto para adicionar um novo item. */
+function EditorDeChips({
+  itens,
+  onAdicionar,
+  onRemover,
+  placeholder,
+}: {
+  itens: string[];
+  onAdicionar: (valor: string) => void;
+  onRemover: (indice: number) => void;
+  placeholder: string;
+}) {
+  const [novo, setNovo] = useState('');
+  return (
+    <div className="flex flex-wrap gap-2 items-center">
+      {itens.map((item, indice) => (
+        <span
+          key={`${item}-${indice}`}
+          className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5"
+        >
+          {item}
+          <button
+            type="button"
+            onClick={() => onRemover(indice)}
+            aria-label={`Remover ${item}`}
+            className="hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={novo}
+        onChange={(e) => setNovo(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && novo.trim()) {
+            e.preventDefault();
+            onAdicionar(novo.trim());
+            setNovo('');
+          }
+        }}
+        placeholder={placeholder}
+        className="bg-transparent border border-dashed border-border rounded-full px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary min-w-[140px]"
+      />
+    </div>
+  );
+}
+
 type ServicoPublico = {
   id: string;
   name: string;
@@ -96,6 +251,27 @@ export type IdentidadePublica = {
   experienciaAnos: number | null
   avaliacaoMedia: number | null
   totalAvaliacoes: number
+  /**
+   * Campos já persistidos no cadastro. Cada um é exibido só quando tem valor —
+   * vazio não vira placeholder, traço ou ícone órfão, o bloco correspondente
+   * simplesmente não aparece.
+   */
+  especialidades?: string[]
+  certificacoes?: string[]
+  formacao?: string | null
+  instituicaoEnsino?: string | null
+  anoFormacao?: number | null
+  areasAtuacao?: string[]
+  cidade?: string
+  estado?: string
+  disponivelAtendimento?: boolean
+  regimesAtendidos?: string[]
+  avatarUrl?: string | null
+  valorHoraCentavos?: number | null
+  tipoProfissional?: string
+  /** Conteúdo do bloco "Sobre". Vazio/ausente = o bloco correspondente some. */
+  sobreTitulo?: string | null
+  sobreTexto?: string | null
 }
 
 /** Um card de "Comentários de clientes", já no formato que a seção desenha. */
@@ -104,6 +280,29 @@ export type AvaliacaoPublica = {
   stars: number;
   text: string;
   author: string;
+};
+
+/** Um card de "Casos de sucesso", real e já ordenado pelo dono do perfil. */
+export type CasoSucessoPublico = {
+  id: string;
+  tipo: string;
+  titulo: string;
+  descricao: string;
+};
+
+/** Um item de "Histórico profissional", real e já ordenado. */
+export type ExperienciaPublica = {
+  id: string;
+  periodo: string;
+  titulo: string;
+  descricao: string;
+};
+
+/** Um item do "FAQ personalizado", real e já ordenado. */
+export type FaqPublico = {
+  id: string;
+  pergunta: string;
+  resposta: string;
 };
 
 type PerfilProfissionalV2Props = {
@@ -142,6 +341,21 @@ type PerfilProfissionalV2Props = {
    * verdes seria disponibilidade que ninguém pode contratar.
    */
   agendaConsultoria?: AgendaDoMesDTO | null;
+  /**
+   * Se quem está vendo a página é o próprio dono do perfil, validado no
+   * servidor (sessão comparada com `prestadorId`, nunca o inverso). Visitantes,
+   * clientes e outros profissionais sempre recebem `false` — e o visual público
+   * não muda em nada para eles.
+   */
+  podeEditar?: boolean;
+  /**
+   * Os três blocos ordenáveis, reais e já na ordem salva. Ausentes (vitrine de
+   * demonstração sem `?prestador=`) mantêm o conteúdo de exemplo; presentes e
+   * vazios escondem o bloco inteiro — nunca mock a mostrar "por baixo".
+   */
+  casosSucesso?: CasoSucessoPublico[];
+  experiencias?: ExperienciaPublica[];
+  faq?: FaqPublico[];
 };
 
 export default function PerfilProfissionalV2({
@@ -150,6 +364,10 @@ export default function PerfilProfissionalV2({
   avaliacoes,
   solicitacaoDireta,
   agendaConsultoria,
+  podeEditar = false,
+  casosSucesso,
+  experiencias,
+  faq,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
@@ -159,6 +377,247 @@ export default function PerfilProfissionalV2({
   const apresentacaoExibida =
     identidade?.apresentacao ??
     'Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.';
+  /**
+   * Formação + certificações reais do cadastro, no mesmo formato de lista já
+   * aprovado visualmente. Sem `identidade` (vitrine de demonstração) mantém o
+   * conteúdo de exemplo; com `identidade` e nada preenchido, a lista fica vazia
+   * e o card correspondente não é desenhado — nada de item fantasma.
+   */
+  const itensFormacao: string[] = identidade
+    ? [
+        identidade.formacao
+          ? `${identidade.formacao}${identidade.instituicaoEnsino ? ` — ${identidade.instituicaoEnsino}` : ''}${identidade.anoFormacao ? ` (${identidade.anoFormacao})` : ''}`
+          : null,
+        ...(identidade.certificacoes ?? []),
+      ].filter((item): item is string => Boolean(item))
+    : [
+        'Ciências Contábeis — UFMG',
+        'Pós-graduação em Gestão Tributária',
+        'Registro profissional ativo',
+      ];
+  const itensEspecializacoes: string[] = identidade
+    ? (identidade.especialidades ?? [])
+    : [
+        'IRPF com investimentos',
+        'Simples Nacional avançado',
+        'Regularização de CNPJ e MEI',
+      ];
+  /** Mesma lista, para o card "Especialidades" da sidebar. */
+  const tagsEspecialidadesSidebar: string[] = identidade
+    ? (identidade.especialidades ?? [])
+    : ['IRPF', 'MEI', 'Simples Nacional', 'Regularização'];
+
+  /**
+   * Bloco "Sobre": kicker deriva de `tipoProfissional` (nunca gravado — é
+   * apresentação de um campo protegido), título e texto vêm do cadastro real.
+   * Sem `identidade`, os três continuam sendo o conteúdo de demonstração
+   * aprovado; com `identidade` e nada preenchido, ficam vazios e a seção
+   * decide sozinha, mais abaixo, se ainda tem algo para mostrar (Formação e
+   * Especializações continuam contando).
+   */
+  const kickerSobre = identidade
+    ? `Sobre o ${ROTULO_TIPO_PROFISSIONAL[identidade.tipoProfissional ?? ''] ?? 'Profissional'}`
+    : 'Sobre o Contador';
+  const sobreTituloExibido = identidade
+    ? (identidade.sobreTitulo ?? '')
+    : 'Especialista em rotinas fiscais e regularização';
+  const sobreTextoExibido = identidade
+    ? (identidade.sobreTexto ?? '')
+    : 'Carlos atua com contabilidade consultiva para pessoas físicas, MEIs e pequenas empresas. O foco é simplificar decisões fiscais, evitar pendências e organizar documentos com clareza.';
+
+  /**
+   * Os três blocos ordenáveis, normalizados para o mesmo formato em ambos os
+   * modos: sem `identidade`, o conteúdo de demonstração ganha a mesma forma
+   * dos dados reais, para o JSX de leitura não precisar de dois caminhos.
+   */
+  const listaCasosSucesso: CasoSucessoPublico[] = identidade
+    ? (casosSucesso ?? [])
+    : successCases.map((item, indice) => ({
+        id: `demo-${indice}`,
+        tipo: item.type,
+        titulo: item.title,
+        descricao: item.desc,
+      }));
+  const listaExperiencias: ExperienciaPublica[] = identidade
+    ? (experiencias ?? [])
+    : experience.map((item, indice) => ({
+        id: `demo-${indice}`,
+        periodo: item.year,
+        titulo: item.title,
+        descricao: item.desc,
+      }));
+  const listaFaq: FaqPublico[] = identidade
+    ? (faq ?? [])
+    : faqItems.map((item, indice) => ({
+        id: `demo-${indice}`,
+        pergunta: item.q,
+        resposta: item.a,
+      }));
+
+  /**
+   * Modo edição inline. Só existe de verdade quando `podeEditar` é `true` —
+   * essa flag já chega validada do servidor, então `emEdicao` nunca liga para
+   * quem não é o dono, mesmo que `modoEdicao` acabe `true` por algum motivo.
+   */
+  const router = useRouter();
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [rascunho, setRascunho] = useState<RascunhoPerfil>(() => construirRascunho(identidade));
+  const [rascunhoCasos, setRascunhoCasos] = useState<RascunhoCaso[]>(() => construirRascunhoCasos(casosSucesso));
+  const [rascunhoExperiencias, setRascunhoExperiencias] = useState<RascunhoExperiencia[]>(() =>
+    construirRascunhoExperiencias(experiencias),
+  );
+  const [rascunhoFaq, setRascunhoFaq] = useState<RascunhoPergunta[]>(() => construirRascunhoFaq(faq));
+  const [salvando, setSalvando] = useState(false);
+  const [enviandoAvatar, setEnviandoAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  /**
+   * A consultoria do próprio prestador, com todos os campos que
+   * `salvarConsultoria` exige (inclusive os que esta etapa NUNCA deve
+   * alterar: `intervaloMinutos` e `ativa`, ausentes do DTO público). Buscada
+   * ao entrar em edição — `null` quando o prestador não tem consultoria
+   * configurada, caso em que a edição de título/descrição/valor/duração fica
+   * indisponível em vez de criar uma consultoria nova por um caminho lateral.
+   */
+  const [consultoriaAtual, setConsultoriaAtual] = useState<ConsultoriaDoPrestadorDTO | null>(null);
+  const [rascunhoConsultoria, setRascunhoConsultoria] = useState({
+    titulo: '',
+    descricaoCurta: '',
+    valor: '',
+    duracaoMinutos: '',
+  });
+  const emEdicao = podeEditar && modoEdicao;
+
+  async function entrarEmEdicao() {
+    setRascunho(construirRascunho(identidade));
+    setRascunhoCasos(construirRascunhoCasos(casosSucesso));
+    setRascunhoExperiencias(construirRascunhoExperiencias(experiencias));
+    setRascunhoFaq(construirRascunhoFaq(faq));
+    setModoEdicao(true);
+    const resultado = await obterMinhaConsultoria();
+    if (resultado.sucesso && resultado.dados) {
+      setConsultoriaAtual(resultado.dados);
+      setRascunhoConsultoria({
+        titulo: resultado.dados.titulo,
+        descricaoCurta: resultado.dados.descricaoCurta,
+        valor: (resultado.dados.valorCentavos / 100).toFixed(2).replace('.', ','),
+        duracaoMinutos: String(resultado.dados.duracaoMinutos),
+      });
+    } else {
+      setConsultoriaAtual(null);
+    }
+  }
+
+  function cancelarEdicao() {
+    // Sair do modo edição não grava nada — todos os rascunhos são descartados
+    // e o próximo "Editar meu perfil" parte de novo dos dados reais, nunca do
+    // que ficou digitado.
+    setRascunho(construirRascunho(identidade));
+    setRascunhoCasos(construirRascunhoCasos(casosSucesso));
+    setRascunhoExperiencias(construirRascunhoExperiencias(experiencias));
+    setRascunhoFaq(construirRascunhoFaq(faq));
+    setModoEdicao(false);
+  }
+
+  async function alterarAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    setEnviandoAvatar(true);
+    try {
+      const dados = new FormData();
+      dados.set('avatar', arquivo);
+      const resultado = await salvarAvatarProfissional(dados);
+      if (!resultado.sucesso) {
+        toast.error(resultado.mensagem);
+        return;
+      }
+      toast.success(resultado.mensagem);
+      // Upload é imediato, independente do "Salvar" geral: a foto já existe
+      // como arquivo no storage assim que confirmada, então mostrar o
+      // resultado real de uma vez é mais honesto do que fingir que ela
+      // esperaria o rascunho do resto do perfil.
+      router.refresh();
+    } finally {
+      setEnviandoAvatar(false);
+    }
+  }
+
+  async function salvarEdicao() {
+    if (salvando) return;
+    setSalvando(true);
+    try {
+      // Os quatro blocos salvam juntos, no mesmo clique em "Salvar" — a pessoa
+      // não deveria ter que descobrir que existem quatro botões diferentes.
+      // Se qualquer um falhar, ninguém sai do modo edição e nenhum rascunho é
+      // descartado: ela vê o erro e tenta de novo sem perder o que digitou.
+      const [resultadoVitrine, resultadoCasos, resultadoExperiencias, resultadoFaq] = await Promise.all([
+        salvarVitrineProfissional({
+          apresentacao: rascunho.apresentacao,
+          especialidades: rascunho.especialidades,
+          certificacoes: rascunho.certificacoes,
+          formacao: rascunho.formacao,
+          instituicaoEnsino: rascunho.instituicaoEnsino,
+          anoFormacao: rascunho.anoFormacao === '' ? null : Number(rascunho.anoFormacao),
+          areasAtuacao: rascunho.areasAtuacao,
+          cidade: rascunho.cidade,
+          estado: rascunho.estado,
+          disponivelAtendimento: rascunho.disponivelAtendimento,
+          regimesAtendidos: rascunho.regimesAtendidos,
+          sobreTitulo: rascunho.sobreTitulo,
+          sobreTexto: rascunho.sobreTexto,
+        }),
+        salvarCasosSucesso(
+          rascunhoCasos.map(({ id, tipo, titulo, descricao }) => ({ id, tipo, titulo, descricao })),
+        ),
+        salvarExperiencias(
+          rascunhoExperiencias.map(({ id, periodo, titulo, descricao }) => ({ id, periodo, titulo, descricao })),
+        ),
+        salvarPerguntasFrequentes(
+          rascunhoFaq.map(({ id, pergunta, resposta }) => ({ id, pergunta, resposta })),
+        ),
+      ]);
+      // Consultoria só entra na leva se já existir uma configurada: a mesma
+      // action de sempre (`salvarConsultoria`), recebendo TODOS os campos que
+      // ela exige — os quatro editados aqui e os demais (agenda, intervalos,
+      // antecedência, horizonte, timezone, `ativa`) copiados sem alteração do
+      // que já estava salvo, para nenhum deles mudar por efeito colateral.
+      const resultadoConsultoria = consultoriaAtual
+        ? await salvarConsultoria({
+            titulo: rascunhoConsultoria.titulo,
+            descricaoCurta: rascunhoConsultoria.descricaoCurta,
+            modalidade: consultoriaAtual.modalidade,
+            valorCentavos: Math.round(Number(rascunhoConsultoria.valor.replace(',', '.')) * 100),
+            duracaoMinutos: Number(rascunhoConsultoria.duracaoMinutos),
+            intervaloMinutos: consultoriaAtual.intervaloMinutos,
+            antecedenciaMinimaMinutos: consultoriaAtual.antecedenciaMinimaMinutos,
+            horizonteDias: consultoriaAtual.horizonteDias,
+            timezone: consultoriaAtual.timezone,
+            ativa: consultoriaAtual.ativa,
+          })
+        : { sucesso: true as const, mensagem: '' };
+      const primeiroErro = [
+        resultadoVitrine,
+        resultadoCasos,
+        resultadoExperiencias,
+        resultadoFaq,
+        resultadoConsultoria,
+      ].find((r) => !r.sucesso);
+      if (primeiroErro) {
+        toast.error(primeiroErro.mensagem);
+        return;
+      }
+      toast.success('Perfil atualizado.');
+      // Só sai do modo edição depois da confirmação do servidor. O
+      // `refresh()` busca de novo os dados reais da página (Server Component)
+      // — a mesma tela passa a mostrar o que foi gravado, não um estado
+      // otimista local.
+      setModoEdicao(false);
+      router.refresh();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   const [contratando, setContratando] = useState(false);
   const listaServicos: ServicoPublico[] = servicos ?? (services as ServicoPublico[]);
   // Mesma regra dos serviços: dado real quando existe prestador, conteúdo de
@@ -314,35 +773,143 @@ export default function PerfilProfissionalV2({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-8">
               {/* Breadcrumb */}
-              <motion.nav
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="flex items-center gap-2 text-xs text-muted-foreground mb-4"
-              >
-                <Link href="/" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Início</Link>
-                <ChevronRight className="h-3 w-3" />
-                <Link href="/profissionais" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Profissionais</Link>
-                <ChevronRight className="h-3 w-3" />
-                <span className="text-foreground font-semibold">{nomeExibido}</span>
-              </motion.nav>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <motion.nav
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <Link href="/" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Início</Link>
+                  <ChevronRight className="h-3 w-3" />
+                  <Link href="/profissionais" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Profissionais</Link>
+                  <ChevronRight className="h-3 w-3" />
+                  <span className="text-foreground font-semibold">{nomeExibido}</span>
+                </motion.nav>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.05 }}
-                className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
-              >
-                {nomeExibido}
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5"
-              >
-                {apresentacaoExibida}
-              </motion.p>
+                {/*
+                  Só o dono, e só porque `podeEditar` já chegou validado no
+                  servidor (sessão comparada com `prestadorId`, nunca a URL
+                  sozinha). Para qualquer outro visitante `podeEditar` é
+                  `false` e este bloco inteiro não renderiza nada.
+                */}
+                {podeEditar && (
+                  modoEdicao ? (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={cancelarEdicao}
+                        disabled={salvando}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:bg-muted/40 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void salvarEdicao()}
+                        disabled={salvando}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:pointer-events-none"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        {salvando ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void entrarEmEdicao()}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:bg-muted/40 transition-colors shrink-0"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar meu perfil
+                    </button>
+                  )
+                )}
+              </div>
+
+              {/*
+                Sem avatar e fora da edição, nada aqui muda: nenhum elemento
+                novo entra no DOM. `avatar_url` só ganha lugar na tela quando
+                tem valor real, ou quando o dono está editando e pode
+                adicionar um — a mesma regra de campo vazio do resto do
+                perfil, aplicada à primeira coisa que não tinha onde aparecer.
+              */}
+              {(identidade?.avatarUrl || emEdicao) ? (
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className="relative shrink-0">
+                    {identidade?.avatarUrl ? (
+                      // `<img>` simples: URL pública externa (Vercel Blob), sem domínio configurado em next/image.
+                      <img
+                        src={identidade.avatarUrl}
+                        alt={nomeExibido}
+                        className="h-14 w-14 rounded-full object-cover border border-border"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 rounded-full border border-dashed border-border bg-muted/30 grid place-items-center text-muted-foreground">
+                        <Camera className="h-5 w-5" />
+                      </div>
+                    )}
+                    {emEdicao && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={enviandoAvatar}
+                          aria-label="Alterar foto"
+                          className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary text-primary-foreground grid place-items-center border-2 border-card disabled:opacity-60"
+                        >
+                          <Camera className="h-3 w-3" />
+                        </button>
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => void alterarAvatar(e)}
+                        />
+                      </>
+                    )}
+                  </div>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.05 }}
+                    className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground"
+                  >
+                    {nomeExibido}
+                  </motion.h1>
+                </div>
+              ) : (
+                <motion.h1
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.05 }}
+                  className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
+                >
+                  {nomeExibido}
+                </motion.h1>
+              )}
+              {emEdicao ? (
+                <div className="max-w-[700px] mb-3.5">
+                  <textarea
+                    value={rascunho.apresentacao}
+                    onChange={(e) => setRascunho((r) => ({ ...r, apresentacao: e.target.value }))}
+                    rows={3}
+                    placeholder="Escreva uma apresentação para o seu perfil público."
+                    className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-base sm:text-[17px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                  />
+                </div>
+              ) : (
+                <motion.p
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="text-base sm:text-[17px] text-muted-foreground/80 leading-relaxed max-w-[700px] mb-3.5"
+                >
+                  {apresentacaoExibida}
+                </motion.p>
+              )}
 
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -354,10 +921,12 @@ export default function PerfilProfissionalV2({
                   <BadgeCheck className="h-3.5 w-3.5 text-primary" />
                   Perfil verificado
                 </span>
-                <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
-                  <span className="w-[7px] h-[7px] rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(22,163,74,0.14)]" />
-                  Disponível
-                </span>
+                {(!identidade || identidade.disponivelAtendimento) && (
+                  <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
+                    <span className="w-[7px] h-[7px] rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(22,163,74,0.14)]" />
+                    Disponível
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
                   <Headphones className="h-3.5 w-3.5" />
                   Atendimento online
@@ -415,53 +984,153 @@ export default function PerfilProfissionalV2({
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
+          {(emEdicao ||
+            sobreTituloExibido ||
+            sobreTextoExibido ||
+            itensFormacao.length > 0 ||
+            itensEspecializacoes.length > 0) && (
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
-            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
-              Sobre o Contador
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">
-              Especialista em rotinas fiscais e regularização
-            </h2>
-            <p className="text-base text-muted-foreground leading-relaxed mb-6">
-              Carlos atua com contabilidade consultiva para pessoas físicas, MEIs e pequenas empresas. O foco é simplificar decisões fiscais, evitar pendências e organizar documentos com clareza.
-            </p>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-muted/30 p-4 rounded-xl">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
-                  <GraduationCap className="h-5 w-5 text-primary" /> Formação
-                </h3>
-                <ul className="space-y-2 text-muted-foreground text-sm">
-                  {[
-                    'Ciências Contábeis — UFMG',
-                    'Pós-graduação em Gestão Tributária',
-                    'Registro profissional ativo',
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="bg-muted/30 p-4 rounded-xl">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
-                  <Award className="h-5 w-5 text-primary" /> Especializações
-                </h3>
-                <ul className="space-y-2 text-muted-foreground text-sm">
-                  {[
-                    'IRPF com investimentos',
-                    'Simples Nacional avançado',
-                    'Regularização de CNPJ e MEI',
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                {kickerSobre}
+              </span>
             </div>
+            {emEdicao ? (
+              <input
+                value={rascunho.sobreTitulo}
+                onChange={(e) => setRascunho((r) => ({ ...r, sobreTitulo: e.target.value }))}
+                placeholder="Adicionar título (ex.: Especialista em rotinas fiscais)"
+                className="w-full text-3xl font-bold tracking-tight text-foreground mb-4 rounded-xl border border-border bg-background px-3 py-2 placeholder:text-muted-foreground placeholder:text-base placeholder:font-normal focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+              />
+            ) : (
+              sobreTituloExibido && (
+                <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">
+                  {sobreTituloExibido}
+                </h2>
+              )
+            )}
+            {emEdicao ? (
+              <textarea
+                value={rascunho.sobreTexto}
+                onChange={(e) => setRascunho((r) => ({ ...r, sobreTexto: e.target.value }))}
+                rows={3}
+                placeholder="Adicionar texto complementar sobre a atuação."
+                className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 mb-6"
+              />
+            ) : (
+              sobreTextoExibido && (
+                <p className="text-base text-muted-foreground leading-relaxed mb-6">
+                  {sobreTextoExibido}
+                </p>
+              )
+            )}
+            {(emEdicao || itensFormacao.length > 0 || itensEspecializacoes.length > 0) && (
+              <div
+                className={`grid gap-6${
+                  (emEdicao || itensFormacao.length > 0) && (emEdicao || itensEspecializacoes.length > 0)
+                    ? ' md:grid-cols-2'
+                    : ''
+                }`}
+              >
+                {(emEdicao || itensFormacao.length > 0) && (
+                  <div className="bg-muted/30 p-4 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
+                      <GraduationCap className="h-5 w-5 text-primary" /> Formação
+                    </h3>
+                    {emEdicao ? (
+                      <div className="space-y-3">
+                        <input
+                          value={rascunho.formacao}
+                          onChange={(e) => setRascunho((r) => ({ ...r, formacao: e.target.value }))}
+                          placeholder="Adicionar formação (ex.: Ciências Contábeis)"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            value={rascunho.instituicaoEnsino}
+                            onChange={(e) => setRascunho((r) => ({ ...r, instituicaoEnsino: e.target.value }))}
+                            placeholder="Instituição de ensino"
+                            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                          />
+                          <input
+                            value={rascunho.anoFormacao}
+                            onChange={(e) =>
+                              setRascunho((r) => ({
+                                ...r,
+                                anoFormacao: e.target.value.replace(/\D/g, '').slice(0, 4),
+                              }))
+                            }
+                            placeholder="Ano de formação"
+                            inputMode="numeric"
+                            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                          />
+                        </div>
+                        <div>
+                          <span className="block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                            Certificações
+                          </span>
+                          <EditorDeChips
+                            itens={rascunho.certificacoes}
+                            onAdicionar={(valor) =>
+                              setRascunho((r) => ({ ...r, certificacoes: [...r.certificacoes, valor] }))
+                            }
+                            onRemover={(indice) =>
+                              setRascunho((r) => ({
+                                ...r,
+                                certificacoes: r.certificacoes.filter((_, i) => i !== indice),
+                              }))
+                            }
+                            placeholder="+ Adicionar certificação"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <ul className="space-y-2 text-muted-foreground text-sm">
+                        {itensFormacao.map((item) => (
+                          <li key={item} className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                {(emEdicao || itensEspecializacoes.length > 0) && (
+                  <div className="bg-muted/30 p-4 rounded-xl">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
+                      <Award className="h-5 w-5 text-primary" /> Especializações
+                    </h3>
+                    {emEdicao ? (
+                      <EditorDeChips
+                        itens={rascunho.especialidades}
+                        onAdicionar={(valor) =>
+                          setRascunho((r) => ({ ...r, especialidades: [...r.especialidades, valor] }))
+                        }
+                        onRemover={(indice) =>
+                          setRascunho((r) => ({
+                            ...r,
+                            especialidades: r.especialidades.filter((_, i) => i !== indice),
+                          }))
+                        }
+                        placeholder="+ Adicionar especialidade"
+                      />
+                    ) : (
+                      <ul className="space-y-2 text-muted-foreground text-sm">
+                        {itensEspecializacoes.map((item) => (
+                          <li key={item} className="flex items-start gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
+          )}
           </motion.div>
 
           {/* Consult Section */}
@@ -661,6 +1330,7 @@ export default function PerfilProfissionalV2({
           </motion.div>
 
           {/* Casos de Sucesso */}
+          {(emEdicao || listaCasosSucesso.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -668,28 +1338,119 @@ export default function PerfilProfissionalV2({
             transition={{ duration: 0.5, delay: 0.1 }}
           >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm overflow-hidden">
-            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
-              Casos de sucesso
-            </span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                Casos de sucesso
+              </span>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
               Experiências com clientes e demandas reais
             </h2>
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2 scrollbar-none">
-              {successCases.map((item) => (
-                <article
-                  key={item.title}
-                  className="min-w-[260px] shrink-0 snap-start bg-card border border-border rounded-xl p-5 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
+            {emEdicao ? (
+              <div className="space-y-3">
+                {rascunhoCasos.map((item, indice) => (
+                  <div key={item.chave} className="bg-muted/30 border border-border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={item.tipo}
+                        onChange={(e) =>
+                          setRascunhoCasos((atual) =>
+                            atual.map((c, i) => (i === indice ? { ...c, tipo: e.target.value } : c)),
+                          )
+                        }
+                        placeholder="Tipo (ex.: IRPF)"
+                        className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <input
+                        value={item.titulo}
+                        onChange={(e) =>
+                          setRascunhoCasos((atual) =>
+                            atual.map((c, i) => (i === indice ? { ...c, titulo: e.target.value } : c)),
+                          )
+                        }
+                        placeholder="Título do caso"
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoCasos((atual) => mover(atual, indice, -1))}
+                          disabled={indice === 0}
+                          aria-label="Mover para cima"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoCasos((atual) => mover(atual, indice, 1))}
+                          disabled={indice === rascunhoCasos.length - 1}
+                          aria-label="Mover para baixo"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Remover este caso de sucesso?')) {
+                              setRascunhoCasos((atual) => atual.filter((_, i) => i !== indice));
+                            }
+                          }}
+                          aria-label="Remover caso de sucesso"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={item.descricao}
+                      onChange={(e) =>
+                        setRascunhoCasos((atual) =>
+                          atual.map((c, i) => (i === indice ? { ...c, descricao: e.target.value } : c)),
+                        )
+                      }
+                      rows={2}
+                      placeholder="Descrição do caso"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRascunhoCasos((atual) => [
+                      ...atual,
+                      { chave: chaveLocal(), tipo: '', titulo: '', descricao: '' },
+                    ])
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                 >
-                  <span className="text-primary text-xs font-bold uppercase tracking-widest">{item.type}</span>
-                  <h3 className="text-sm font-semibold text-foreground mt-2 mb-2 leading-snug">{item.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-                </article>
-              ))}
-            </div>
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar caso de sucesso
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-2 px-2 scrollbar-none">
+                {listaCasosSucesso.map((item) => (
+                  <article
+                    key={item.id}
+                    className="min-w-[260px] shrink-0 snap-start bg-card border border-border rounded-xl p-5 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
+                  >
+                    <span className="text-primary text-xs font-bold uppercase tracking-widest">{item.tipo}</span>
+                    <h3 className="text-sm font-semibold text-foreground mt-2 mb-2 leading-snug">{item.titulo}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.descricao}</p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
           </motion.div>
+          )}
 
           {/* Experiência */}
+          {(emEdicao || listaExperiencias.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -697,27 +1458,118 @@ export default function PerfilProfissionalV2({
             transition={{ duration: 0.5, delay: 0.1 }}
           >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
-            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
-              Experiência
-            </span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                Experiência
+              </span>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
               Histórico profissional
             </h2>
-            <div className="space-y-3">
-              {experience.map((item) => (
-                <div key={item.year} className="grid grid-cols-[100px_1fr] gap-4 bg-muted/30 p-4 rounded-xl">
-                  <span className="text-primary font-bold text-sm">{item.year}</span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+            {emEdicao ? (
+              <div className="space-y-3">
+                {rascunhoExperiencias.map((item, indice) => (
+                  <div key={item.chave} className="bg-muted/30 border border-border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={item.periodo}
+                        onChange={(e) =>
+                          setRascunhoExperiencias((atual) =>
+                            atual.map((c, i) => (i === indice ? { ...c, periodo: e.target.value } : c)),
+                          )
+                        }
+                        placeholder="Período (ex.: 12 anos)"
+                        className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <input
+                        value={item.titulo}
+                        onChange={(e) =>
+                          setRascunhoExperiencias((atual) =>
+                            atual.map((c, i) => (i === indice ? { ...c, titulo: e.target.value } : c)),
+                          )
+                        }
+                        placeholder="Título"
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoExperiencias((atual) => mover(atual, indice, -1))}
+                          disabled={indice === 0}
+                          aria-label="Mover para cima"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoExperiencias((atual) => mover(atual, indice, 1))}
+                          disabled={indice === rascunhoExperiencias.length - 1}
+                          aria-label="Mover para baixo"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Remover este item do histórico?')) {
+                              setRascunhoExperiencias((atual) => atual.filter((_, i) => i !== indice));
+                            }
+                          }}
+                          aria-label="Remover item do histórico"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={item.descricao}
+                      onChange={(e) =>
+                        setRascunhoExperiencias((atual) =>
+                          atual.map((c, i) => (i === indice ? { ...c, descricao: e.target.value } : c)),
+                        )
+                      }
+                      rows={2}
+                      placeholder="Descrição"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    />
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRascunhoExperiencias((atual) => [
+                      ...atual,
+                      { chave: chaveLocal(), periodo: '', titulo: '', descricao: '' },
+                    ])
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar item ao histórico
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {listaExperiencias.map((item) => (
+                  <div key={item.id} className="grid grid-cols-[100px_1fr] gap-4 bg-muted/30 p-4 rounded-xl">
+                    <span className="text-primary font-bold text-sm">{item.periodo}</span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">{item.titulo}</h3>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.descricao}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
           </motion.div>
+          )}
 
           {/* FAQ */}
+          {(emEdicao || listaFaq.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -725,30 +1577,110 @@ export default function PerfilProfissionalV2({
             transition={{ duration: 0.5, delay: 0.1 }}
           >
           <section className="bg-card p-6 rounded-xl border border-border shadow-sm">
-            <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-widest">
-              FAQ personalizado
-            </span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                FAQ personalizado
+              </span>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground mb-6">
               Perguntas frequentes
             </h2>
-            <div className="space-y-3">
-              {faqItems.map((item) => (
-                <details
-                  key={item.q}
-                  className="group border border-border rounded-xl p-4 transition-colors [&[open]]:border-primary/20"
+            {emEdicao ? (
+              <div className="space-y-3">
+                {rascunhoFaq.map((item, indice) => (
+                  <div key={item.chave} className="bg-muted/30 border border-border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={item.pergunta}
+                        onChange={(e) =>
+                          setRascunhoFaq((atual) =>
+                            atual.map((c, i) => (i === indice ? { ...c, pergunta: e.target.value } : c)),
+                          )
+                        }
+                        placeholder="Pergunta"
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoFaq((atual) => mover(atual, indice, -1))}
+                          disabled={indice === 0}
+                          aria-label="Mover para cima"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRascunhoFaq((atual) => mover(atual, indice, 1))}
+                          disabled={indice === rascunhoFaq.length - 1}
+                          aria-label="Mover para baixo"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-primary disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('Remover esta pergunta?')) {
+                              setRascunhoFaq((atual) => atual.filter((_, i) => i !== indice));
+                            }
+                          }}
+                          aria-label="Remover pergunta"
+                          className="h-7 w-7 grid place-items-center rounded-full border border-border text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={item.resposta}
+                      onChange={(e) =>
+                        setRascunhoFaq((atual) =>
+                          atual.map((c, i) => (i === indice ? { ...c, resposta: e.target.value } : c)),
+                        )
+                      }
+                      rows={2}
+                      placeholder="Resposta"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRascunhoFaq((atual) => [
+                      ...atual,
+                      { chave: chaveLocal(), pergunta: '', resposta: '' },
+                    ])
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
                 >
-                  <summary className="list-none flex justify-between items-center gap-4 cursor-pointer text-sm font-semibold text-foreground">
-                    {item.q}
-                    <span className="text-primary text-lg leading-none transition-transform duration-300 group-open:rotate-45 shrink-0">+</span>
-                  </summary>
-                  <p className="text-sm text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
-                    {item.a}
-                  </p>
-                </details>
-              ))}
-            </div>
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar pergunta
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {listaFaq.map((item) => (
+                  <details
+                    key={item.id}
+                    className="group border border-border rounded-xl p-4 transition-colors [&[open]]:border-primary/20"
+                  >
+                    <summary className="list-none flex justify-between items-center gap-4 cursor-pointer text-sm font-semibold text-foreground">
+                      {item.pergunta}
+                      <span className="text-primary text-lg leading-none transition-transform duration-300 group-open:rotate-45 shrink-0">+</span>
+                    </summary>
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+                      {item.resposta}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            )}
           </section>
           </motion.div>
+          )}
 
           {/* Avaliações */}
           <motion.div
@@ -811,27 +1743,216 @@ export default function PerfilProfissionalV2({
               contratação, o rascunho e o retorno do login moram junto dela, no
               domínio, e não aqui.
             */}
-            <ConsultoriaPublica
-              nomeExibido={nomeExibido}
-              agendaInicial={agendaConsultoria ?? null}
-            />
+            <div className="relative">
+              <ConsultoriaPublica
+                nomeExibido={nomeExibido}
+                agendaInicial={agendaConsultoria ?? null}
+              />
+              {/*
+                Não mexe no calendário nem no fluxo de agendamento — só um
+                selo por cima, visível só em edição, sem tocar o componente da
+                consultoria. A edição de verdade mora no painel abaixo.
+              */}
+              {emEdicao && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-3 right-3 z-10 inline-flex items-center justify-center h-7 w-7 rounded-full bg-card border border-border text-primary shadow-sm"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </span>
+              )}
+            </div>
+
+            {/*
+              Painel de edição da consultoria: título, descrição, valor e
+              duração — os únicos campos que esta etapa altera. Reaproveita
+              `salvarConsultoria` (a mesma action da tela de configuração),
+              mandando de volta agenda, intervalos, antecedência, horizonte,
+              timezone e `ativa` exatamente como já estavam. Sem consultoria
+              configurada, não há o que editar aqui — criar uma pertence a
+              outro fluxo, não à vitrine.
+            */}
+            {emEdicao && (
+              <div className="bg-card p-5 rounded-2xl border border-dashed border-border space-y-3">
+                <h6 className="text-xs font-bold uppercase text-muted-foreground/60 flex items-center gap-1.5">
+                  <Pencil className="h-3 w-3" /> Editar consultoria
+                </h6>
+                {consultoriaAtual ? (
+                  <>
+                    <input
+                      value={rascunhoConsultoria.titulo}
+                      onChange={(e) => setRascunhoConsultoria((r) => ({ ...r, titulo: e.target.value }))}
+                      placeholder="Título da consultoria"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    />
+                    <textarea
+                      value={rascunhoConsultoria.descricaoCurta}
+                      onChange={(e) => setRascunhoConsultoria((r) => ({ ...r, descricaoCurta: e.target.value }))}
+                      rows={2}
+                      placeholder="Descrição curta"
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={rascunhoConsultoria.valor}
+                        onChange={(e) => setRascunhoConsultoria((r) => ({ ...r, valor: e.target.value }))}
+                        placeholder="Valor (R$)"
+                        inputMode="decimal"
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <input
+                        value={rascunhoConsultoria.duracaoMinutos}
+                        onChange={(e) =>
+                          setRascunhoConsultoria((r) => ({
+                            ...r,
+                            duracaoMinutos: e.target.value.replace(/\D/g, '').slice(0, 3),
+                          }))
+                        }
+                        placeholder="Duração (min)"
+                        inputMode="numeric"
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Configure sua consultoria no painel administrativo para poder editar estes dados por aqui.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Secondary Info Cards */}
             <div className="space-y-4">
               {/* Specialties */}
-              <div className="bg-card p-5 rounded-2xl border border-border">
-                <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Especialidades</h6>
-                <div className="flex flex-wrap gap-2">
-                  {['IRPF', 'MEI', 'Simples Nacional', 'Regularização'].map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+              {(emEdicao || tagsEspecialidadesSidebar.length > 0) && (
+                <div className="bg-card p-5 rounded-2xl border border-border">
+                  <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Especialidades</h6>
+                  {emEdicao ? (
+                    <EditorDeChips
+                      itens={rascunho.especialidades}
+                      onAdicionar={(valor) =>
+                        setRascunho((r) => ({ ...r, especialidades: [...r.especialidades, valor] }))
+                      }
+                      onRemover={(indice) =>
+                        setRascunho((r) => ({
+                          ...r,
+                          especialidades: r.especialidades.filter((_, i) => i !== indice),
+                        }))
+                      }
+                      placeholder="+ Adicionar especialidade"
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {tagsEspecialidadesSidebar.map((tag) => (
+                        <span
+                          key={tag}
+                          className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/*
+                Localização e disponibilidade não têm bloco público hoje — só
+                aparecem aqui, e só em modo edição, para o dono preencher.
+                Fora da edição este card não existe, então o visual público
+                (e o do próprio dono fora do modo edição) não muda em nada.
+              */}
+              {emEdicao && (
+                <div className="bg-card p-5 rounded-2xl border border-dashed border-border">
+                  <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60 flex items-center gap-1.5">
+                    <Pencil className="h-3 w-3" /> Localização e disponibilidade
+                  </h6>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        value={rascunho.cidade}
+                        onChange={(e) => setRascunho((r) => ({ ...r, cidade: e.target.value }))}
+                        placeholder="Adicionar cidade"
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                      <input
+                        value={rascunho.estado}
+                        onChange={(e) =>
+                          setRascunho((r) => ({ ...r, estado: e.target.value.toUpperCase().slice(0, 2) }))
+                        }
+                        placeholder="UF"
+                        maxLength={2}
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={rascunho.disponivelAtendimento}
+                        onChange={(e) => setRascunho((r) => ({ ...r, disponivelAtendimento: e.target.checked }))}
+                        className="h-4 w-4 rounded border-border accent-primary"
+                      />
+                      Disponível para atendimento
+                    </label>
+                    <div>
+                      <span className="block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                        Regimes atendidos
+                      </span>
+                      {/*
+                        `regimesAtendidos` é um enum fechado no banco — texto
+                        livre aqui só geraria valor que o servidor rejeitaria.
+                        Alternância entre as opções válidas, no lugar do editor
+                        de texto livre usado pelas demais listas.
+                      */}
+                      <div className="flex flex-wrap gap-2">
+                        {REGIMES_TRIBUTARIOS.map((regime) => {
+                          const selecionado = rascunho.regimesAtendidos.includes(regime);
+                          return (
+                            <button
+                              key={regime}
+                              type="button"
+                              onClick={() =>
+                                setRascunho((r) => ({
+                                  ...r,
+                                  regimesAtendidos: selecionado
+                                    ? r.regimesAtendidos.filter((item) => item !== regime)
+                                    : [...r.regimesAtendidos, regime],
+                                }))
+                              }
+                              className={
+                                selecionado
+                                  ? 'bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold border border-primary/30'
+                                  : 'bg-transparent text-muted-foreground px-3 py-1 rounded-full text-xs font-bold border border-dashed border-border hover:border-primary/40'
+                              }
+                            >
+                              {ROTULO_REGIME[regime]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                        Áreas de atuação
+                      </span>
+                      <EditorDeChips
+                        itens={rascunho.areasAtuacao}
+                        onAdicionar={(valor) =>
+                          setRascunho((r) => ({ ...r, areasAtuacao: [...r.areasAtuacao, valor] }))
+                        }
+                        onRemover={(indice) =>
+                          setRascunho((r) => ({
+                            ...r,
+                            areasAtuacao: r.areasAtuacao.filter((_, i) => i !== indice),
+                          }))
+                        }
+                        placeholder="+ Adicionar área de atuação"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Como funciona */}
               <div className="bg-card p-5 rounded-2xl border border-border">

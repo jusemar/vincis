@@ -6,6 +6,11 @@ import {
   obterConsultoriaPublica,
 } from "@/features/consultorias/queries/agenda-publica";
 import { obterDestinatarioPrivado } from "@/features/oportunidades/queries/obter-destinatario-privado";
+import {
+  listarCasosSucessoPublicos,
+  listarExperienciasPublicas,
+  listarPerguntasFrequentesPublicas,
+} from "@/features/perfis/queries/conteudo-vitrine";
 import { obterIdentidadePublica } from "@/features/servicos/queries/identidade-publica";
 import { obterSessaoServidor } from "@/features/usuarios/lib/sessao-servidor";
 import { listarServicosPublicos } from "@/features/servicos/queries/vitrine-publica";
@@ -39,6 +44,24 @@ export default async function PerfilProfissionalRoute({
   const identidade = prestadorId
     ? ((await obterIdentidadePublica(prestadorId)) ?? undefined)
     : undefined;
+
+  /**
+   * Quem está olhando, se estiver logado. Resolvida uma única vez e reaproveitada
+   * abaixo (agenda e permissão de edição) para não repetir a consulta de sessão.
+   */
+  const sessao = await obterSessaoServidor();
+
+  /**
+   * Só o próprio dono edita, e a prova nunca vem da URL.
+   *
+   * `prestadorId` chega por `?prestador=`, algo que qualquer visitante controla
+   * — por isso a comparação é sempre contra `sessao.id`, nunca o contrário.
+   * `identidade` só existe quando a conta está ativa, verificada e habilitada
+   * (mesmos critérios de `obterIdentidadePublica`), então exigir `identidade`
+   * aqui evita liberar edição para um cadastro que a própria vitrine pública já
+   * não mostraria.
+   */
+  const podeEditar = Boolean(identidade && sessao?.id === prestadorId);
 
   /**
    * Comentários reais daquele prestador, mais recentes primeiro.
@@ -92,9 +115,26 @@ export default async function PerfilProfissionalRoute({
           // A reserva temporária do próprio visitante não some da tela dele:
           // quem reservou 14:00 continua vendo 14:00 como seu. Para os demais,
           // o horário está ocupado. Ver `actions/agenda.ts`.
-          ignorarClienteId: (await obterSessaoServidor())?.id,
+          ignorarClienteId: sessao?.id,
         })
       : null;
+
+  /**
+   * Os três blocos ordenáveis de vitrine — ausentes (não `[]`) na vitrine de
+   * demonstração, para o componente continuar mostrando o conteúdo de exemplo
+   * quando não há `?prestador=`. Com prestador, lista vazia é informação real:
+   * "este profissional ainda não cadastrou nenhum item", e o bloco correspondente
+   * desaparece em vez de mostrar o mock.
+   */
+  const casosSucesso = prestadorId
+    ? await listarCasosSucessoPublicos(prestadorId)
+    : undefined;
+  const experiencias = prestadorId
+    ? await listarExperienciasPublicas(prestadorId)
+    : undefined;
+  const faq = prestadorId
+    ? await listarPerguntasFrequentesPublicas(prestadorId)
+    : undefined;
 
   const servicos = prestadorId
     ? (await listarServicosPublicos(prestadorId)).map((servico) => ({
@@ -115,6 +155,10 @@ export default async function PerfilProfissionalRoute({
       servicos={servicos}
       avaliacoes={avaliacoes}
       agendaConsultoria={agendaConsultoria}
+      podeEditar={podeEditar}
+      casosSucesso={casosSucesso}
+      experiencias={experiencias}
+      faq={faq}
       solicitacaoDireta={
         destinatario
           ? {

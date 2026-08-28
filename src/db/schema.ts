@@ -39,6 +39,15 @@ export { sessoesUsuarioRelations } from './tables/sessoes_usuario/relacoes'
 export { perfisProfissionais } from './tables/perfis_profissionais/tabela'
 export { perfisProfissionaisRelations } from './tables/perfis_profissionais/relacoes'
 
+export { perfilCasosSucesso } from './tables/perfil_casos_sucesso/tabela'
+export { perfilCasosSucessoRelations } from './tables/perfil_casos_sucesso/relacoes'
+
+export { perfilExperiencias } from './tables/perfil_experiencias/tabela'
+export { perfilExperienciasRelations } from './tables/perfil_experiencias/relacoes'
+
+export { perfilPerguntasFrequentes } from './tables/perfil_perguntas_frequentes/tabela'
+export { perfilPerguntasFrequentesRelations } from './tables/perfil_perguntas_frequentes/relacoes'
+
 export { clientes } from './tables/clientes/tabela'
 export { clientesRelations } from './tables/clientes/relacoes'
 export { clienteAtribuicoes } from './tables/cliente_atribuicoes/tabela'

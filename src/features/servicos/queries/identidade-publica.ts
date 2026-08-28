@@ -18,6 +18,25 @@ export async function obterIdentidadePublica(prestadorId: string) {
       nome: usuarios.nome,
       apresentacao: perfisProfissionais.apresentacao,
       experienciaAnos: perfisProfissionais.tempoExperiencia,
+      // Campos já persistidos no cadastro, expostos aqui para o perfil público
+      // parar de exibir conteúdo fixo de demonstração nos blocos de Formação,
+      // Especializações, disponibilidade e avatar. Nenhum é obrigatório: quando
+      // vazio, o bloco correspondente simplesmente não aparece.
+      especialidades: perfisProfissionais.especialidades,
+      certificacoes: perfisProfissionais.certificacoes,
+      formacao: perfisProfissionais.formacao,
+      instituicaoEnsino: perfisProfissionais.instituicaoEnsino,
+      anoFormacao: perfisProfissionais.anoFormacao,
+      areasAtuacao: perfisProfissionais.areasAtuacao,
+      cidade: perfisProfissionais.cidade,
+      estado: perfisProfissionais.estado,
+      disponivelAtendimento: perfisProfissionais.disponivelAtendimento,
+      regimesAtendidos: perfisProfissionais.regimesAtendidos,
+      avatarUrl: perfisProfissionais.avatarUrl,
+      valorHoraCentavos: perfisProfissionais.valorHoraCentavos,
+      tipoProfissional: perfisProfissionais.tipoProfissional,
+      sobreTitulo: perfisProfissionais.sobreTitulo,
+      sobreTexto: perfisProfissionais.sobreTexto,
     })
     .from(usuarios)
     .innerJoin(

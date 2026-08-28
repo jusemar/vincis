@@ -52,6 +52,17 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   totalAvaliacoes: integer('total_avaliacoes').notNull().default(0),
   disponivelAtendimento: boolean('disponivel_atendimento').notNull().default(true),
   regimesAtendidos: text('regimes_atendidos').array().notNull().default([]),
+  /**
+   * Conteúdo livre do bloco "Sobre" do perfil público.
+   *
+   * Opcionais e sem default: vazios, o bloco público não mostra placeholder
+   * nem título preso a uma categoria — simplesmente não aparece. `sobreTitulo`
+   * substitui o rótulo antes fixo ("Especialista em rotinas fiscais...");
+   * o próprio kicker "Sobre o Contador/Advogado/..." é derivado de
+   * `tipoProfissional` na camada de apresentação, não gravado aqui.
+   */
+  sobreTitulo: varchar('sobre_titulo', { length: 160 }),
+  sobreTexto: text('sobre_texto'),
   comprovanteRegistroChave: text('comprovante_registro_chave'),
   comprovanteRegistroNomeOriginal: varchar('comprovante_registro_nome_original', { length: 255 }),
   comprovanteRegistroTipo: varchar('comprovante_registro_tipo', { length: 100 }),

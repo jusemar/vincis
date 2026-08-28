@@ -309,6 +309,13 @@
       "when": 1787915459373,
       "tag": "0043_consultoria_bloqueio_grupo",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1787945613963,
+      "tag": "0044_conteudo_vitrine_perfil",
+      "breakpoints": true
     }
   ]
 }
