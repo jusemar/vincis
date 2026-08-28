@@ -3,6 +3,9 @@ import { db } from '@/db/connection'
 import {
   clientes,
   comunicados,
+  consultoriaAgendamentos,
+  consultoriaConfiguracoes,
+  consultoriaPagamentos,
   contratacoesServico,
   perfis,
   perfisProfissionais,
@@ -116,6 +119,33 @@ export async function limparContas(sufixo: string) {
   await db
     .delete(contratacoesServico)
     .where(inArray(contratacoesServico.prestadorId, ids))
+  /*
+   * Consultoria contratada sai antes da agenda que a originou.
+   *
+   * `consultoria_agendamentos` aponta para a configuração **sem** cascata, e
+   * isso é a regra certa em produção: apagar a agenda de um Profissional não
+   * pode apagar consultorias que pessoas contrataram e pagaram. O preço é este
+   * — a limpeza da suíte precisa desmontar na ordem inversa da criação:
+   * pagamento, consultoria, reserva e só então a configuração.
+   */
+  const agendamentos = await db
+    .select({ id: consultoriaAgendamentos.id })
+    .from(consultoriaAgendamentos)
+    .where(inArray(consultoriaAgendamentos.prestadorId, ids))
+  const idsAgendamentos = agendamentos.map(({ id }) => id)
+  if (idsAgendamentos.length) {
+    await db
+      .delete(consultoriaPagamentos)
+      .where(inArray(consultoriaPagamentos.agendamentoId, idsAgendamentos))
+    await db
+      .delete(consultoriaAgendamentos)
+      .where(inArray(consultoriaAgendamentos.id, idsAgendamentos))
+  }
+  // Faixas e exceções saem por cascata da configuração; as reservas também,
+  // mas as confirmadas já perderam o agendamento acima.
+  await db
+    .delete(consultoriaConfiguracoes)
+    .where(inArray(consultoriaConfiguracoes.prestadorId, ids))
   await db.delete(servicos).where(inArray(servicos.prestadorId, ids))
   await db.delete(clientes).where(inArray(clientes.profissionalId, ids))
   await db.delete(sessoesUsuario).where(inArray(sessoesUsuario.usuarioId, ids))

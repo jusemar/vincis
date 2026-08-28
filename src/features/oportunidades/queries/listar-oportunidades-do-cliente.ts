@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   atendimentos,
@@ -46,8 +46,11 @@ export async function listarOportunidadesDoCliente(
       abrangencia: oportunidades.abrangencia,
       valorPretendidoCentavos: oportunidades.valorPretendidoCentavos,
       status: oportunidades.status,
+      motivoEncerramento: oportunidades.motivoEncerramento,
       expiraEm: oportunidades.expiraEm,
       criadoEm: oportunidades.createdAt,
+      visibilidade: oportunidades.visibilidade,
+      destinatarioId: oportunidades.destinatarioId,
     })
     .from(oportunidades)
     .where(eq(oportunidades.clienteUsuarioId, clienteUsuarioId))
@@ -96,18 +99,91 @@ export async function listarOportunidadesDoCliente(
   )
   const negociacoes = await obterNegociacoes(propostas.map(({ id }) => id))
 
-  /** Quantos prestadores dispensaram cada solicitação. Só o número. */
+  /**
+   * Quem dispensou cada solicitação, e quando.
+   *
+   * As linhas cruas, e não só a contagem, porque as duas leituras convivem: na
+   * **pública** o Cliente continua vendo apenas o número — quem dispensou não é
+   * identificado, porque a decisão é sobre a agenda do prestador. Na
+   * **privada** existe um destinatário só, escolhido pelo próprio Cliente, e
+   * saber que aquela pessoa não vai propor é a diferença entre encerrar o
+   * assunto e esperar por nada.
+   */
   const dispensas = await db
     .select({
       oportunidadeId: oportunidadeDispensas.oportunidadeId,
-      total: sql<number>`count(*)::int`,
+      prestadorId: oportunidadeDispensas.prestadorId,
+      criadoEm: oportunidadeDispensas.createdAt,
     })
     .from(oportunidadeDispensas)
     .where(inArray(oportunidadeDispensas.oportunidadeId, ids))
-    .groupBy(oportunidadeDispensas.oportunidadeId)
 
-  const semInteressePorOportunidade = new Map(
-    dispensas.map((linha) => [linha.oportunidadeId, linha.total]),
+  const semInteressePorOportunidade = new Map<string, number>()
+  const dispensaPorPar = new Map<string, Date>()
+  for (const linha of dispensas) {
+    semInteressePorOportunidade.set(
+      linha.oportunidadeId,
+      (semInteressePorOportunidade.get(linha.oportunidadeId) ?? 0) + 1,
+    )
+    dispensaPorPar.set(
+      `${linha.oportunidadeId}:${linha.prestadorId}`,
+      linha.criadoEm,
+    )
+  }
+
+  /**
+   * O cartão público de quem recebeu a solicitação privada.
+   *
+   * Mesmo recorte das propostas — nome, avatar, destaque e reputação real —,
+   * resolvido pelo relacionamento e nunca copiado para a solicitação. Só é
+   * consultado quando existe destinatário: numa lista só de públicas, nenhuma
+   * consulta a mais acontece.
+   */
+  const destinatarioIds = [
+    ...new Set(
+      linhas
+        .map((linha) => linha.destinatarioId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
+  const destinatarios = destinatarioIds.length
+    ? await db
+        .select({
+          id: usuarios.id,
+          nome: usuarios.nome,
+          avatarUrl: perfisProfissionais.avatarUrl,
+          especialidades: perfisProfissionais.especialidades,
+          areasAtuacao: perfisProfissionais.areasAtuacao,
+        })
+        .from(usuarios)
+        .leftJoin(
+          perfisProfissionais,
+          eq(perfisProfissionais.usuarioId, usuarios.id),
+        )
+        .where(inArray(usuarios.id, destinatarioIds))
+    : []
+  const reputacaoDosDestinatarios =
+    await obterReputacaoDosPrestadores(destinatarioIds)
+  const destinatarioPorId = new Map(
+    destinatarios.map((linha) => {
+      const reputacao = reputacaoDosDestinatarios.get(linha.id)
+      return [
+        linha.id,
+        {
+          id: linha.id,
+          nome: linha.nome,
+          avatarUrl: linha.avatarUrl ?? null,
+          destaque:
+            linha.especialidades?.[0] ?? linha.areasAtuacao?.[0] ?? null,
+          avaliacaoMedia:
+            reputacao?.mediaEmDecimos != null
+              ? reputacao.mediaEmDecimos / 10
+              : null,
+          totalAvaliacoes: reputacao?.total ?? 0,
+          perfilUrl: `/perfil-profissional?prestador=${linha.id}`,
+        },
+      ]
+    }),
   )
 
   /**
@@ -228,6 +304,17 @@ export async function listarOportunidadesDoCliente(
       descricao: linha.descricao,
       abrangencia: linha.abrangencia,
       valorPretendidoCentavos: linha.valorPretendidoCentavos,
+      visibilidade: linha.visibilidade,
+      destinatario: linha.destinatarioId
+        ? (destinatarioPorId.get(linha.destinatarioId) ?? null)
+        : null,
+      // Só a dispensa **do destinatário** conta aqui: numa pública, mesmo que
+      // dez prestadores tenham dispensado, o campo continua nulo.
+      semInteresseEm: linha.destinatarioId
+        ? (dispensaPorPar
+            .get(`${linha.id}:${linha.destinatarioId}`)
+            ?.toISOString() ?? null)
+        : null,
       status,
       criadoEm: linha.criadoEm.toISOString(),
       expiraEm: linha.expiraEm?.toISOString() ?? null,
@@ -237,6 +324,7 @@ export async function listarOportunidadesDoCliente(
       totalSemInteresse: semInteressePorOportunidade.get(linha.id) ?? 0,
       propostas: recebidas,
       etapa: etapaComercial({
+        motivoEncerramento: linha.motivoEncerramento,
         status,
         temAcordo: recebidas.some((proposta) => proposta.status === 'aceita'),
         temPagamento: pagamento !== null,

@@ -33,12 +33,18 @@ export function converterValorParaCentavos(
 }
 
 /**
- * Solicitação pública de orçamento, como o Cliente a envia.
+ * Solicitação de orçamento, como o Cliente a envia.
  *
  * Obrigatórios são apenas categoria, descrição e abrangência — o propósito da
  * etapa é atender quem **ainda não sabe** o que pedir a quem, e cada campo
  * obrigatório a mais filtra justamente essa pessoa. Especialidades, valor
  * pretendido e anexos são opcionais.
+ *
+ * `destinatarioId` é o que separa as duas portas de entrada, e é só isso: com
+ * ele, a solicitação nasce privada e dirigida àquele Profissional; sem ele,
+ * nasce pública como sempre. O schema apenas confere que é um uuid — **quem** é
+ * essa pessoa, se ela pode operar e se a categoria é compatível com o cadastro
+ * dela são perguntas para o banco, e a action as faz antes de gravar.
  */
 export const NovaOportunidadeSchema = z
   .object({
@@ -64,6 +70,11 @@ export const NovaOportunidadeSchema = z
     }),
     /** Texto livre em reais; convertido em centavos no servidor. */
     valorPretendido: z.string().trim().max(20).optional().default(''),
+    /** Profissional escolhido. Ausente = solicitação pública. */
+    destinatarioId: z
+      .string()
+      .uuid('Profissional inválido.')
+      .optional(),
   })
   .superRefine((dados, ctx) => {
     // Vocabulário fechado **da categoria pública escolhida**: uma especialidade
@@ -116,6 +127,8 @@ export function lerNovaOportunidade(formData: FormData) {
     descricao: formData.get('descricao'),
     abrangencia: formData.get('abrangencia'),
     valorPretendido: formData.get('valorPretendido') ?? '',
+    // Campo ausente e campo vazio significam a mesma coisa aqui: pública.
+    destinatarioId: formData.get('destinatarioId')?.toString() || undefined,
   })
 }
 

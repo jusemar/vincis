@@ -81,6 +81,20 @@ export type ConviteAtendimentoDTO = {
   primeiraNaoLidaId: string | null
   /** Há contraproposta esperando decisão de quem convidou. */
   aguardandoDecisao: boolean
+  /**
+   * Convite recebido que esta pessoa nunca abriu.
+   *
+   * É o que o destaque do Dashboard chama de "novo": convite dirigido a ela,
+   * ainda pendente, sem nenhuma marca de leitura na negociação — ou seja,
+   * nunca analisado. Não é estado comercial: aceitar, recusar e expirar
+   * continuam sendo o que sempre foram, e nada aqui os toca.
+   *
+   * Deriva da marca-d'água que a plataforma já grava quando a negociação é
+   * aberta (`atendimento_leituras`, escopo `convite`, canal `negociacao`).
+   * Nenhuma segunda semântica de "visto" foi inventada, e o sino continua com
+   * a dele.
+   */
+  novoParaDestaque: boolean
 }
 
 /**
@@ -199,6 +213,12 @@ function montarConvite(
   return {
     situacao,
     naoLidas: leitura.total,
+    // Sem marca de leitura = a caixa de convites nunca foi aberta neste
+    // convite. Quem enviou não recebe destaque: ele não tem o que analisar.
+    novoParaDestaque:
+      status === 'pendente' &&
+      linha.destinatarioId === usuarioId &&
+      lidoAte === undefined,
     primeiraNaoLidaId: leitura.primeiraNaoLidaId,
     // A bola está com quem convidou quando a contraproposta ainda não virou a
     // oferta vigente.

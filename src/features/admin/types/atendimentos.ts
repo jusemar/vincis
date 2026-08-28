@@ -1,3 +1,5 @@
+import type { AtendimentoConsultoriaDTO } from "@/features/atendimentos/types/atendimento";
+
 /**
  * Status operacionais do quadro.
  *
@@ -215,6 +217,14 @@ export interface RealAdjustment {
 export interface RealProtocolData {
   atendimentoId: string;
   info: RealInfo;
+  /**
+   * A consultoria agendada de origem, quando o Atendimento nasceu de uma.
+   *
+   * Nula em todos os outros — é o campo que o painel usa para decidir se
+   * existe uma videochamada aqui, em vez de deduzir pela categoria ou pelo
+   * texto do título, que qualquer Atendimento pode imitar.
+   */
+  consultoria: AtendimentoConsultoriaDTO | null;
   files: RealFile[];
   events: RealEvent[];
   messages: RealMessage[];

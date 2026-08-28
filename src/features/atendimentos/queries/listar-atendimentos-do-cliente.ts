@@ -9,6 +9,7 @@ import {
   atendimentoMensagens,
   atendimentos,
   avaliacoesAtendimento,
+  consultoriaAgendamentos,
   contratacoesServico,
   oportunidadePagamentos,
   oportunidadePropostas,
@@ -23,6 +24,7 @@ import type {
   StatusAtendimento,
   VisibilidadeChecklist,
 } from '../constants/atendimento'
+import { consultoriaDoAtendimento } from '../lib/consultoria-do-atendimento'
 import { obterUltimosAjustes } from '../lib/solicitacoes-ajuste'
 import type { AtendimentoDoClienteDTO } from '../types/atendimento'
 
@@ -77,6 +79,12 @@ export async function listarAtendimentosDoCliente(
       pagamentoReferencia: oportunidadePagamentos.referencia,
       pagamentoOrigem: oportunidadePagamentos.origem,
       pagamentoEm: oportunidadePagamentos.aprovadoEm,
+      // A terceira porta de entrada: consultoria com hora marcada.
+      consultoriaId: consultoriaAgendamentos.id,
+      consultoriaInicioEm: consultoriaAgendamentos.inicioEm,
+      consultoriaFimEm: consultoriaAgendamentos.fimEm,
+      consultoriaTimezone: consultoriaAgendamentos.timezone,
+      consultoriaDuracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
     })
     .from(atendimentos)
     .innerJoin(prestadorConta, eq(prestadorConta.id, atendimentos.prestadorId))
@@ -84,6 +92,10 @@ export async function listarAtendimentosDoCliente(
     .leftJoin(
       contratacoesServico,
       eq(contratacoesServico.id, atendimentos.contratacaoId),
+    )
+    .leftJoin(
+      consultoriaAgendamentos,
+      eq(consultoriaAgendamentos.id, atendimentos.consultoriaAgendamentoId),
     )
     .leftJoin(
       oportunidadePagamentos,
@@ -277,6 +289,7 @@ export async function listarAtendimentosDoCliente(
           pagamentoEm: registro.pagamentoEm?.toISOString() ?? null,
         }
       : null,
+    consultoria: consultoriaDoAtendimento(registro),
     eventos: eventos
       .filter((linha) => linha.atendimentoId === registro.id)
       .map((linha) => ({

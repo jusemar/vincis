@@ -239,6 +239,48 @@
       "when": 1787219860070,
       "tag": "0033_oportunidade_pagamento_e_atendimento",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1787345350485,
+      "tag": "0034_oportunidade_privada",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1787347752993,
+      "tag": "0035_oportunidade_motivo_encerramento",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787793633802,
+      "tag": "0036_consultoria_agendada",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787862495417,
+      "tag": "0037_consultoria_reserva",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787864054505,
+      "tag": "0038_consultoria_agendamento",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1787896798543,
+      "tag": "0039_consultoria_sala_daily",
+      "breakpoints": true
     }
   ]
 }

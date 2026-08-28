@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { listarAtendimentosDoCliente } from '@/features/atendimentos/queries/listar-atendimentos-do-cliente'
+import { listarConsultoriasDoCliente } from '@/features/consultorias/queries/agendamentos'
 import { PortalClientePage } from '@/features/portal-cliente/components/PortalClientePage'
 import type { FiltroSolicitacoes } from '@/features/portal-cliente/components/secoes/SolicitacoesCliente'
 import { abaValida } from '@/features/portal-cliente/types/portal'
@@ -35,6 +36,10 @@ export default async function ClienteRoute({
   // Recorte do Cliente: só os atendimentos dele, sem conversa interna nem
   // eventos internos — o filtro acontece no SQL da consulta.
   const atendimentos = await listarAtendimentosDoCliente(usuario.id)
+
+  // As consultorias com hora marcada. O recorte é do SQL — `cliente_usuario_id
+  // = sessão` —, então nenhuma consultoria de outra pessoa chega ao navegador.
+  const consultorias = await listarConsultoriasDoCliente(usuario.id)
   // Solicitações públicas do próprio Cliente, com as propostas recebidas. O
   // recorte por dono está no SQL da consulta — comparar propostas é ato dele.
   const oportunidades = await listarOportunidadesDoCliente(usuario.id)
@@ -60,6 +65,7 @@ export default async function ClienteRoute({
       pagarOportunidade={texto('pagar') ?? null}
       contratacoes={contratacoes.dados ?? []}
       atendimentos={atendimentos}
+      consultorias={consultorias.futuras}
       oportunidades={oportunidades}
     />
   )

@@ -175,6 +175,8 @@ export type AtendimentoOperacionalDTO = {
    */
   cliente: { usuarioId: string; nome: string; codigo: string | null }
   contratacao: AtendimentoContratacaoDTO | null
+  /** A consultoria agendada de origem, quando o Atendimento nasceu de uma. */
+  consultoria: AtendimentoConsultoriaDTO | null
   participantes: AtendimentoParticipanteDTO[]
   eventos: AtendimentoEventoDTO[]
   mensagens: AtendimentoMensagemDTO[]
@@ -207,6 +209,28 @@ export type AtendimentoOperacionalDTO = {
  * interna ou dado de equipe chega a existir no objeto que atravessa para o
  * navegador do Cliente.
  */
+/**
+ * A consultoria com hora marcada que originou este Atendimento.
+ *
+ * Nula na esmagadora maioria dos Atendimentos — só existe na terceira porta de
+ * entrada, a Consultoria Agendada. É o que permite a tela mostrar a área da
+ * videochamada sem adivinhar pela categoria ou pelo título.
+ *
+ * Os instantes vêm absolutos (ISO) e a janela já vem calculada pelo servidor,
+ * pela mesma função que decide o acesso. A tela **desenha** com isso; quem
+ * autoriza é a ação, de novo, no clique — um relógio de navegador atrasado
+ * jamais abre uma porta.
+ */
+export type AtendimentoConsultoriaDTO = {
+  agendamentoId: string
+  inicioEm: string
+  fimEm: string
+  timezone: string
+  duracaoMinutos: number
+  janelaAbreEm: string
+  janelaFechaEm: string
+}
+
 /** De onde veio o Atendimento, quando a origem é uma solicitação pública. */
 export type AtendimentoOrigemOportunidadeDTO = {
   oportunidadeId: string
@@ -243,6 +267,8 @@ export type AtendimentoDoClienteDTO = {
    * originou sem procurar.
    */
   origemOportunidade: AtendimentoOrigemOportunidadeDTO | null
+  /** A consultoria agendada de origem, quando o Atendimento nasceu de uma. */
+  consultoria: AtendimentoConsultoriaDTO | null
   eventos: AtendimentoEventoDTO[]
   mensagens: AtendimentoMensagemDTO[]
   /** O Cliente lê o Protocolo inteiro: as próprias manifestações e todas as respostas. */

@@ -21,19 +21,18 @@ import {
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { prestadorHabilitado } from '@/features/usuarios/lib/prestador'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
-import type { CategoriaOportunidade } from '../constants/oportunidade'
+import { ehPrivada, type CategoriaOportunidade } from '../constants/oportunidade'
 import { obterVinculoComOportunidade } from '../lib/autorizacao'
 import { categoriasCompativeisDoPrestador } from '../lib/compatibilidade'
 import {
   contarOportunidadesDisponiveis,
   listarOportunidadesDoPrestador,
 } from '../queries/listar-oportunidades-do-prestador'
-import { avisarEmTempoReal } from '../lib/difundir-oportunidade'
 import {
-  expirarOportunidadesVencidas,
-  limitarValidade,
-  oportunidadeExpirada,
-} from '../lib/vigencia-sql'
+  avisarClienteSemInteresse,
+  avisarEmTempoReal,
+} from '../lib/difundir-oportunidade'
+import { limitarValidade, oportunidadeExpirada } from '../lib/vigencia-sql'
 import {
   NovaPropostaSchema,
   OportunidadeIdSchema,
@@ -46,15 +45,14 @@ import {
  * Devolve o que a consulta já recorta: solicitações abertas e compatíveis, com
  * a proposta **do próprio** prestador quando existir. Proposta alheia não passa
  * por aqui em momento nenhum.
+ *
+ * A vitrine também não materializa vencimento — `condicaoOportunidadeAtiva` já
+ * exclui a vencida mesmo antes de o agendador passar por ela.
  */
 export async function carregarOportunidadesDisponiveis() {
   const sessao = await obterSessaoServidor()
   if (!sessao) return SEM_AUTORIZACAO_COM_DADOS
   if (!tipoPrestadorDoPerfil(sessao.perfilTipo)) return SEM_AUTORIZACAO_COM_DADOS
-
-  // Mesmo motivo da área do Cliente: sem agendador, a leitura é o momento em
-  // que o vencimento vira estado no banco.
-  await expirarOportunidadesVencidas()
 
   const [lista, disponiveis] = await Promise.all([
     listarOportunidadesDoPrestador(sessao.id),
@@ -77,7 +75,10 @@ export async function carregarOportunidadesDisponiveis() {
  * 2. a oportunidade existe e está **aberta**;
  * 3. a categoria dela é compatível com o cadastro dele — não basta conhecer o
  *    id de uma solicitação para responder a ela;
- * 4. não é a própria solicitação — o mesmo id não pode ocupar as duas pontas.
+ * 4. se a solicitação é **privada**, ele é o destinatário. Compatibilidade não
+ *    basta aqui: outro contador, igualmente habilitado, não responde ao pedido
+ *    que o Cliente dirigiu a alguém — nem com o id na mão;
+ * 5. não é a própria solicitação — o mesmo id não pode ocupar as duas pontas.
  *
  * O conflito no índice único vira atualização: reenviar é revisar a proposta,
  * nunca criar uma segunda. É o banco que garante isso, não o código.
@@ -121,6 +122,8 @@ export async function enviarProposta(entrada: unknown) {
       status: oportunidades.status,
       expiraEm: oportunidades.expiraEm,
       clienteUsuarioId: oportunidades.clienteUsuarioId,
+      visibilidade: oportunidades.visibilidade,
+      destinatarioId: oportunidades.destinatarioId,
     })
     .from(oportunidades)
     .where(eq(oportunidades.id, dados.oportunidadeId))
@@ -149,6 +152,15 @@ export async function enviarProposta(entrada: unknown) {
     !compativeis.includes(oportunidade.categoria as CategoriaOportunidade)
   ) {
     return semPermissaoPara('enviar proposta nesta categoria')
+  }
+
+  // Privada tem dono. A recusa é a mesma de uma solicitação inexistente, de
+  // propósito: quem não é o destinatário não deve nem descobrir que ela existe.
+  if (
+    ehPrivada(oportunidade.visibilidade) &&
+    oportunidade.destinatarioId !== sessao.id
+  ) {
+    return { sucesso: false as const, mensagem: 'Oportunidade não encontrada.' }
   }
 
   // Proposta sem valor é "a combinar"; um zero digitado não vira preço.
@@ -256,14 +268,37 @@ export async function enviarProposta(entrada: unknown) {
 /**
  * "Não tenho interesse": tira a oportunidade da fila **deste** prestador.
  *
- * Não é recusa comercial, não encerra a solicitação e não avisa o Cliente —
- * não existe contratação para recusar nesta etapa. O efeito é individual: a
- * oportunidade deixa de contar no banner dele e não volta como nova no próximo
- * F5, enquanto continua valendo para todos os outros prestadores compatíveis.
+ * Não é recusa comercial e não encerra a solicitação — não existe contratação
+ * para recusar nesta etapa. O efeito é individual: a oportunidade deixa de
+ * contar no banner dele e não volta como nova no próximo F5, enquanto continua
+ * valendo para todos os outros prestadores compatíveis.
+ *
+ * ## Na solicitação privada, a decisão é terminal
+ *
+ * É a única diferença entre os dois fluxos aqui, e ela vem de uma assimetria
+ * real: na pública, um prestador entre dezenas sair da fila não muda o destino
+ * da solicitação — ela continua valendo para todos os outros, o Cliente vê
+ * apenas um número agregado e quem dispensou ainda pode mudar de ideia. Na
+ * privada existe **um** destinatário: o que ele decide *é* o desfecho.
+ *
+ * Por isso a solicitação privada é encerrada aqui, na mesma transação:
+ *
+ * - `status` vira `encerrada` — para de aceitar proposta, contraproposta,
+ *   acordo e pagamento pelas mesmas condições que já existiam, sem cláusula
+ *   nova em consulta nenhuma;
+ * - `motivo_encerramento` vira `sem_interesse`, porque `encerrada` sozinha
+ *   contaria a história errada: o Cliente leria "acordo fechado";
+ * - o Cliente é avisado, para não ficar esperando uma proposta que não vem.
+ *
+ * Nada é apagado. A dispensa, a solicitação e o histórico continuam, e quem
+ * quiser insistir cria uma solicitação nova para o mesmo Profissional.
+ *
+ * O texto não é de rejeição: quem escolhe não participar está falando da
+ * própria agenda, não da pessoa que pediu orçamento.
  *
  * A autorização é a mesma da vitrine: só dispensa quem poderia responder.
- * Conhecer o id de uma solicitação de outra categoria não dá direito nem de
- * marcá-la.
+ * Conhecer o id de uma solicitação de outra categoria — ou de uma privada
+ * dirigida a outra pessoa — não dá direito nem de marcá-la.
  */
 export async function marcarSemInteresse(entrada: unknown) {
   const sessao = await obterSessaoServidor()
@@ -285,18 +320,91 @@ export async function marcarSemInteresse(entrada: unknown) {
     return semPermissaoPara('dispensar esta oportunidade')
   }
 
-  // Clicar duas vezes não grava duas linhas: quem garante é o índice único.
-  await db
-    .insert(oportunidadeDispensas)
-    .values({
-      oportunidadeId: validacao.data.oportunidadeId,
+  const [oportunidade] = await db
+    .select({
+      id: oportunidades.id,
+      titulo: oportunidades.titulo,
+      status: oportunidades.status,
+      visibilidade: oportunidades.visibilidade,
+      clienteUsuarioId: oportunidades.clienteUsuarioId,
+    })
+    .from(oportunidades)
+    .where(eq(oportunidades.id, validacao.data.oportunidadeId))
+    .limit(1)
+
+  if (!oportunidade) {
+    return { sucesso: false as const, mensagem: 'Oportunidade não encontrada.' }
+  }
+  // Só se dispensa o que ainda está em disputa. Sem esta guarda, quem venceu a
+  // disputa — que continua alcançando a solicitação para acompanhar o acordo —
+  // conseguiria marcar "não tenho interesse" depois de fechada e disparar ao
+  // Cliente um aviso que contradiz o acordo que os dois já têm.
+  if (oportunidade.status !== 'aberta') {
+    return {
+      sucesso: false as const,
+      mensagem: 'Esta solicitação não está mais aberta.',
+    }
+  }
+
+  const privada = ehPrivada(oportunidade.visibilidade)
+
+  const dispensa = await db.transaction(async (tx) => {
+    // Clicar duas vezes não grava duas linhas: quem garante é o índice único.
+    const [linha] = await tx
+      .insert(oportunidadeDispensas)
+      .values({
+        oportunidadeId: oportunidade.id,
+        prestadorId: sessao.id,
+      })
+      .onConflictDoNothing()
+      .returning({ id: oportunidadeDispensas.id })
+
+    // O encerramento vai junto da dispensa: ou as duas coisas existem, ou
+    // nenhuma. A cláusula `status = 'aberta'` é o que torna a repetição inócua
+    // — uma segunda execução não alcança linha nenhuma.
+    if (privada && linha) {
+      await tx
+        .update(oportunidades)
+        .set({
+          status: 'encerrada',
+          motivoEncerramento: 'sem_interesse',
+          encerradaEm: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(oportunidades.id, oportunidade.id),
+            eq(oportunidades.status, 'aberta'),
+          ),
+        )
+    }
+
+    return linha ?? null
+  })
+
+  // `dispensa` vazio significa que já existia: o aviso ao Cliente não se
+  // repete a cada clique.
+  if (privada && dispensa) {
+    await avisarClienteSemInteresse(db, {
+      oportunidadeId: oportunidade.id,
+      titulo: oportunidade.titulo,
+      clienteUsuarioId: oportunidade.clienteUsuarioId,
       prestadorId: sessao.id,
     })
-    .onConflictDoNothing()
+    await avisarEmTempoReal({
+      destinatarios: [oportunidade.clienteUsuarioId],
+      titulo: 'O profissional não vai enviar proposta',
+      oportunidadeId: oportunidade.id,
+      autorId: sessao.id,
+    })
+  }
 
   revalidatePath('/admin')
+  revalidatePath('/cliente')
   return {
     sucesso: true as const,
-    mensagem: 'Oportunidade removida da sua lista de pendências.',
+    mensagem: privada
+      ? 'Solicitação encerrada. O cliente foi avisado de que você não vai enviar proposta.'
+      : 'Oportunidade removida da sua lista de pendências.',
   }
 }

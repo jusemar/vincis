@@ -61,6 +61,17 @@ export type OportunidadeParaPrestadorDTO = {
   /** Referência informada pelo Cliente. Nulo = não informado. */
   valorPretendidoCentavos: number | null
   status: string
+  /** `publica` | `privada`. Ver `VISIBILIDADES_OPORTUNIDADE`. */
+  visibilidade: string
+  /**
+   * O Cliente escolheu **este** prestador.
+   *
+   * Sempre verdadeiro quando a solicitação é privada, porque a consulta só
+   * entrega uma privada ao destinatário dela. A tela usa isto para dizer que o
+   * pedido foi dirigido a quem está lendo, sem comparar identificadores no
+   * navegador.
+   */
+  direcionadaAMim: boolean
   criadoEm: string
   /** Fim do prazo global — o teto da validade de qualquer proposta. */
   expiraEm: string | null
@@ -161,6 +172,26 @@ export type OportunidadeDoClienteDTO = {
   descricao: string
   abrangencia: string
   valorPretendidoCentavos: number | null
+  /** `publica` | `privada`. Ver `VISIBILIDADES_OPORTUNIDADE`. */
+  visibilidade: string
+  /**
+   * O Profissional a quem a solicitação foi dirigida. Nulo nas públicas.
+   *
+   * O Cliente escolheu esta pessoa explicitamente, então o cartão dela aparece
+   * na própria solicitação — mesmo recorte público das propostas, resolvido
+   * pelo relacionamento e nunca copiado.
+   */
+  destinatario: (PerfilPublicoDaPropostaDTO & { id: string }) | null
+  /**
+   * Quando o destinatário de uma solicitação privada marcou "não tenho
+   * interesse". Nulo enquanto não marcou — e sempre nulo nas públicas.
+   *
+   * Só existe no privado, e por uma assimetria real: na pública o Cliente vê um
+   * número agregado porque a decisão de um prestador entre dezenas não muda o
+   * destino da solicitação. Na privada existe **um** destinatário, e não contar
+   * isso deixaria alguém esperando indefinidamente uma proposta que não vem.
+   */
+  semInteresseEm: string | null
   /** `aberta` | `expirada` | `encerrada` | `cancelada`, já derivado do prazo. */
   status: string
   criadoEm: string

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ClipboardList, Headphones, LayoutGrid, UserRound } from 'lucide-react'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
+import type { ConsultoriaDoClienteDTO } from '@/features/consultorias/types/agendamento'
 import type { OportunidadeDoClienteDTO } from '@/features/oportunidades/types/oportunidade'
 import { PainelDePagamento } from '@/features/pagamentos/components/PainelDePagamento'
 import { AtendimentosDoCliente } from './AtendimentosDoCliente'
@@ -47,6 +48,7 @@ export function PortalClientePage({
   pagarOportunidade = null,
   contratacoes = [],
   atendimentos = [],
+  consultorias = [],
   oportunidades = [],
 }: {
   dados: DadosPortalCliente
@@ -59,6 +61,8 @@ export function PortalClientePage({
   contratacoes?: ContratacaoCliente[]
   /** Já chegam filtrados: só os do próprio Cliente, sem nada interno. */
   atendimentos?: AtendimentoDoClienteDTO[]
+  /** Consultorias com hora marcada ainda no futuro, da mais próxima em diante. */
+  consultorias?: ConsultoriaDoClienteDTO[]
   oportunidades?: OportunidadeDoClienteDTO[]
 }) {
   // Só encontra o que já pertence a quem está logado: a lista veio da consulta
@@ -105,6 +109,7 @@ export function PortalClientePage({
             nome={dados.nome}
             oportunidades={oportunidades}
             atendimentos={atendimentos}
+            consultorias={consultorias}
             contratacoes={contratacoes}
           />
         ) : null}

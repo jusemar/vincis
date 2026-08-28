@@ -1,7 +1,19 @@
 import Link from 'next/link'
-import { ChevronDown, CreditCard, Headphones, Paperclip, Plus } from 'lucide-react'
+import {
+  ChevronDown,
+  CreditCard,
+  ExternalLink,
+  Headphones,
+  Paperclip,
+  Plus,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { rotuloDaCategoria } from '@/features/oportunidades/constants/oportunidade'
+import {
+  ROTULO_VISIBILIDADE_OPORTUNIDADE,
+  ehPrivada,
+  rotuloDaCategoria,
+} from '@/features/oportunidades/constants/oportunidade'
+import { CartaoPrestadorPublico } from '@/features/oportunidades/components/compartilhado/CartaoPrestadorPublico'
 import {
   ROTULO_ETAPA_COMERCIAL,
   type EtapaComercial,
@@ -84,6 +96,12 @@ function valorEmReais(centavos: number | null) {
  * Criar solicitação continua sendo ato da área pública: aqui se **gerencia** o
  * que já foi enviado, e o botão leva para `/profissionais` em vez de duplicar o
  * formulário.
+ *
+ * As **solicitações diretas** — as enviadas pelo perfil de um Profissional —
+ * aparecem nesta mesma lista, e não numa área separada: para o Cliente é o
+ * mesmo objeto, com a mesma negociação, o mesmo pagamento e o mesmo
+ * Atendimento no fim. O que as distingue é o rótulo, o cartão de quem recebeu
+ * e, quando for o caso, o aviso de que aquele profissional não vai propor.
  */
 export function SolicitacoesCliente({
   oportunidades,
@@ -175,6 +193,12 @@ export function SolicitacoesCliente({
                     />
                     {/* Uma pílula de negociação só faz sentido enquanto ela
                         existe: fechado o acordo, a etapa já conta a história. */}
+                    {ehPrivada(oportunidade.visibilidade) ? (
+                      <Pilula
+                        rotulo={ROTULO_VISIBILIDADE_OPORTUNIDADE.privada}
+                        tom="destaque"
+                      />
+                    ) : null}
                     {pendencia && !acordo ? (
                       <Pilula rotulo="Contraproposta enviada" tom="atencao" />
                     ) : null}
@@ -222,22 +246,73 @@ export function SolicitacoesCliente({
                         'Não informado'
                       }
                     />
-                    {/* Solicitações anteriores ao prazo global não têm
-                        vencimento; em vez de um traço vazio, mostram quando
-                        foram publicadas. */}
+                    {/* Três leituras da mesma linha, na ordem em que deixam de
+                        ser verdade: enquanto está aberta, o prazo é o teto;
+                        recusada pelo destinatário, o que vale é o momento da
+                        recusa — mostrar o prazo ali diria "encerrada em" uma
+                        data no futuro; e solicitações anteriores ao prazo
+                        global, que não têm vencimento, mostram a publicação em
+                        vez de um traço vazio. */}
                     <Dado
                       rotulo={
-                        oportunidade.expiraEm
-                          ? oportunidade.ativa
-                            ? 'Aberta até'
-                            : 'Encerrada em'
-                          : 'Publicada em'
+                        oportunidade.semInteresseEm
+                          ? 'Encerrada em'
+                          : oportunidade.expiraEm
+                            ? oportunidade.ativa
+                              ? 'Aberta até'
+                              : 'Encerrada em'
+                            : 'Publicada em'
                       }
                       valor={formatarDataHora(
-                        oportunidade.expiraEm ?? oportunidade.criadoEm,
+                        oportunidade.semInteresseEm ??
+                          oportunidade.expiraEm ??
+                          oportunidade.criadoEm,
                       )}
                     />
                   </dl>
+
+                  {/*
+                    Quem recebeu o pedido, com o mesmo cartão público das
+                    propostas. O Cliente escolheu esta pessoa explicitamente — e
+                    precisa continuar reconhecendo para quem enviou, mesmo antes
+                    de haver qualquer resposta.
+                  */}
+                  {oportunidade.destinatario ? (
+                    <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+                      <p className="mb-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Enviada para
+                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <CartaoPrestadorPublico
+                          perfil={oportunidade.destinatario}
+                        />
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={oportunidade.destinatario.perfilUrl}>
+                            <ExternalLink className="size-3.5" />
+                            Ver perfil
+                          </Link>
+                        </Button>
+                      </div>
+
+                      {/*
+                        O desfecho que o Cliente precisa conhecer: com um
+                        destinatário só, "não tenho interesse" encerra a
+                        solicitação — nenhuma proposta virá desta. O texto fala
+                        da agenda do profissional, nunca de recusa à pessoa, e
+                        diz o que dá para fazer a seguir em vez de deixar o
+                        Cliente sem saída.
+                      */}
+                      {oportunidade.semInteresseEm ? (
+                        <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
+                          O profissional não demonstrou interesse nesta
+                          solicitação em{' '}
+                          {formatarDataHora(oportunidade.semInteresseEm)}. Ela
+                          foi encerrada — você pode enviar uma nova solicitação
+                          para este ou para outro profissional.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {oportunidade.anexos.length > 0 ? (
                     <ul className="mt-4 flex flex-wrap gap-2">
@@ -264,7 +339,10 @@ export function SolicitacoesCliente({
                     <span className="text-muted-foreground">
                       {oportunidade.totalPropostas === 1 ? 'proposta' : 'propostas'}
                     </span>
-                    {oportunidade.totalSemInteresse > 0 ? (
+                    {/* No privado, o número agregado não diz nada que o aviso
+                        acima já não tenha dito com clareza. */}
+                    {oportunidade.totalSemInteresse > 0 &&
+                    !ehPrivada(oportunidade.visibilidade) ? (
                       <span className="text-muted-foreground">
                         {' · '}
                         {oportunidade.totalSemInteresse}{' '}

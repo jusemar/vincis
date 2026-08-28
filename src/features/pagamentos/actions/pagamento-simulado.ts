@@ -25,7 +25,7 @@ import {
 } from '@/features/usuarios/constants/autorizacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { ORIGEM_SIMULADA } from '../constants/pagamento'
-import { gerarReferenciaSimulada } from '../lib/referencia-simulada'
+import { processarPagamentoSimulado } from '../lib/simulador'
 import {
   PagamentoSimuladoSchema,
   converterValorParaCentavos,
@@ -123,6 +123,17 @@ export async function pagarAcordoSimulado(entrada: unknown) {
     }
   }
 
+  /*
+   * O desfecho vem da camada compartilhada com a Consultoria Agendada. Este
+   * fluxo continua sempre aprovando — não passa `desfecho`, e o padrão é
+   * `aprovado` —, então status, origem e formato da referência seguem
+   * exatamente os de antes. O que muda é só de onde eles vêm.
+   */
+  const simulacao = processarPagamentoSimulado({ valorCentavos })
+  if (!simulacao.aprovado) {
+    return { sucesso: false as const, mensagem: simulacao.motivo }
+  }
+
   try {
     const resultado = await db.transaction(async (tx) => {
       const [criado] = await tx
@@ -133,9 +144,9 @@ export async function pagarAcordoSimulado(entrada: unknown) {
           clienteUsuarioId: acordo.clienteUsuarioId,
           prestadorId: acordo.prestadorId,
           valorCentavos,
-          status: 'aprovado',
-          origem: ORIGEM_SIMULADA,
-          referencia: gerarReferenciaSimulada(),
+          status: simulacao.status,
+          origem: simulacao.origem,
+          referencia: simulacao.referencia,
         })
         // O índice único é a trava. A segunda chamada não grava e não quebra:
         // ela cai no `select` abaixo e encontra o pagamento do vencedor.

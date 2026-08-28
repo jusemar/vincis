@@ -5,61 +5,19 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   BadgeCheck, Headphones, GraduationCap, Award,
-  CheckCircle2, Lock, Users, Send, Heart, Share2,
-  ChevronLeft, ChevronRight, Zap, ShieldCheck, Shield, FileText, Paperclip,
+  CheckCircle2, Lock, Users, Send,
+  ChevronRight, ShieldCheck, Shield, FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../../../components/shared/Footer';
 import { contratarServico } from '@/features/servicos/actions/contratar';
 import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
-import { cn } from '@/lib/utils';
-
-const availabilityData = {
-  month: 'Outubro',
-  year: 2026,
-  days: [
-    { day: 1, status: 'available' },
-    { day: 2, status: 'unavailable' },
-    { day: 3, status: 'available' },
-    { day: 4, status: 'available' },
-    { day: 5, status: 'available' },
-    { day: 6, status: 'unavailable' },
-    { day: 7, status: 'available' },
-    { day: 8, status: 'available' },
-    { day: 9, status: 'available' },
-    { day: 10, status: 'available' },
-    { day: 11, status: 'available' },
-    { day: 12, status: 'available' },
-    { day: 13, status: 'selected' },
-    { day: 14, status: 'available' },
-    { day: 15, status: 'available' },
-    { day: 16, status: 'available' },
-    { day: 17, status: 'available' },
-    { day: 18, status: 'available' },
-    { day: 19, status: 'unavailable' },
-    { day: 20, status: 'available' },
-    { day: 21, status: 'available' },
-    { day: 22, status: 'available' },
-    { day: 23, status: 'unavailable' },
-    { day: 24, status: 'available' },
-    { day: 25, status: 'available' },
-    { day: 26, status: 'available' },
-    { day: 27, status: 'available' },
-    { day: 28, status: 'available' },
-    { day: 29, status: 'available' },
-    { day: 30, status: 'available' },
-    { day: 31, status: 'available' },
-  ],
-  weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
-  leadingBlanks: 4,
-};
-
-const timeSlots = [
-  { time: '09:00', available: true },
-  { time: '10:00', available: true },
-  { time: '14:30', available: true, selected: true },
-  { time: '16:00', available: true },
-];
+import {
+  FormularioSolicitarOrcamento,
+  type DestinatarioDaSolicitacao,
+} from '@/features/oportunidades/components/cliente/FormularioSolicitarOrcamento';
+import { ConsultoriaPublica } from '@/features/consultorias/components/publico/ConsultoriaPublica';
+import type { AgendaDoMesDTO } from '@/features/consultorias/types/consultoria';
 
 const successCases = [
   { type: 'IRPF', title: 'Declaração com pendências anteriores', desc: 'Organização de documentos e envio correto após inconsistências.' },
@@ -165,16 +123,39 @@ type PerfilProfissionalV2Props = {
    * é idêntico nos dois casos.
    */
   servicos?: ServicoPublico[];
+  /**
+   * O destinatário de uma solicitação privada de orçamento.
+   *
+   * Resolvido no servidor a partir de `?prestador=`: só existe quando há um
+   * Profissional real, habilitado e com ao menos uma categoria pública que ele
+   * possa atender. Ausente — na vitrine de demonstração, por exemplo — o perfil
+   * não oferece a ação, porque não haveria a quem dirigir o pedido.
+   */
+  solicitacaoDireta?: DestinatarioDaSolicitacao;
+  /**
+   * Primeiro mês da agenda real, resolvido no servidor a partir de
+   * `?prestador=`.
+   *
+   * Ausente — ou com `consultoria: null` dentro — quando o Profissional não tem
+   * consultoria ativa, e é o caso também da vitrine de demonstração, que não
+   * tem dono. O card então mostra ausência: um calendário de exemplo com dias
+   * verdes seria disponibilidade que ninguém pode contratar.
+   */
+  agendaConsultoria?: AgendaDoMesDTO | null;
 };
 
 export default function PerfilProfissionalV2({
   identidade,
   servicos,
   avaliacoes,
+  solicitacaoDireta,
+  agendaConsultoria,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
   const nomeExibido = identidade?.nome ?? 'Carlos Eduardo Mendes';
+  /** "Dra. Ana Carolina Silva" → "Dra. Ana" — o tratamento vem do cadastro. */
+  const primeiroNome = nomeExibido.split(/\s+/).slice(0, 2).join(' ');
   const apresentacaoExibida =
     identidade?.apresentacao ??
     'Contador especialista em IRPF, MEI e regularização fiscal para autônomos, pequenos negócios e empresas no Simples Nacional.';
@@ -241,7 +222,8 @@ export default function PerfilProfissionalV2({
     }
   }
 
-  const [responseType, setResponseType] = useState<'private' | 'public'>('private');
+  /** O formulário privado abre no lugar, sem tirar ninguém da página. */
+  const [solicitando, setSolicitando] = useState(false);
   const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
 
   useEffect(() => {
@@ -498,98 +480,77 @@ export default function PerfilProfissionalV2({
                 Diga o que você precisa e receba um orçamento
               </h2>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Escolha falar direto com Carlos ou abrir para a categoria e receber múltiplas respostas em horas.
+                {solicitacaoDireta ? (
+                  <>
+                    O pedido feito aqui vai somente para {primeiroNome}. Nenhum
+                    outro profissional vai vê-lo.
+                  </>
+                ) : (
+                  <>
+                    Descreva sua necessidade e receba propostas de profissionais
+                    da categoria adequada.
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="relative">
-                <textarea
-                  className="w-full h-32 p-4 bg-muted/30 border-0 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                  placeholder="Ex: Como tributar o recebimento de stock options de uma matriz nos EUA?"
-                />
-                <div className="flex items-center gap-2 mt-2 text-muted-foreground text-sm">
-                  <Paperclip className="h-4 w-4" />
-                  <button className="alvo-toque-h inline-flex items-center text-xs hover:underline">Anexar contexto (PDF, XML, balanço)</button>
-                </div>
-              </div>
+            {/*
+              Uma porta só, e ela é privada.
 
+              O bloco anterior perguntava "falar direto com este profissional ou
+              abrir para a categoria?" — duas intenções diferentes na mesma
+              tela, e a segunda contradizia o gesto de ter aberto o perfil de
+              alguém. Quem chegou até aqui já escolheu com quem quer falar; quem
+              ainda não escolheu tem a busca pública, onde o pedido aberto
+              continua existindo inteiro.
+            */}
+            {solicitacaoDireta ? (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase">Quem deve responder</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <label
-                    className={cn(
-                      'relative flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all border-2',
-                      responseType === 'private'
-                        ? 'bg-primary/5 border-primary'
-                        : 'bg-card border-border',
-                    )}
-                    onClick={() => setResponseType('private')}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Lock className="h-4 w-4 shrink-0 text-primary" />
+                    Solicitação privada para {primeiroNome}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSolicitando((atual) => !atual)}
+                    aria-expanded={solicitando}
+                    className="alvo-toque-h bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-all shadow-sm hover:bg-primary/90"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center">
-                        <Lock className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-sm">Privado para Carlos</p>
-                        <p className="text-xs text-muted-foreground">
-                          Apenas este especialista responde. <span className="text-primary">Resposta média: 4h</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div
-                      className={cn(
-                        'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-                        responseType === 'private' ? 'border-primary' : 'border-muted-foreground/30',
-                      )}
-                    >
-                      {responseType === 'private' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                    </div>
-                  </label>
-
-                  <label
-                    className={cn(
-                      'relative flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all border-2',
-                      responseType === 'public'
-                        ? 'bg-primary/5 border-primary'
-                        : 'bg-card border-border',
-                    )}
-                    onClick={() => setResponseType('public')}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center">
-                        <Users className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-sm">Público para a categoria</p>
-                        <p className="text-xs text-muted-foreground">
-                          Vários contadores podem responder. Compare até 5 propostas.
-                        </p>
-                      </div>
-                    </div>
-                    <div
-                      className={cn(
-                        'w-5 h-5 rounded-full border-2 flex items-center justify-center',
-                        responseType === 'public' ? 'border-primary' : 'border-muted-foreground/30',
-                      )}
-                    >
-                      {responseType === 'public' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                    </div>
-                  </label>
+                    <Send className="h-4 w-4" />
+                    {solicitando ? 'Fechar' : 'Solicitar orçamento'}
+                  </button>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Lock className="h-4 w-4" />
-                  Sigilo profissional garantido
-                </p>
-                <button className="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-all shadow-sm hover:bg-primary/90">
-                  <Send className="h-4 w-4" />
-                  Enviar
-                </button>
+                {solicitando ? (
+                  <FormularioSolicitarOrcamento
+                    destinatario={solicitacaoDireta}
+                    onCancelar={() => setSolicitando(false)}
+                  />
+                ) : null}
               </div>
-            </div>
+            ) : (
+              /*
+                Vitrine de demonstração (sem `?prestador=`) ou perfil que ainda
+                não pode receber pedidos: não existe a quem dirigir, então o
+                caminho honesto é a busca pública — e não um botão que o
+                servidor recusaria.
+              */
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4 shrink-0" />
+                  Descreva sua necessidade e compare propostas de vários
+                  profissionais.
+                </p>
+                <Link
+                  href="/profissionais"
+                  className="alvo-toque-h bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-all shadow-sm hover:bg-primary/90"
+                >
+                  <Send className="h-4 w-4" />
+                  Solicitar orçamento
+                </Link>
+              </div>
+            )}
           </section>
           </motion.div>
 
@@ -841,129 +802,19 @@ export default function PerfilProfissionalV2({
         <aside className="md:col-span-4">
           <div className="sticky top-24 space-y-6">
             {/* Main Widget */}
-            <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
-              <div className="relative h-48">
-                <img
-                  alt="Carlos Eduardo Mendes"
-                  className="w-full h-full object-cover"
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop"
-                />
-                <div className="absolute top-4 right-4 flex gap-2">
-                  <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
-                    <Heart className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                  <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
-                    <Share2 className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-3xl font-bold text-foreground">R$ 180</span>
-                  <span className="text-muted-foreground text-sm">/ hora</span>
-                </div>
-
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h5 className="text-lg font-semibold text-foreground">Maio 2026</h5>
-                    <div className="flex gap-2">
-                      <button className="text-muted-foreground/50 hover:text-foreground transition-colors">
-                        <ChevronLeft className="h-5 w-5" />
-                      </button>
-                      <button className="text-foreground">
-                        <ChevronRight className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold mb-4">
-                    {/*
-                      A chave é a posição, e não a letra: as iniciais dos dias
-                      em português repetem (D S T Q Q S S) e duas colunas com a
-                      mesma chave fazem o React descartar uma delas.
-                    */}
-                    {availabilityData.weekDays.map((d, indice) => (
-                      <span key={indice} className="opacity-50 text-muted-foreground">
-                        {d}
-                      </span>
-                    ))}
-                    {Array.from({ length: availabilityData.leadingBlanks }).map((_, i) => (
-                      <span key={`blank-${i}`} />
-                    ))}
-                    {availabilityData.days.map((day) => (
-                      <span
-                        key={day.day}
-                        className={cn(
-                          'py-2 rounded-lg text-xs font-bold',
-                          day.status === 'available' && 'bg-green-500/10 text-green-600 dark:text-green-400',
-                          day.status === 'unavailable' && 'bg-red-500/10 text-red-500',
-                          day.status === 'selected' && 'bg-primary text-primary-foreground',
-                        )}
-                      >
-                        {day.day}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap gap-4 text-[10px] font-bold uppercase text-muted-foreground/70">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500" /> Disponível
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-primary" /> Selecionado
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-red-400" /> Indisponível
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-lg mb-6">
-                  <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-foreground">Responde em até 2h úteis</span>
-                </div>
-
-                <div className="mb-6">
-                  <h6 className="text-xs font-bold text-muted-foreground uppercase mb-3">
-                    Horários disponíveis
-                  </h6>
-                  <div className="grid grid-cols-2 gap-2">
-                    {timeSlots.map((slot) => (
-                      <button
-                        key={slot.time}
-                        className={cn(
-                          'px-3 py-2 rounded-lg text-sm font-bold transition-colors',
-                          slot.selected
-                            ? 'border-2 border-primary bg-primary/5 text-primary shadow-sm'
-                            : 'border border-border text-foreground hover:border-primary hover:text-primary',
-                        )}
-                      >
-                        {slot.time}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold mb-4 active:scale-95 transition-all shadow-sm hover:bg-primary/90">
-                  Agendar consultoria
-                </button>
-
-                <div className="space-y-4">
-                  <p className="text-xs font-bold text-muted-foreground">Tem um cupom?</p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      className="flex-1 bg-muted/30 border border-border rounded-lg text-sm font-bold text-center text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none px-3 py-2"
-                      type="text"
-                      defaultValue=""
-                    />
-                    <button className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold hover:bg-primary/20 transition-colors">
-                      Aplicar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/*
+              O card de consultoria saiu daqui para
+              `features/consultorias/components/publico/ConsultoriaPublica`: o
+              mesmo JSX, as mesmas classes, agora alimentado pela agenda real do
+              Profissional em vez de `availabilityData` e `timeSlots`. Regra de
+              agenda não mora em componente de perfil — e o modal de
+              contratação, o rascunho e o retorno do login moram junto dela, no
+              domínio, e não aqui.
+            */}
+            <ConsultoriaPublica
+              nomeExibido={nomeExibido}
+              agendaInicial={agendaConsultoria ?? null}
+            />
 
             {/* Secondary Info Cards */}
             <div className="space-y-4">

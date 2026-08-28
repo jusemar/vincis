@@ -22,8 +22,9 @@ import {
   avisarEmTempoReal,
   destinatariosDaOportunidade,
   difundirOportunidade,
+  difundirOportunidadeDireta,
 } from '../lib/difundir-oportunidade'
-import { expirarOportunidadesVencidas } from '../lib/vigencia-sql'
+import { obterDestinatarioPrivado } from '../queries/obter-destinatario-privado'
 import { listarOportunidadesDoCliente } from '../queries/listar-oportunidades-do-cliente'
 import {
   converterValorParaCentavos,
@@ -39,7 +40,12 @@ const PRECISA_ENTRAR =
   'Entre ou crie sua conta para enviar a solicitação. Após a confirmação da conta, você poderá solicitar propostas aos profissionais.'
 
 /**
- * Publica uma solicitação pública de orçamento.
+ * Publica uma solicitação de orçamento — pública ou dirigida a um Profissional.
+ *
+ * Uma action só para as duas portas de entrada, de propósito: o que muda entre
+ * elas é **quem alcança** a solicitação, e todo o resto — sessão, perfil,
+ * vocabulário, anexos, prazo global, auditoria — é idêntico. Duas actions
+ * significariam duas versões dessas regras para manter iguais na mão.
  *
  * Três portas, todas no servidor e nesta ordem:
  *
@@ -56,6 +62,12 @@ const PRECISA_ENTRAR =
  * armazenamento privado antes da transação, com o id da oportunidade já
  * sorteado. Assim a linha e os anexos nascem juntos: uma solicitação não chega
  * a existir com metade dos arquivos que o Cliente escolheu.
+ *
+ * Quando vem `destinatarioId`, uma quarta porta se soma às três: o destinatário
+ * precisa existir, poder operar e **poder prestar aquela categoria**. É a
+ * verificação que impede um payload alterado à mão de dirigir um pedido
+ * jurídico a um contador — e ela roda no servidor, contra o cadastro real, não
+ * contra o que o formulário mostrou.
  */
 export async function criarOportunidade(formData: FormData) {
   const sessao = await obterSessaoServidor()
@@ -125,6 +137,47 @@ export async function criarOportunidade(formData: FormData) {
     }
   }
 
+  /**
+   * Quem vai receber, quando o Cliente escolheu alguém.
+   *
+   * O destinatário é resolvido pelo cadastro dele, e não pelo que veio no
+   * formulário: a lista de categorias que a tela ofereceu é a mesma que esta
+   * consulta devolve, então uma categoria fora dela só pode ter vindo de fora
+   * da tela.
+   */
+  const destinatario = dados.destinatarioId
+    ? await obterDestinatarioPrivado(dados.destinatarioId)
+    : null
+
+  if (dados.destinatarioId) {
+    if (!destinatario) {
+      return {
+        sucesso: false as const,
+        mensagem: 'Este profissional não está disponível para receber solicitações.',
+        precisaEntrar: false,
+        contaNaoConfirmada: false,
+      }
+    }
+    // A mesma conta não ocupa as duas pontas. O Cliente não é prestador, mas a
+    // checagem custa nada e fecha a porta antes de o banco precisar dela.
+    if (destinatario.id === sessao.id) {
+      return {
+        sucesso: false as const,
+        mensagem: 'Você não pode enviar uma solicitação para você mesmo.',
+        precisaEntrar: false,
+        contaNaoConfirmada: false,
+      }
+    }
+    if (!destinatario.categorias.includes(dados.categoria)) {
+      return {
+        sucesso: false as const,
+        mensagem: 'Este profissional não atende a categoria escolhida.',
+        precisaEntrar: false,
+        contaNaoConfirmada: false,
+      }
+    }
+  }
+
   // O prazo global vem da configuração da Gestão e é **congelado** aqui: mudar
   // a configuração depois não pode encurtar nem prolongar uma negociação que já
   // começou.
@@ -150,6 +203,8 @@ export async function criarOportunidade(formData: FormData) {
         abrangencia: dados.abrangencia,
         valorPretendidoCentavos,
         expiraEm,
+        visibilidade: destinatario ? 'privada' : 'publica',
+        destinatarioId: destinatario?.id ?? null,
       })
 
       if (enviados.length) {
@@ -165,20 +220,32 @@ export async function criarOportunidade(formData: FormData) {
         )
       }
 
-      const destinatarios = await destinatariosDaOportunidade(
-        tx,
-        dados.categoria as CategoriaOportunidade,
-      )
-      await difundirOportunidade(
-        tx,
-        {
-          id: oportunidadeId,
-          categoria: dados.categoria as CategoriaOportunidade,
-          titulo,
-          abrangencia: dados.abrangencia,
-        },
-        destinatarios,
-      )
+      const resumoDaSolicitacao = {
+        id: oportunidadeId,
+        categoria: dados.categoria as CategoriaOportunidade,
+        titulo,
+        abrangencia: dados.abrangencia,
+      }
+
+      /**
+       * Privada avisa **um**; pública avisa a categoria inteira.
+       *
+       * É aqui que a diferença entre as duas portas acontece de fato — e é só
+       * aqui. Nenhum outro prestador é consultado, avisado ou contado quando o
+       * Cliente escolheu alguém: `destinatariosDaOportunidade` sequer roda.
+       */
+      const destinatarios = destinatario
+        ? [destinatario.id]
+        : await destinatariosDaOportunidade(
+            tx,
+            dados.categoria as CategoriaOportunidade,
+          )
+
+      if (destinatario) {
+        await difundirOportunidadeDireta(tx, resumoDaSolicitacao, destinatario.id)
+      } else {
+        await difundirOportunidade(tx, resumoDaSolicitacao, destinatarios)
+      }
 
       await registrarEventoAuditoria(
         {
@@ -192,6 +259,8 @@ export async function criarOportunidade(formData: FormData) {
             categoria: dados.categoria,
             abrangencia: dados.abrangencia,
             anexos: enviados.length,
+            visibilidade: destinatario ? 'privada' : 'publica',
+            destinatarioId: destinatario?.id ?? null,
           },
         },
         tx,
@@ -204,7 +273,9 @@ export async function criarOportunidade(formData: FormData) {
     // pronta para ler.
     await avisarEmTempoReal({
       destinatarios: avisados,
-      titulo: 'Nova oportunidade disponível para você',
+      titulo: destinatario
+        ? 'Um cliente solicitou orçamento diretamente a você'
+        : 'Nova oportunidade disponível para você',
       oportunidadeId,
     })
 
@@ -212,8 +283,9 @@ export async function criarOportunidade(formData: FormData) {
     revalidatePath('/admin')
     return {
       sucesso: true as const,
-      mensagem:
-        'Solicitação enviada. Profissionais da categoria vão receber sua necessidade.',
+      mensagem: destinatario
+        ? `Solicitação enviada para ${destinatario.nome}. Somente este profissional vai recebê-la.`
+        : 'Solicitação enviada. Profissionais da categoria vão receber sua necessidade.',
       precisaEntrar: false,
       contaNaoConfirmada: false,
       dados: { oportunidadeId },
@@ -231,16 +303,17 @@ export async function criarOportunidade(formData: FormData) {
   }
 }
 
-/** As solicitações da pessoa logada, com as propostas que ela já recebeu. */
+/**
+ * As solicitações da pessoa logada, com as propostas que ela já recebeu.
+ *
+ * Não materializa vencimento: quem faz isso é o agendador
+ * (`/api/cron/processar-prazos`). Esta leitura nunca dependeu disso — a
+ * solicitação vencida já se lê como expirada por `statusVisivel`, mesmo que a
+ * coluna ainda diga `aberta`.
+ */
 export async function carregarMinhasOportunidades() {
   const sessao = await obterSessaoServidor()
   if (!sessao) return SEM_AUTORIZACAO_COM_DADOS
-
-  // Materializa o vencimento antes de ler. É um UPDATE idempotente que só
-  // alcança linhas já vencidas — a corretude não depende dele (as consultas já
-  // tratam vencida como fora do ar), mas sem agendador é aqui que a coluna
-  // acompanha o relógio.
-  await expirarOportunidadesVencidas()
 
   return {
     sucesso: true as const,

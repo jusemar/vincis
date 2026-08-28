@@ -21,3 +21,32 @@ export function contarPendenciasDeConvite(convites: ConviteAtendimentoDTO[]) {
       convite.aguardandoDecisao,
   ).length
 }
+
+/**
+ * Quantos convites recebidos ainda não foram abertos por quem os recebeu.
+ *
+ * É o número do destaque verde do Dashboard — e só dele. Não se confunde com
+ * `contarPendenciasDeConvite`, que alimenta o badge da caixa de convites e
+ * soma três situações diferentes (convite por responder, resposta não lida,
+ * contraproposta esperando decisão). Aqui a pergunta é outra e mais estreita:
+ * *chegou algo dirigido a mim que eu ainda nem olhei?*
+ *
+ * Também mora aqui, e pelo mesmo motivo: função pura sobre o DTO, usada tanto
+ * pelo servidor quanto por componentes de cliente.
+ */
+export function contarConvitesNovos(convites: ConviteAtendimentoDTO[]) {
+  return convites.filter((convite) => convite.novoParaDestaque).length
+}
+
+/**
+ * O convite novo mais recente, quando existe.
+ *
+ * Só serve ao destaque do Dashboard: com um único convite novo, o botão leva
+ * direto àquela negociação — o mesmo endereço que o clique no sino usa — em vez
+ * de abrir a caixa e deixar a pessoa procurando o que já se sabe qual é.
+ *
+ * A ordem é a que a consulta já entrega (mais recentes primeiro).
+ */
+export function primeiroConviteNovo(convites: ConviteAtendimentoDTO[]) {
+  return convites.find((convite) => convite.novoParaDestaque)?.id ?? null
+}

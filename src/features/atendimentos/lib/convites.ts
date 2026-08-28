@@ -69,14 +69,29 @@ async function nomeDaPessoa(executor: ExecutorDb, usuarioId: string) {
 /**
  * Marca como expirados os convites pendentes cuja validade passou.
  *
- * Roda antes de listar e antes de responder. Um pendente vencido continuaria
- * ocupando o índice de unicidade e impediria um convite novo para a mesma
- * pessoa — o vencimento precisa ser um fato gravado, não uma comparação feita
- * na tela.
+ * Um pendente vencido continuaria ocupando o índice de unicidade e impediria um
+ * convite novo para a mesma pessoa — o vencimento precisa ser um fato gravado,
+ * não uma comparação feita na tela.
+ *
+ * Quem chama:
+ *
+ * - o **agendador**, de hora em hora, que é o dono da responsabilidade
+ *   temporal desde que ele existe;
+ * - `convidarParaAtendimento`, como pré-condição transacional do índice único;
+ * - as guardas de `escreverNaNegociacao` e `responderConvite`, no instante em
+ *   que descobrem que aquele convite específico venceu.
+ *
+ * As duas últimas não são agendamento disfarçado: elas gravam o vencimento de
+ * um convite que a própria operação acabou de recusar, e continuam necessárias
+ * mesmo com o agendador no ar — entre duas execuções dele, a recusa precisa
+ * valer imediatamente.
+ *
+ * Idempotente por construção: o `where` só alcança pendentes já vencidos, então
+ * a segunda execução não encontra nada.
  */
 export async function expirarConvitesVencidos(executor: ExecutorDb = db) {
   const agora = new Date()
-  await executor
+  const expirados = await executor
     .update(atendimentoConvites)
     .set({ status: 'expirado', updatedAt: agora })
     .where(
@@ -85,6 +100,9 @@ export async function expirarConvitesVencidos(executor: ExecutorDb = db) {
         lte(atendimentoConvites.expiraEm, agora),
       ),
     )
+    .returning({ id: atendimentoConvites.id })
+
+  return expirados.length
 }
 
 /**

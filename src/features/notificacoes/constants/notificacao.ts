@@ -27,14 +27,42 @@ export const TIPOS_NOTIFICACAO = {
   conviteAceito: 'convite_aceito',
   conviteRecusado: 'convite_recusado',
   conviteCancelado: 'convite_cancelado',
-  // Oportunidades públicas — etapa anterior à contratação.
+  // Oportunidades — etapa anterior à contratação.
   oportunidadeDisponivel: 'oportunidade_disponivel',
+  /**
+   * Solicitação de orçamento dirigida a **um** Profissional.
+   *
+   * Tipo próprio, e não o `oportunidade_disponivel` de sempre, porque o que a
+   * pessoa precisa entender ao ler o sino é diferente: não é "apareceu trabalho
+   * na sua área", é "alguém escolheu você". O destino, o recurso e a
+   * idempotência continuam sendo os mesmos da oportunidade pública.
+   */
+  oportunidadeDireta: 'oportunidade_direta',
+  /** O destinatário de uma solicitação direta dispensou o convite ao orçamento. */
+  oportunidadeSemInteresse: 'oportunidade_sem_interesse',
+  /**
+   * O prazo da solicitação acabou sem acordo.
+   *
+   * Emitida pelo agendador, e por mais ninguém: é o único aviso da plataforma
+   * cujo fato gerador é o relógio e não uma pessoa. Vai para quem tem o que
+   * perder com o silêncio — o Cliente dono e quem chegou a enviar proposta.
+   */
+  oportunidadeExpirada: 'oportunidade_expirada',
   contrapropostaOportunidade: 'contraproposta_oportunidade',
   contrapropostaAceita: 'contraproposta_oportunidade_aceita',
   contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
   propostaAceita: 'proposta_oportunidade_aceita',
   pagamentoAprovado: 'pagamento_oportunidade_aprovado',
   atendimentoCriadoDaOportunidade: 'atendimento_criado_da_oportunidade',
+  /**
+   * Consultoria Agendada — a terceira porta de entrada do Atendimento.
+   *
+   * Só o Profissional é avisado, e por regra da casa: `emitirNotificacoes`
+   * descarta o autor, e quem paga é o Cliente. Ele já vê a confirmação com o
+   * protocolo na tela; quem precisa ser puxado de volta à plataforma é quem
+   * ganhou hora marcada sem estar olhando.
+   */
+  consultoriaAgendada: 'consultoria_agendada',
 } as const
 
 export type TipoNotificacao =
@@ -73,6 +101,9 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.conviteRecusado]: '🚫',
   [TIPOS_NOTIFICACAO.conviteCancelado]: '🚫',
   [TIPOS_NOTIFICACAO.oportunidadeDisponivel]: '🎯',
+  [TIPOS_NOTIFICACAO.oportunidadeDireta]: '🎯',
+  [TIPOS_NOTIFICACAO.oportunidadeSemInteresse]: '🚫',
+  [TIPOS_NOTIFICACAO.oportunidadeExpirada]: '⏰',
   [TIPOS_NOTIFICACAO.contrapropostaOportunidade]: '💰',
   [TIPOS_NOTIFICACAO.contrapropostaAceita]: '🤝',
   [TIPOS_NOTIFICACAO.contrapropostaRecusada]: '↩️',

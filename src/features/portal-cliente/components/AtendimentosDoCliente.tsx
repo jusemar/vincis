@@ -35,9 +35,11 @@ import {
 import { useRolagemDaConversa } from '@/features/atendimentos/hooks/useRolagemDaConversa'
 import { SolicitacaoDeAjusteDoCliente } from '@/features/atendimentos/components/cliente/SolicitacaoDeAjusteDoCliente'
 import { AvaliacaoDoAtendimento } from '@/features/avaliacoes/components/cliente/AvaliacaoDoAtendimento'
+import { PainelVideochamada } from '@/features/videochamada/components/PainelVideochamada'
 import { useTempoReal } from '@/features/tempo-real/components/TempoRealProvider'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
 import { rotuloPreco } from '@/features/servicos/lib/formatar-preco'
+import { resolverAtendimentoDoLink } from '../lib/deep-link-atendimento'
 import { formatarDataCurta, resumoDoAtendimento } from '../lib/painel-do-cliente'
 import {
   CabecalhoSecao,
@@ -115,14 +117,22 @@ export function AtendimentosDoCliente({
   atendimentoInicial = null,
 }: {
   atendimentos: AtendimentoDoClienteDTO[]
-  /** Deep link vindo da Visão Geral (`?atendimento=<id>`). */
+  /**
+   * Deep link vindo da Visão Geral, do pagamento ou de uma consultoria
+   * agendada: `?atendimento=<id>` **ou** `?atendimento=#2026-0003`.
+   *
+   * Os dois formatos são aceitos porque os dois circulam. O quadro do
+   * Profissional já resolve o parâmetro assim, e o protocolo é justamente o
+   * identificador que a pessoa acabou de ver na tela de confirmação — exigir o
+   * uuid ali obrigaria a carregar o Atendimento só para montar um link.
+   */
   atendimentoInicial?: string | null
 }) {
   const router = useRouter()
   const [abertoId, setAbertoId] = useState<string | null>(atendimentoInicial)
   const [filtro, setFiltro] = useState<FiltroAtendimentos>('todos')
   const aberto = useMemo(
-    () => atendimentos.find((a) => a.id === abertoId) ?? null,
+    () => resolverAtendimentoDoLink(atendimentos, abertoId),
     [atendimentos, abertoId],
   )
 
@@ -543,6 +553,23 @@ function DetalheAtendimento({
             status={atendimento.status}
             ajuste={atendimento.ajuste}
             onAtualizar={onAtualizar}
+          />
+        )}
+
+        {/*
+          A videochamada, quando este Atendimento nasceu de uma consultoria.
+
+          Fica acima das abas de propósito: nos minutos que cercam o horário
+          marcado, entrar na chamada é a única coisa que a pessoa veio fazer
+          aqui — e ela não deveria ter que procurar isso dentro de uma aba. Nos
+          outros Atendimentos o bloco simplesmente não existe.
+        */}
+        {atendimento.consultoria && (
+          <PainelVideochamada
+            atendimentoId={atendimento.id}
+            protocolo={atendimento.protocolo}
+            nomeDaOutraParte={atendimento.prestador.nome}
+            consultoria={atendimento.consultoria}
           />
         )}
 

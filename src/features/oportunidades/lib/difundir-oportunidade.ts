@@ -79,6 +79,87 @@ export async function difundirOportunidade(
 }
 
 /**
+ * Grava o aviso de uma solicitação **dirigida a um Profissional**.
+ *
+ * Mesmo mecanismo da pública — mesma tabela, mesmo recurso, mesmo destino, mesma
+ * idempotência —, com um destinatário só e um texto que diz o que de fato
+ * aconteceu: alguém escolheu esta pessoa. Nenhum prestador além dele é avisado,
+ * e o payload continua sem dado de contato do Cliente.
+ */
+export async function difundirOportunidadeDireta(
+  executor: ExecutorDb,
+  oportunidade: {
+    id: string
+    categoria: CategoriaOportunidade
+    titulo: string
+    abrangencia: string
+  },
+  destinatarioId: string,
+) {
+  return emitirNotificacoes(executor, {
+    destinatarios: [destinatarioId],
+    // Sem autor, como na pública: identificar o Cliente antes de haver resposta
+    // não acrescenta nada a quem decide se vai propor.
+    autorId: null,
+    tipo: TIPOS_NOTIFICACAO.oportunidadeDireta,
+    titulo: 'Um cliente solicitou orçamento diretamente a você',
+    resumo: resumirTexto(
+      `${CATEGORIA_OPORTUNIDADE[oportunidade.categoria].rotulo} · ${oportunidade.titulo}`,
+      200,
+    ),
+    recursoTipo: 'oportunidade',
+    recursoId: oportunidade.id,
+    atendimentoId: null,
+    protocolo: null,
+    destino: { pagina: 'oportunidades', oportunidadeId: oportunidade.id },
+  })
+}
+
+/**
+ * Avisa o Cliente de que o Profissional escolhido não vai propor.
+ *
+ * Só existe no fluxo privado, e a razão é a assimetria entre os dois: na
+ * pública, "não tenho interesse" é uma decisão de agenda entre dezenas de
+ * prestadores e o Cliente vê apenas um número agregado; na privada existe **um**
+ * destinatário, e ficar esperando uma proposta que nunca virá é o pior desfecho
+ * possível para quem pediu.
+ *
+ * O texto não é de rejeição: quem escolhe não participar está falando da própria
+ * agenda, não da pessoa que pediu orçamento.
+ */
+export async function avisarClienteSemInteresse(
+  executor: ExecutorDb,
+  {
+    oportunidadeId,
+    titulo,
+    clienteUsuarioId,
+    prestadorId,
+  }: {
+    oportunidadeId: string
+    titulo: string
+    clienteUsuarioId: string
+    prestadorId: string
+  },
+) {
+  return emitirNotificacoes(executor, {
+    destinatarios: [clienteUsuarioId],
+    autorId: prestadorId,
+    tipo: TIPOS_NOTIFICACAO.oportunidadeSemInteresse,
+    titulo: 'O profissional não vai enviar proposta',
+    resumo: resumirTexto(
+      `${titulo} — você pode solicitar orçamento a outro profissional.`,
+      200,
+    ),
+    recursoTipo: 'oportunidade',
+    recursoId: oportunidadeId,
+    atendimentoId: null,
+    protocolo: null,
+    // Mesmo destino que os demais avisos desta negociação usam.
+    destino: { pagina: 'oportunidades', oportunidadeId },
+  })
+}
+
+/**
  * Publica o aviso em tempo real, **depois** do commit.
  *
  * A ordem é a mesma do Atendimento e não é detalhe: grava, confirma, e só

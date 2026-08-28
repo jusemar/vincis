@@ -10,6 +10,7 @@ import {
   atendimentoParticipantes,
   atendimentos,
   clientes,
+  consultoriaAgendamentos,
   contratacoesServico,
   usuarios,
 } from '@/db/schema'
@@ -33,6 +34,7 @@ import {
   chaveDaMarca,
   obterMarcasDeLeitura,
 } from '../lib/leitura'
+import { consultoriaDoAtendimento } from '../lib/consultoria-do-atendimento'
 import { condicaoLeituraManifestacao } from '../lib/manifestacoes'
 import { obterUltimosAjustes } from '../lib/solicitacoes-ajuste'
 import { transicoesPermitidas } from '../lib/transicoes'
@@ -103,6 +105,12 @@ export async function listarAtendimentosDoPrestador(
       contratacaoPrazoDias: contratacoesServico.prazoEstimadoDias,
       contratacaoStatus: contratacoesServico.status,
       contratacaoCriadaEm: contratacoesServico.createdAt,
+      // A terceira porta de entrada: consultoria com hora marcada.
+      consultoriaId: consultoriaAgendamentos.id,
+      consultoriaInicioEm: consultoriaAgendamentos.inicioEm,
+      consultoriaFimEm: consultoriaAgendamentos.fimEm,
+      consultoriaTimezone: consultoriaAgendamentos.timezone,
+      consultoriaDuracaoMinutos: consultoriaAgendamentos.duracaoMinutos,
     })
     .from(atendimentos)
     .innerJoin(
@@ -118,6 +126,10 @@ export async function listarAtendimentosDoPrestador(
     .leftJoin(
       contratacoesServico,
       eq(contratacoesServico.id, atendimentos.contratacaoId),
+    )
+    .leftJoin(
+      consultoriaAgendamentos,
+      eq(consultoriaAgendamentos.id, atendimentos.consultoriaAgendamentoId),
     )
     .where(condicaoAlcanceAtendimento(usuarioId))
     .orderBy(desc(atendimentos.createdAt))
@@ -360,6 +372,7 @@ export async function listarAtendimentosDoPrestador(
           ).toISOString(),
         }
       : null,
+    consultoria: consultoriaDoAtendimento(registro),
     participantes: participantes
       .filter((linha) => linha.atendimentoId === registro.id)
       .map((linha) => ({

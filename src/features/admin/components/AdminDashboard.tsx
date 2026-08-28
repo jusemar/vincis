@@ -20,6 +20,7 @@ import AchievementsPage from "./AchievementsPage";
 import AtendimentosPage from "./AtendimentosPage";
 import EquipeEscritorioPage from "@/features/empresas/components/EquipeEscritorioPage";
 import OportunidadesPage from "@/features/oportunidades/components/prestador/OportunidadesPage";
+import type { ConsultoriaDoPrestadorDTO2 } from "@/features/consultorias/types/agendamento";
 import type { Protocol } from "../types/atendimentos";
 import type { ResumoDoPainelDTO } from "@/features/atendimentos/queries/painel-do-prestador";
 import type { ComunicadoDTO } from "@/features/comunicados/types/comunicado";
@@ -28,10 +29,12 @@ import type { PainelDeAvaliacoesDTO } from "@/features/avaliacoes/queries/painel
 export default function AdminDashboard({
   clientesAtivos,
   atendimentosReais = [],
+  consultorias = [],
   resumoDoPainel,
   comunicados = [],
   painelDeAvaliacoes,
   oportunidadesDisponiveis = 0,
+  solicitacoesDiretas = 0,
 }: {
   clientesAtivos: number
   /**
@@ -40,6 +43,13 @@ export default function AdminDashboard({
    * pela própria tela de Oportunidades.
    */
   oportunidadesDisponiveis?: number
+  /**
+   * Quantas das pendentes foram dirigidas a este Profissional pelo perfil dele.
+   *
+   * Subconjunto de `oportunidadesDisponiveis`, não uma segunda fila: o destaque
+   * continua sendo um só, e este número apenas muda o que ele diz.
+   */
+  solicitacoesDiretas?: number
   /**
    * Avaliações reais recebidas pelo prestador.
    *
@@ -60,6 +70,8 @@ export default function AdminDashboard({
    * daqui exigiria um fetch no navegador e faria a tela piscar.
    */
   atendimentosReais?: Protocol[]
+  /** Consultorias agendadas deste Profissional, da mais próxima em diante. */
+  consultorias?: ConsultoriaDoPrestadorDTO2[]
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
@@ -101,6 +113,7 @@ export default function AdminDashboard({
             comunicados={comunicados}
             reputacao={reputacao}
             oportunidadesDisponiveis={oportunidadesDisponiveis}
+            solicitacoesDiretas={solicitacoesDiretas}
           />
         );
       case "clients":
@@ -110,7 +123,7 @@ export default function AdminDashboard({
       case "tickets":
         return <TicketsPage />;
       case "appointments":
-        return <AppointmentsPage />;
+        return <AppointmentsPage consultorias={consultorias} />;
       case "atendimentos":
         return (
           <AtendimentosPage
@@ -139,6 +152,7 @@ export default function AdminDashboard({
             comunicados={comunicados}
             reputacao={reputacao}
             oportunidadesDisponiveis={oportunidadesDisponiveis}
+            solicitacoesDiretas={solicitacoesDiretas}
           />
         );
     }

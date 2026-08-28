@@ -80,7 +80,10 @@ export { anexosDasOportunidades }
  *
  * 1. **habilitação** — quem não pode operar não recebe trabalho pela
  *    plataforma, e a lista sai vazia antes de qualquer consulta;
- * 2. **categoria** — só as compatíveis com o cadastro dele;
+ * 2. **alcance** — as públicas compatíveis com o cadastro dele, mais as
+ *    **privadas dirigidas a ele**. Uma solicitação privada de outro prestador
+ *    não entra na consulta, mesmo que a categoria bata: a cláusula compara
+ *    `destinatario_id` com quem consulta;
  * 3. **privacidade** — o join com as propostas casa `prestador_id` com quem
  *    consulta. Não existe caminho, nem passando id, que traga a proposta de
  *    outro prestador: a coluna simplesmente não é selecionada para ninguém
@@ -151,6 +154,7 @@ export async function listarOportunidadesDoPrestador(
       propostaAceitaEm: minhaProposta.aceitaEm,
       propostaValorAcordado: minhaProposta.valorAcordadoCentavos,
       dispensadaEm: minhaDispensa.criadoEm,
+      visibilidade: oportunidades.visibilidade,
       expiraEm: oportunidades.expiraEm,
       pagamentoEm: oportunidadePagamentos.aprovadoEm,
       pagamentoValor: oportunidadePagamentos.valorCentavos,
@@ -173,6 +177,13 @@ export async function listarOportunidadesDoPrestador(
     .where(
       and(
         inArray(oportunidades.categoria, categorias),
+        // A porta privada: pública alcança a categoria, privada alcança uma
+        // pessoa. Sem esta condição, todo prestador compatível veria o pedido
+        // que o Cliente dirigiu a um só.
+        or(
+          eq(oportunidades.visibilidade, 'publica'),
+          eq(oportunidades.destinatarioId, prestadorId),
+        ),
         or(
           // Aberta **e** dentro do prazo global: vencida sai da vitrine mesmo
           // antes de alguém materializar o status.
@@ -204,6 +215,11 @@ export async function listarOportunidadesDoPrestador(
       abrangencia: linha.abrangencia,
       valorPretendidoCentavos: linha.valorPretendidoCentavos,
       status: linha.status,
+      visibilidade: linha.visibilidade,
+      // Redundante com `visibilidade` só na aparência: a consulta já garantiu
+      // que uma privada só chega ao destinatário, então a tela pode dizer
+      // "enviada diretamente para você" sem comparar id nenhum no navegador.
+      direcionadaAMim: linha.visibilidade === 'privada',
       criadoEm: linha.criadoEm.toISOString(),
       expiraEm: linha.expiraEm?.toISOString() ?? null,
       clienteNome: linha.clienteNome,
@@ -254,14 +270,33 @@ export async function listarOportunidadesDoPrestador(
  * por par (oportunidade, prestador), nunca de um estado da oportunidade.
  */
 export async function contarOportunidadesDisponiveis(prestadorId: string) {
+  return (await contarDisponiveisPorOrigem(prestadorId)).total
+}
+
+/**
+ * O mesmo número do banner, separado por origem.
+ *
+ * O destaque do Dashboard precisa poder dizer que **alguma** daquelas
+ * solicitações foi dirigida a esta pessoa — é a diferença entre "apareceu
+ * trabalho na sua área" e "alguém escolheu você", e ela muda a urgência com que
+ * a pessoa responde. Uma consulta só, com um `filter` a mais: contar duas vezes
+ * abriria a chance de os dois números discordarem.
+ */
+export async function contarDisponiveisPorOrigem(
+  prestadorId: string,
+): Promise<{ total: number; diretas: number }> {
+  const vazio = { total: 0, diretas: 0 }
   const perfil = await perfilDoPrestador(prestadorId)
-  if (!prestadorHabilitado(perfil)) return 0
+  if (!prestadorHabilitado(perfil)) return vazio
 
   const categorias = categoriasCompativeisDoPrestador(perfil)
-  if (!categorias.length) return 0
+  if (!categorias.length) return vazio
 
   const [linha] = await db
-    .select({ total: sql<number>`count(*)::int` })
+    .select({
+      total: sql<number>`count(*)::int`,
+      diretas: sql<number>`count(*) filter (where ${oportunidades.visibilidade} = 'privada')::int`,
+    })
     .from(oportunidades)
     .leftJoin(
       oportunidadePropostas,
@@ -281,10 +316,14 @@ export async function contarOportunidadesDisponiveis(prestadorId: string) {
       and(
         condicaoOportunidadeAtiva(),
         inArray(oportunidades.categoria, categorias),
+        or(
+          eq(oportunidades.visibilidade, 'publica'),
+          eq(oportunidades.destinatarioId, prestadorId),
+        ),
         isNull(oportunidadePropostas.id),
         isNull(oportunidadeDispensas.id),
       ),
     )
 
-  return linha?.total ?? 0
+  return { total: linha?.total ?? 0, diretas: linha?.diretas ?? 0 }
 }

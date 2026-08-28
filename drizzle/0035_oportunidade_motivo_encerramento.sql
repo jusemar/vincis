@@ -1,0 +1,1 @@
+ALTER TABLE "oportunidades" ADD COLUMN "motivo_encerramento" varchar(20);

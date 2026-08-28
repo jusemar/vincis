@@ -36,6 +36,7 @@ import {
 import { LIMITE_MENSAGEM_PROPOSTA } from '@/features/oportunidades/constants/oportunidade'
 import { contarOportunidadesDisponiveis } from '@/features/oportunidades/queries/listar-oportunidades-do-prestador'
 import { limitarValidade } from '@/features/oportunidades/lib/vigencia'
+import { processarOportunidadesVencidas } from '@/features/oportunidades/lib/processar-vencidas'
 import { entrarComo, sairDaSessao } from './setup/sessao'
 
 const SUFIXO = '@negociacao.teste'
@@ -641,7 +642,10 @@ describe('validades e expiração', () => {
       .set({ expiraEm: new Date(Date.now() - 60_000) })
       .where(eq(oportunidades.id, id))
 
-    // A leitura do Cliente materializa o vencimento.
+    // Quem materializa o vencimento é o agendador. A leitura do Cliente lê a
+    // vencida como expirada de qualquer forma — mas a coluna só muda aqui.
+    await processarOportunidadesVencidas()
+
     entrarComo(contas.cliente.token)
     const minhas = await carregarMinhasOportunidades()
     const oportunidade = minhas.dados!.find((item) => item.id === id)!

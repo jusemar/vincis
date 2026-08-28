@@ -39,6 +39,7 @@ import { ParticipantesDialog } from "./ParticipantesDialog";
 import { SolicitacaoDeAjusteCard } from "./SolicitacaoDeAjusteCard";
 import { useRolagemDaConversa } from "@/features/atendimentos/hooks/useRolagemDaConversa";
 import { useTempoReal } from "@/features/tempo-real/components/TempoRealProvider";
+import { PainelVideochamada } from "@/features/videochamada/components/PainelVideochamada";
 import type { FocoDoPainel, Protocol, RealChecklistItem } from "../../types/atendimentos";
 
 type Tab = "protocolo" | "conversa" | "arquivos" | "historico" | "info";
@@ -332,6 +333,25 @@ export const ProtocolPanel = ({
           </div>
         </div>
       </div>
+
+      {/*
+        A videochamada, quando o protocolo nasceu de uma consultoria agendada.
+
+        Mesmo componente e mesma autorização do lado do Cliente — muda só o
+        nome que aparece no cabeçalho da chamada. Duas telas separadas para o
+        mesmo botão virariam duas regras que um dia discordam sobre quem pode
+        entrar.
+      */}
+      {real?.consultoria && (
+        <div className="shrink-0 border-b border-border p-3 sm:p-4">
+          <PainelVideochamada
+            atendimentoId={real.atendimentoId}
+            protocolo={protocol.number}
+            nomeDaOutraParte={protocol.client}
+            consultoria={real.consultoria}
+          />
+        </div>
+      )}
 
       {/*
         As cinco abas precisam caber nos 480px do painel. Com ícone e rótulo

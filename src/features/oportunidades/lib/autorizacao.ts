@@ -6,7 +6,7 @@ import {
   perfisProfissionais,
 } from '@/db/schema'
 import { prestadorHabilitado } from '@/features/usuarios/lib/prestador'
-import type { CategoriaOportunidade } from '../constants/oportunidade'
+import { ehPrivada, type CategoriaOportunidade } from '../constants/oportunidade'
 import { categoriasCompativeisDoPrestador } from './compatibilidade'
 import { oportunidadeExpirada } from './vigencia'
 
@@ -30,6 +30,16 @@ export type VinculoOportunidade = 'cliente' | 'prestador'
  *   solicitação exclusivamente jurídica por UI, por URL, por Server Action nem
  *   por chamada direta, porque todas passam por aqui.
  *
+ * ## Solicitação privada: a categoria deixa de bastar
+ *
+ * Numa solicitação dirigida a um Profissional, compatibilidade é condição
+ * necessária e **não** suficiente: o prestador precisa ser aquele destinatário.
+ * Outro contador, igualmente compatível e igualmente habilitado, não entra —
+ * nem na vitrine, nem no download de anexo, nem no "não tenho interesse", nem
+ * no envio de proposta, porque todos esses caminhos perguntam aqui. Trocar o
+ * `destinatario_id` no payload não ajuda: a coluna é lida do banco, não da
+ * requisição.
+ *
  * ## Fechado o acordo, os concorrentes saem
  *
  * Compatibilidade abre a porta enquanto a solicitação está **disputável**.
@@ -51,6 +61,8 @@ export async function obterVinculoComOportunidade(
       clienteUsuarioId: oportunidades.clienteUsuarioId,
       status: oportunidades.status,
       expiraEm: oportunidades.expiraEm,
+      visibilidade: oportunidades.visibilidade,
+      destinatarioId: oportunidades.destinatarioId,
     })
     .from(oportunidades)
     .where(eq(oportunidades.id, oportunidadeId))
@@ -58,6 +70,15 @@ export async function obterVinculoComOportunidade(
 
   if (!oportunidade) return null
   if (oportunidade.clienteUsuarioId === usuarioId) return 'cliente'
+
+  // Privada: só o escolhido segue adiante. A verificação vem antes de qualquer
+  // consulta ao cadastro — quem não é o destinatário nem chega a ser avaliado.
+  if (
+    ehPrivada(oportunidade.visibilidade) &&
+    oportunidade.destinatarioId !== usuarioId
+  ) {
+    return null
+  }
 
   const [perfil] = await db
     .select({

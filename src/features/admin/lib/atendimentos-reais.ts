@@ -281,6 +281,9 @@ export function mapearAtendimentoParaCard(
     origin: 'real',
     real: {
       atendimentoId: atendimento.id,
+      // Atravessa inteiro: quem decide o que mostrar é o painel, e a janela já
+      // veio calculada pelo servidor com a mesma regra que autoriza a entrada.
+      consultoria: atendimento.consultoria,
       info: {
         protocol: atendimento.protocolo,
         service: contratacao?.nomeServico ?? atendimento.titulo,

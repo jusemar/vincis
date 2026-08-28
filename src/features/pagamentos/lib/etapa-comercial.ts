@@ -27,6 +27,7 @@ export const ETAPAS_COMERCIAIS = [
   'em_atendimento',
   'expirada',
   'cancelada',
+  'sem_interesse',
   'encerrada',
 ] as const
 
@@ -39,6 +40,9 @@ export const ROTULO_ETAPA_COMERCIAL: Record<EtapaComercial, string> = {
   em_atendimento: 'Atendimento criado',
   expirada: 'Expirada',
   cancelada: 'Cancelada',
+  // Não é recusa à pessoa que pediu, e não é erro: é a agenda de quem foi
+  // escolhido. O rótulo diz isso sem adjetivo.
+  sem_interesse: 'Sem interesse do profissional',
   encerrada: 'Encerrada',
 }
 
@@ -51,6 +55,15 @@ export type SituacaoDaOportunidade = {
   temPagamento: boolean
   /** O Atendimento já foi aberto. */
   temAtendimento: boolean
+  /**
+   * Por que a solicitação foi encerrada, quando foi.
+   *
+   * Só muda a narrativa de um `encerrada` sem acordo: `sem_interesse` conta que
+   * o destinatário de uma solicitação privada declinou. Qualquer outro valor —
+   * e a ausência dele — mantém o comportamento anterior, caractere por
+   * caractere.
+   */
+  motivoEncerramento?: string | null
 }
 
 export function etapaComercial(situacao: SituacaoDaOportunidade): EtapaComercial {
@@ -60,6 +73,9 @@ export function etapaComercial(situacao: SituacaoDaOportunidade): EtapaComercial
   if (situacao.status === 'aberta') return 'aberta'
   if (situacao.status === 'expirada') return 'expirada'
   if (situacao.status === 'cancelada') return 'cancelada'
+  // Encerrada sem acordo tem duas causas, e a diferença importa para quem
+  // pediu: o acordo é desfecho, a recusa é ausência de resposta.
+  if (situacao.motivoEncerramento === 'sem_interesse') return 'sem_interesse'
   return 'encerrada'
 }
 

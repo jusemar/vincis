@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -10,6 +11,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core'
 import { clientes } from '../clientes/tabela'
+import { consultoriaAgendamentos } from '../consultoria_agendamentos/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
 import { empresas } from '../empresas/tabela'
 import { oportunidades } from '../oportunidades/tabela'
@@ -70,6 +72,21 @@ export const atendimentos = pgTable(
      * oportunidade criaria um par de chaves capaz de discordar entre si.
      */
     oportunidadeId: uuid('oportunidade_id').references(() => oportunidades.id),
+    /**
+     * A consultoria agendada que originou este Atendimento, quando houve uma.
+     *
+     * A **terceira** porta de entrada, ao lado de `contratacao_id` e
+     * `oportunidade_id`: o Cliente escolheu dia e hora na agenda do
+     * Profissional e pagou na hora. As três terminam no mesmo lugar
+     * operacional — mesmo protocolo, mesmo Kanban, mesmo histórico —, e é por
+     * isso que a Consultoria Agendada **não** ganhou um sistema de Atendimento
+     * próprio nem precisou forjar uma oportunidade para caber aqui.
+     *
+     * Único pelo mesmo motivo das outras duas: uma consultoria paga produz um
+     * Atendimento. Repetir o pagamento devolve o mesmo registro em vez de abrir
+     * outro protocolo.
+     */
+    consultoriaAgendamentoId: uuid('consultoria_agendamento_id'),
     /** Prestador dono do Atendimento — a fronteira de isolamento da carteira. */
     prestadorId: uuid('prestador_id')
       .notNull()
@@ -136,6 +153,22 @@ export const atendimentos = pgTable(
     oportunidadeUnica: uniqueIndex('atendimentos_oportunidade_unico').on(
       t.oportunidadeId,
     ),
+    // E do lado da consultoria: uma consultoria paga, um protocolo.
+    consultoriaUnica: uniqueIndex('atendimentos_consultoria_unico').on(
+      t.consultoriaAgendamentoId,
+    ),
+    /*
+     * Nome explícito porque o que o Drizzle geraria sozinho
+     * (`atendimentos_consultoria_agendamento_id_consultoria_agendamentos_id_fk`)
+     * tem 70 caracteres, e o PostgreSQL trunca identificadores em 63 — sem
+     * reclamar. O schema passaria a chamar a constraint por um nome que o banco
+     * não tem, e a divergência só apareceria na próxima migration.
+     */
+    consultoriaFk: foreignKey({
+      columns: [t.consultoriaAgendamentoId],
+      foreignColumns: [consultoriaAgendamentos.id],
+      name: 'atendimentos_consultoria_agendamento_fk',
+    }),
     prestadorIdx: index('atendimentos_prestador_idx').on(
       t.prestadorId,
       t.status,

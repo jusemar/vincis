@@ -10,6 +10,7 @@ import {
   contratacoesServico,
   empresaMembros,
   empresas,
+  notificacoes,
   perfis,
   perfisProfissionais,
   servicos,
@@ -20,6 +21,7 @@ import {
 import {
   convidarParaAtendimento,
   escreverNaNegociacao,
+  marcarNegociacaoComoLida,
   responderConvite,
   revogarConvite,
 } from '@/features/atendimentos/lib/convites'
@@ -28,6 +30,10 @@ import {
   removerParticipante,
 } from '@/features/atendimentos/lib/participantes'
 import { centavosDoTexto, rotuloValorCentavos } from '@/features/atendimentos/lib/valores'
+import {
+  contarConvitesNovos,
+  primeiroConviteNovo,
+} from '@/features/atendimentos/lib/pendencias-convite'
 import { obterContextoDoConvite } from '@/features/atendimentos/queries/contexto-do-convite'
 import {
   listarConvitesDaPessoa,
@@ -35,6 +41,7 @@ import {
 } from '@/features/atendimentos/queries/convites-do-atendimento'
 import { listarMembrosAtribuiveis } from '@/features/atendimentos/queries/listar-membros-atribuiveis'
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
+import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-prestador'
 import { criarServico } from '@/features/servicos/actions/catalogo'
 import { contratarServico } from '@/features/servicos/actions/contratar'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
@@ -814,5 +821,119 @@ describe('leitura de valores digitados', () => {
     expect(rotuloValorCentavos(123456).replace(/\u00a0/g, ' ')).toBe('R$ 1.234,56')
     expect(rotuloValorCentavos(null)).toBe('Sem valor definido')
     expect(rotuloValorCentavos(null, '—')).toBe('—')
+  })
+})
+
+
+/**
+ * O destaque verde do Dashboard, quando o assunto é convite.
+ *
+ * O que se testa aqui é o dado que decide o destaque, e não o desenho: quantos
+ * convites chegaram sem nunca terem sido abertos, e o que acontece com esse
+ * número depois que a pessoa abre um. "Visualizado" é a marca de leitura que a
+ * plataforma já gravava ao abrir a negociação — nenhum estado novo, e nada de
+ * estado só no React, senão um F5 traria o destaque de volta.
+ */
+describe('destaque de convites novos no Dashboard', () => {
+  it('sem convite recebido, não há o que destacar', async () => {
+    const resumo = await obterResumoDoPainel(contas.externo.id)
+    expect(resumo.convitesNovos).toBe(0)
+    expect(resumo.primeiroConviteNovoId).toBeNull()
+  })
+
+  it('convite recém-recebido conta como novo — e só para quem o recebeu', async () => {
+    const atendimentoId = await criarAtendimento()
+    const conviteId = await convidarExterno(atendimentoId)
+
+    const doConvidado = await obterResumoDoPainel(contas.externo.id)
+    expect(doConvidado.convitesNovos).toBe(1)
+    expect(doConvidado.primeiroConviteNovoId).toBe(conviteId)
+
+    // Quem convidou não tem o que analisar: o destaque é de quem recebeu.
+    const doRemetente = await obterResumoDoPainel(contas.dono.id)
+    expect(doRemetente.convitesNovos).toBe(0)
+
+    // E quem não é nenhuma das duas pontas não fica sabendo que ele existe.
+    const doEstranho = await obterResumoDoPainel(contas.estranho.id)
+    expect(doEstranho.convitesNovos).toBe(0)
+  })
+
+  it('três convites novos contam três; visualizar um deixa dois', async () => {
+    const primeiro = await convidarExterno(await criarAtendimento())
+    await convidarExterno(await criarAtendimento())
+    await convidarExterno(await criarAtendimento())
+
+    expect((await obterResumoDoPainel(contas.externo.id)).convitesNovos).toBe(3)
+
+    // Abrir a negociação é o gesto de visualizar — o mesmo que a caixa de
+    // convites já fazia antes deste destaque existir.
+    const leitura = await marcarNegociacaoComoLida({
+      conviteId: primeiro,
+      usuarioId: contas.externo.id,
+    })
+    expect(leitura).toEqual({ sucesso: true })
+
+    const depois = await obterResumoDoPainel(contas.externo.id)
+    expect(depois.convitesNovos).toBe(2)
+    expect(depois.primeiroConviteNovoId).not.toBe(primeiro)
+
+    // Consulta nova, do zero: é o F5. O convite visualizado não volta a ser
+    // novo porque a marca está no banco, e não na memória da tela.
+    const recarregado = await listarConvitesDaPessoa(contas.externo.id)
+    expect(contarConvitesNovos(recarregado)).toBe(2)
+    expect(recarregado.find((c) => c.id === primeiro)?.novoParaDestaque).toBe(false)
+    expect(primeiroConviteNovo(recarregado)).not.toBe(primeiro)
+  })
+
+  it('visualizar não muda o estado comercial do convite', async () => {
+    const atendimentoId = await criarAtendimento()
+    const conviteId = await convidarExterno(atendimentoId)
+
+    await marcarNegociacaoComoLida({
+      conviteId,
+      usuarioId: contas.externo.id,
+    })
+
+    const [convite] = await db
+      .select()
+      .from(atendimentoConvites)
+      .where(eq(atendimentoConvites.id, conviteId))
+    expect(convite.status).toBe('pendente')
+    expect(convite.respondidoEm).toBeNull()
+
+    // E o fluxo de resposta continua inteiro depois de visualizado.
+    const aceite = await responderConvite({
+      conviteId,
+      usuarioId: contas.externo.id,
+      resposta: 'aceitar',
+    })
+    expect(aceite.sucesso).toBe(true)
+  })
+
+  it('o aviso continua no sino depois de o convite deixar de ser novo', async () => {
+    const atendimentoId = await criarAtendimento()
+    const conviteId = await convidarExterno(atendimentoId)
+
+    const antes = await db
+      .select()
+      .from(notificacoes)
+      .where(eq(notificacoes.recursoId, conviteId))
+    expect(antes).toHaveLength(1)
+    expect(antes[0].destinatarioId).toBe(contas.externo.id)
+
+    await marcarNegociacaoComoLida({
+      conviteId,
+      usuarioId: contas.externo.id,
+    })
+
+    // A linha do sino continua lá — o destaque é temporário, o sino é
+    // histórico. O que muda é a marca de lida, que é a semântica que o sino
+    // sempre teve.
+    const depois = await db
+      .select()
+      .from(notificacoes)
+      .where(eq(notificacoes.recursoId, conviteId))
+    expect(depois).toHaveLength(1)
+    expect(depois[0].lidaEm).not.toBeNull()
   })
 })

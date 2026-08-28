@@ -2,106 +2,78 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
-  Plus,
   ChevronLeft,
   ChevronRight,
   Clock,
   Video,
-  MapPin,
   User,
+  Hash,
 } from 'lucide-react';
+import Link from 'next/link';
+import { rotaDoAtendimentoNoPainel } from '@/features/consultorias/constants/contratacao';
+import {
+  duracaoPorExtenso,
+  formatarPreco,
+} from '@/features/consultorias/lib/formato';
+import type { ConsultoriaDoPrestadorDTO2 } from '@/features/consultorias/types/agendamento';
 
-interface Appointment {
-  id: number;
-  title: string;
-  client: string;
-  clientId: number;
-  date: string;
-  time: string;
-  duration: number;
-  type: 'video' | 'phone' | 'in-person';
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled';
-  link?: string;
-  location?: string;
-  notes: string;
+/**
+ * Agenda do Profissional — agora com as consultorias reais.
+ *
+ * ## O que mudou, e o que não mudou
+ *
+ * O layout é o mesmo que estava aprovado: o calendário do mês à esquerda, o
+ * painel do dia à direita, o modal de detalhe e as mesmas classes. O que mudou
+ * é a origem do conteúdo — antes `mockAppointments`, cinco compromissos
+ * escritos à mão com nomes inventados e links do Google Meet; agora as
+ * Consultorias Agendadas que o Profissional realmente vendeu.
+ *
+ * ## Por que os links de reunião sumiram
+ *
+ * Porque eram falsos duas vezes: apontavam para salas que não existem e para um
+ * provedor que não é o caminho da plataforma — a videochamada da Vincis será
+ * dentro da Vincis, em etapa própria. Enquanto ela não existe, a tela diz que
+ * não existe, em vez de oferecer um botão que leva a lugar nenhum.
+ *
+ * ## Por que não há "Novo Agendamento"
+ *
+ * O botão existia e não abria nada (o estado do modal nunca era lido). E não
+ * havia o que abrir: quem marca horário é o Cliente, no perfil público, dentro
+ * das faixas que o Profissional configurou. Um botão que promete criar
+ * compromisso à mão descreveria um produto diferente deste.
+ *
+ * ## Fusos
+ *
+ * As horas vêm prontas do servidor, no fuso gravado **na consultoria** — não no
+ * relógio de quem está olhando. O dia do calendário é comparado com a mesma
+ * data local que veio de lá, e não com `Date` reconstruído no navegador, senão
+ * uma consultoria das 23h apareceria no dia seguinte para metade do país.
+ */
+
+/** Só o que a grade precisa saber para posicionar um dia. */
+function partesDaData(data: string) {
+  const [ano, mes, dia] = data.split('-').map(Number);
+  return { ano, mes, dia };
 }
-
-const mockAppointments: Appointment[] = [
-  {
-    id: 1,
-    title: 'Consultoria Fiscal',
-    client: 'João Silva',
-    clientId: 1,
-    date: '2024-04-15',
-    time: '14:00',
-    duration: 60,
-    type: 'video',
-    status: 'confirmed',
-    link: 'https://meet.google.com/abc-def-ghi',
-    notes: 'Revisar declaração de IRPF',
-  },
-  {
-    id: 2,
-    title: 'Reunião Fiscal',
-    client: 'Maria Santos',
-    clientId: 2,
-    date: '2024-04-16',
-    time: '10:00',
-    duration: 90,
-    type: 'video',
-    status: 'scheduled',
-    link: 'https://meet.google.com/jkl-mno-pqr',
-    notes: 'Planejamento tributário trimestral',
-  },
-  {
-    id: 3,
-    title: 'Atendimento Presencial',
-    client: 'Carlos Oliveira',
-    clientId: 3,
-    date: '2024-04-17',
-    time: '15:30',
-    duration: 45,
-    type: 'in-person',
-    status: 'confirmed',
-    location: 'Escritório - Sala 302',
-    notes: 'Assinatura de documentos',
-  },
-  {
-    id: 4,
-    title: 'Consulta Jurídica',
-    client: 'Ana Souza',
-    clientId: 4,
-    date: '2024-04-20',
-    time: '09:00',
-    duration: 60,
-    type: 'video',
-    status: 'scheduled',
-    link: 'https://meet.google.com/xyz-uvw-rst',
-    notes: 'Análise de contrato',
-  },
-  {
-    id: 5,
-    title: 'Ligação de Follow-up',
-    client: 'TechStart ME',
-    clientId: 5,
-    date: '2024-04-18',
-    time: '11:00',
-    duration: 30,
-    type: 'phone',
-    status: 'scheduled',
-    notes: 'Verificar documentos recebidos',
-  },
-];
-
 
 const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-export default function AppointmentsPage() {
+export default function AppointmentsPage({
+  consultorias = [],
+}: {
+  /**
+   * As consultorias deste Profissional, carregadas no servidor.
+   *
+   * O padrão vazio existe para o dia em que a agenda ainda não vendeu nada — e
+   * é ele que sustenta o estado vazio honesto, sem preencher a tela com
+   * exemplos.
+   */
+  consultorias?: ConsultoriaDoPrestadorDTO2[];
+}) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [, setShowNewModal] = useState(false);
+  const [selecionada, setSelecionada] = useState<ConsultoriaDoPrestadorDTO2 | null>(null);
 
   const month = currentDate.getMonth();
   const year = currentDate.getFullYear();
@@ -112,34 +84,37 @@ export default function AppointmentsPage() {
   const isToday = (day: number) =>
     day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-  const getAppointmentsForDate = (day: number) => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return mockAppointments.filter(apt => apt.date === dateStr);
+  /**
+   * As consultorias de um dia da grade.
+   *
+   * A comparação é entre textos `AAAA-MM-DD` — o do calendário e o que o
+   * servidor já resolveu no fuso da consultoria. Reconstruir um `Date` aqui
+   * reinterpretaria o horário no fuso de quem está olhando.
+   */
+  const consultoriasDoDia = (day: number) => {
+    const alvo = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return consultorias.filter((item) => item.data === alvo);
   };
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-  const getTypeIcon = (type: Appointment['type']) => {
-    switch (type) {
-      case 'video': return <Video className="w-4 h-4" />;
-      case 'phone': return <Clock className="w-4 h-4" />;
-      case 'in-person': return <MapPin className="w-4 h-4" />;
-    }
-  };
+  /**
+   * O selo de estado.
+   *
+   * `agendada` é o único estado que a plataforma conhece hoje. Realizada,
+   * cancelada e remarcada são etapas próprias — desenhar os selos delas agora
+   * anunciaria comportamento que não existe.
+   */
+  const selo = (status: string) =>
+    status === 'agendada' ? (
+      <span className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-600 dark:text-green-400">Agendada</span>
+    ) : (
+      <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">{status}</span>
+    );
 
-  const getStatusBadge = (status: Appointment['status']) => {
-    switch (status) {
-      case 'scheduled':
-        return <span className="px-2 py-0.5 rounded text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400">Agendado</span>;
-      case 'confirmed':
-        return <span className="px-2 py-0.5 rounded text-xs bg-green-500/10 text-green-600 dark:text-green-400">Confirmado</span>;
-      case 'completed':
-        return <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">Concluído</span>;
-      case 'cancelled':
-        return <span className="px-2 py-0.5 rounded text-xs bg-red-500/10 text-red-600 dark:text-red-400">Cancelado</span>;
-    }
-  };
+  const diaExibido = selectedDate ?? today.getDate();
+  const listaDoDia = consultoriasDoDia(diaExibido);
 
   return (
     <div className="space-y-6">
@@ -150,17 +125,10 @@ export default function AppointmentsPage() {
       >
         <div>
           <h2 className="text-2xl font-bold">Agenda</h2>
-          <p className="text-muted-foreground">Gerencie seus agendamentos.</p>
+          <p className="text-muted-foreground">
+            Suas consultorias agendadas pelos clientes.
+          </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          Novo Agendamento
-        </motion.button>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -202,7 +170,7 @@ export default function AppointmentsPage() {
             ))}
             {Array.from({ length: daysInCurrentMonth }).map((_, i) => {
               const day = i + 1;
-              const appointments = getAppointmentsForDate(day);
+              const doDia = consultoriasDoDia(day);
               const isSelected = selectedDate === day;
 
               return (
@@ -224,23 +192,17 @@ export default function AppointmentsPage() {
                     {day}
                   </span>
                   <div className="mt-1 space-y-1">
-                    {appointments.slice(0, 2).map((apt) => (
+                    {doDia.slice(0, 2).map((item) => (
                       <div
-                        key={apt.id}
-                        className={`text-xs p-1 rounded truncate ${
-                          apt.type === 'video'
-                            ? 'bg-blue-500/10 text-blue-600'
-                            : apt.type === 'phone'
-                            ? 'bg-purple-500/10 text-purple-600'
-                            : 'bg-green-500/10 text-green-600'
-                        }`}
+                        key={item.id}
+                        className="text-xs p-1 rounded truncate bg-blue-500/10 text-blue-600"
                       >
-                        {apt.time} {apt.client.split(' ')[0]}
+                        {item.inicio} {item.clienteNome.split(' ')[0]}
                       </div>
                     ))}
-                    {appointments.length > 2 && (
+                    {doDia.length > 2 && (
                       <div className="text-xs text-muted-foreground">
-                        +{appointments.length - 2} mais
+                        +{doDia.length - 2} mais
                       </div>
                     )}
                   </div>
@@ -263,43 +225,49 @@ export default function AppointmentsPage() {
                 : `Hoje - ${today.getDate()} de ${monthNames[today.getMonth()]}`}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {selectedDate
-                ? getAppointmentsForDate(selectedDate).length
-                : getAppointmentsForDate(today.getDate()).length} agendamentos
+              {listaDoDia.length}{' '}
+              {listaDoDia.length === 1 ? 'consultoria' : 'consultorias'}
             </p>
           </div>
           <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-            {(selectedDate ? getAppointmentsForDate(selectedDate) : getAppointmentsForDate(today.getDate())).length > 0 ? (
-              (selectedDate ? getAppointmentsForDate(selectedDate) : getAppointmentsForDate(today.getDate())).map((apt, index) => (
-                <motion.div
-                  key={apt.id}
+            {listaDoDia.length > 0 ? (
+              listaDoDia.map((item, index) => (
+                <motion.button
+                  type="button"
+                  key={item.id}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 + index * 0.05 }}
-                  className="bg-muted/50 rounded-lg p-4 hover:bg-muted transition-colors cursor-pointer"
-                  onClick={() => setSelectedAppointment(apt)}
+                  className="w-full text-left bg-muted/50 rounded-lg p-4 hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setSelecionada(item)}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getTypeIcon(apt.type)}
-                      <span className="font-medium text-sm">{apt.title}</span>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Video className="w-4 h-4 shrink-0" />
+                      <span className="font-medium text-sm truncate">
+                        {item.clienteNome}
+                      </span>
                     </div>
-                    {getStatusBadge(apt.status)}
+                    {selo(item.status)}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                    <Clock className="w-4 h-4" />
-                    {apt.time} - {apt.duration}min
+                    <Clock className="w-4 h-4 shrink-0" />
+                    {item.inicio} às {item.fim} · {item.duracaoMinutos}min
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="w-4 h-4" />
-                    {apt.client}
-                  </div>
-                </motion.div>
+                  {/*
+                    O assunto aparece cortado aqui — o texto pode ter mil
+                    caracteres, e o card do dia não é lugar para eles. O
+                    completo está no detalhe e no Protocolo.
+                  */}
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {item.descricao}
+                  </p>
+                </motion.button>
               ))
             ) : (
               <div className="text-center py-8">
                 <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                <p className="text-sm text-muted-foreground">Nenhum agendamento neste dia</p>
+                <p className="text-sm text-muted-foreground">Nenhuma consultoria agendada.</p>
               </div>
             )}
           </div>
@@ -307,13 +275,13 @@ export default function AppointmentsPage() {
       </div>
 
       <AnimatePresence>
-        {selectedAppointment && (
+        {selecionada && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedAppointment(null)}
+            onClick={() => setSelecionada(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -322,99 +290,124 @@ export default function AppointmentsPage() {
               className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-y-auto overscroll-contain rounded-2xl bg-card"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">{selectedAppointment.title}</h3>
-                  <p className="text-muted-foreground">{selectedAppointment.client}</p>
+              <div className="p-6 border-b flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold">Consultoria online</h3>
+                  <p className="text-muted-foreground truncate">
+                    {selecionada.clienteNome}
+                  </p>
                 </div>
-                {getStatusBadge(selectedAppointment.status)}
+                {selo(selecionada.status)}
               </div>
 
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <Calendar className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Data</p>
-                    <p className="font-medium">{selectedAppointment.date.split('-').reverse().join('/')}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Horário</p>
-                    <p className="font-medium">{selectedAppointment.time} - {selectedAppointment.duration}min</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    {getTypeIcon(selectedAppointment.type)}
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tipo</p>
                     <p className="font-medium">
-                      {selectedAppointment.type === 'video' ? 'Videochamada' : selectedAppointment.type === 'phone' ? 'Ligação' : 'Presencial'}
+                      {(() => {
+                        const { ano, mes, dia } = partesDaData(selecionada.data);
+                        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+                      })()}
                     </p>
                   </div>
                 </div>
 
-                {selectedAppointment.link && (
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Horário</p>
+                    <p className="font-medium">
+                      {selecionada.inicio} às {selecionada.fim} ·{' '}
+                      {duracaoPorExtenso(selecionada.duracaoMinutos)}
+                    </p>
+                    {/* O fuso é o da consultoria, e a tela diz qual é. */}
+                    <p className="text-xs text-muted-foreground">
+                      Fuso {selecionada.timezone}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Video className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Modalidade</p>
+                    <p className="font-medium">Online</p>
+                    {/*
+                      Sem link de reunião: a videochamada da Vincis acontece
+                      dentro da Vincis e é etapa própria. Um endereço externo
+                      aqui seria informação falsa.
+                    */}
+                    <p className="text-xs text-muted-foreground">
+                      Videochamada disponível em breve
+                    </p>
+                  </div>
+                </div>
+
+                {selecionada.protocolo && (
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <Video className="w-5 h-5 text-green-500" />
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Hash className="w-5 h-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Link da Reunião</p>
-                      <a href={selectedAppointment.link} target="_blank" className="text-sm text-primary hover:underline">
-                        Abrir reunião
-                      </a>
+                    <div className="min-w-0">
+                      <p className="text-sm text-muted-foreground">Protocolo</p>
+                      <p className="font-mono font-medium break-all">
+                        {selecionada.protocolo}
+                      </p>
                     </div>
                   </div>
                 )}
 
-                {selectedAppointment.location && (
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Local</p>
-                      <p className="font-medium">{selectedAppointment.location}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-primary" />
                   </div>
-                )}
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Valor contratado</p>
+                    <p className="font-medium">
+                      {formatarPreco(selecionada.valorCentavos)}
+                      {selecionada.pagamentoStatus === 'aprovado' ? ' · pago' : ''}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">Observações</p>
-                  <p className="text-sm mt-1">{selectedAppointment.notes}</p>
+                  <p className="text-sm text-muted-foreground">
+                    O que o cliente deseja tratar
+                  </p>
+                  {/*
+                    Aqui o texto vem inteiro: é o detalhe, e é para isso que ele
+                    serve. `whitespace-pre-wrap` preserva os parágrafos que a
+                    pessoa escreveu, e `break-words` impede que uma palavra
+                    longa estoure o modal no celular.
+                  */}
+                  <p className="text-sm mt-1 whitespace-pre-wrap break-words">
+                    {selecionada.descricao}
+                  </p>
                 </div>
               </div>
 
-              <div className="p-6 border-t flex justify-end gap-3">
+              <div className="p-6 border-t flex flex-wrap justify-end gap-3">
                 <button
-                  onClick={() => setSelectedAppointment(null)}
+                  onClick={() => setSelecionada(null)}
                   className="px-5 py-2.5 rounded-lg border hover:bg-muted transition-colors"
                 >
                   Fechar
                 </button>
-                {selectedAppointment.status !== 'completed' && selectedAppointment.status !== 'cancelled' && (
-                  <>
-                    {selectedAppointment.link && (
-                      <a
-                        href={selectedAppointment.link}
-                        target="_blank"
-                        className="px-5 py-2.5 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors flex items-center gap-2"
-                      >
-                        <Video className="w-5 h-5" />
-                        Entrar na Reunião
-                      </a>
-                    )}
-                  </>
+                {selecionada.protocolo && (
+                  <Link
+                    href={rotaDoAtendimentoNoPainel(selecionada.protocolo)}
+                    className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Ver atendimento
+                  </Link>
                 )}
               </div>
             </motion.div>

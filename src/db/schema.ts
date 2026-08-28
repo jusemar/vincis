@@ -116,3 +116,21 @@ export { oportunidadePagamentosRelations } from './tables/oportunidade_pagamento
 
 export { oportunidadeDispensas } from './tables/oportunidade_dispensas/tabela'
 export { oportunidadeDispensasRelations } from './tables/oportunidade_dispensas/relacoes'
+
+export { consultoriaConfiguracoes } from './tables/consultoria_configuracoes/tabela'
+export { consultoriaConfiguracoesRelations } from './tables/consultoria_configuracoes/relacoes'
+
+export { consultoriaDisponibilidades } from './tables/consultoria_disponibilidades/tabela'
+export { consultoriaDisponibilidadesRelations } from './tables/consultoria_disponibilidades/relacoes'
+
+export { consultoriaExcecoes } from './tables/consultoria_excecoes/tabela'
+export { consultoriaExcecoesRelations } from './tables/consultoria_excecoes/relacoes'
+
+export { consultoriaReservas } from './tables/consultoria_reservas/tabela'
+export { consultoriaReservasRelations } from './tables/consultoria_reservas/relacoes'
+
+export { consultoriaAgendamentos } from './tables/consultoria_agendamentos/tabela'
+export { consultoriaAgendamentosRelations } from './tables/consultoria_agendamentos/relacoes'
+
+export { consultoriaPagamentos } from './tables/consultoria_pagamentos/tabela'
+export { consultoriaPagamentosRelations } from './tables/consultoria_pagamentos/relacoes'

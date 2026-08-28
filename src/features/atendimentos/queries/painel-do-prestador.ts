@@ -15,7 +15,11 @@ import { atendimentoMensagens, atendimentos } from '@/db/schema'
 import { contarNaoLidasDoUsuario } from '@/features/notificacoes/queries/listar-notificacoes'
 import { condicaoAlcanceAtendimento } from '../lib/autorizacao'
 import { obterMarcasDeLeitura, chaveDaMarca, calcularNaoLidas } from '../lib/leitura'
-import { contarPendenciasDeConvite } from '../lib/pendencias-convite'
+import {
+  contarConvitesNovos,
+  contarPendenciasDeConvite,
+  primeiroConviteNovo,
+} from '../lib/pendencias-convite'
 import { listarConvitesDaPessoa } from './convites-do-atendimento'
 
 /**
@@ -30,6 +34,23 @@ export type ResumoDoPainelDTO = {
   atendimentosNovos: number
   mensagensNaoLidas: number
   convitesPendentes: number
+  /**
+   * Convites recebidos que a pessoa ainda nem abriu.
+   *
+   * Alimenta o destaque verde do topo do Dashboard, que é um espaço só e tem
+   * prioridade definida: convite novo antes de oportunidade, oportunidade
+   * antes da meta. `convitesPendentes` continua sendo outro número, o do
+   * indicador — lá cabem também as respostas não lidas e as contrapropostas
+   * esperando decisão, que não são "convite novo".
+   */
+  convitesNovos: number
+  /**
+   * Convite novo a abrir direto, quando é o único.
+   *
+   * Fica no resumo por ser dado do mesmo destaque, e não uma segunda consulta:
+   * o Dashboard já recebe estes números prontos do servidor.
+   */
+  primeiroConviteNovoId: string | null
   protocolosAguardandoAcao: number
   prazosProximos: number
   prazosVencidos: number
@@ -100,6 +121,8 @@ export async function obterResumoDoPainel(
     atendimentosNovos: soma('novo'),
     mensagensNaoLidas: await contarMensagensNaoLidas(usuarioId),
     convitesPendentes: contarPendenciasDeConvite(convites),
+    convitesNovos: contarConvitesNovos(convites),
+    primeiroConviteNovoId: primeiroConviteNovo(convites),
     // "Aguardando cliente" é o Atendimento parado esperando alguém de fora;
     // quem precisa agir aqui é a equipe, cobrando.
     protocolosAguardandoAcao: soma('aguardando_cliente', 'aguardando_assinatura'),

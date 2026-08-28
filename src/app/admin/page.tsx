@@ -2,11 +2,11 @@ import { redirect } from 'next/navigation'
 import AdminDashboard from '@/features/admin/components/AdminDashboard'
 import { mapearAtendimentoParaCard } from '@/features/admin/lib/atendimentos-reais'
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
+import { listarConsultoriasDoPrestador } from '@/features/consultorias/queries/agendamentos'
 import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-prestador'
 import { obterPainelDeAvaliacoes } from '@/features/avaliacoes/queries/painel-de-avaliacoes'
 import { listarComunicadosDoMural } from '@/features/comunicados/queries/listar-comunicados'
-import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
-import { contarOportunidadesDisponiveis } from '@/features/oportunidades/queries/listar-oportunidades-do-prestador'
+import { contarDisponiveisPorOrigem } from '@/features/oportunidades/queries/listar-oportunidades-do-prestador'
 import { contarClientesAtivosProfissional } from '@/features/clientes/queries/listar-clientes'
 import { garantirEscritorioProfissional } from '@/features/empresas/lib/garantir-escritorio-profissional'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
@@ -20,10 +20,13 @@ export default async function AdminRoute() {
   if (!acesso || acesso.destino !== '/admin') redirect(acesso?.destino ?? '/')
 
   await garantirEscritorioProfissional(usuario.id)
-  // Prazo é o único aviso que ninguém dispara: quem o dispara é o relógio.
-  // Sem agendador na infraestrutura, a abertura do painel é o gatilho — e a
-  // função não repete aviso já dado nas últimas 24 horas.
-  await emitirAvisosDePrazo(usuario.id)
+  // Abrir o painel deixou de emitir aviso de prazo.
+  //
+  // Prazo é o único aviso que ninguém dispara — quem o dispara é o relógio —, e
+  // enquanto não havia agendador a renderização desta página fazia esse papel.
+  // Isso tinha dois defeitos: quem não abrisse o painel não era cobrado, e abrir
+  // o painel gravava linhas no banco, o que uma renderização não deveria fazer.
+  // Agora quem varre é `/api/cron/processar-prazos`, de hora em hora.
   const clientesAtivos = await contarClientesAtivosProfissional(usuario.id)
 
   // Os Atendimentos reais são carregados e formatados aqui, no servidor: o
@@ -32,6 +35,11 @@ export default async function AdminRoute() {
   const atendimentosReais = atendimentos.map((atendimento) =>
     mapearAtendimentoParaCard(atendimento, usuario.id),
   )
+
+  // A Agenda deixou de ser uma tela de exemplo: estas são as consultorias que
+  // este Profissional vendeu. O recorte é do SQL (`prestador_id = sessão`), de
+  // modo que a agenda de outro Profissional não chega ao navegador.
+  const consultorias = await listarConsultoriasDoPrestador(usuario.id)
 
   // Números do painel e mural institucional. Carregados aqui, junto do resto:
   // o Dashboard é um componente de cliente e buscar de lá faria a tela piscar.
@@ -45,23 +53,27 @@ export default async function AdminRoute() {
   //
   // As Oportunidades entram só como número: o destaque do Dashboard precisa
   // saber quantas esperam resposta, e a lista em si é carregada pela própria
-  // tela de Oportunidades quando a pessoa vai até lá.
-  const [resumoDoPainel, comunicados, painelDeAvaliacoes, oportunidadesDisponiveis] =
+  // tela de Oportunidades quando a pessoa vai até lá. O recorte por origem
+  // acompanha porque o destaque diz coisas diferentes quando o Cliente escolheu
+  // este Profissional no perfil dele.
+  const [resumoDoPainel, comunicados, painelDeAvaliacoes, oportunidades] =
     await Promise.all([
       obterResumoDoPainel(usuario.id),
       listarComunicadosDoMural(acesso.perfil),
       obterPainelDeAvaliacoes(usuario.id),
-      contarOportunidadesDisponiveis(usuario.id),
+      contarDisponiveisPorOrigem(usuario.id),
     ])
 
   return (
     <AdminDashboard
       clientesAtivos={clientesAtivos}
       atendimentosReais={atendimentosReais}
+      consultorias={consultorias.futuras}
       resumoDoPainel={resumoDoPainel}
       comunicados={comunicados}
       painelDeAvaliacoes={painelDeAvaliacoes}
-      oportunidadesDisponiveis={oportunidadesDisponiveis}
+      oportunidadesDisponiveis={oportunidades.total}
+      solicitacoesDiretas={oportunidades.diretas}
     />
   )
 }

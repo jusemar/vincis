@@ -18,7 +18,10 @@ import {
   carregarOportunidadesDisponiveis,
   marcarSemInteresse,
 } from '../../actions/propostas'
-import { rotuloDaCategoria } from '../../constants/oportunidade'
+import {
+  ROTULO_VISIBILIDADE_OPORTUNIDADE,
+  rotuloDaCategoria,
+} from '../../constants/oportunidade'
 import type { OportunidadeParaPrestadorDTO } from '../../types/oportunidade'
 import { ListaDeAnexos } from '../compartilhado/ListaDeAnexos'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
@@ -29,11 +32,17 @@ function formatarData(iso: string) {
 }
 
 /**
- * Oportunidades públicas disponíveis para o prestador.
+ * Oportunidades disponíveis para o prestador.
  *
  * Área própria, e de propósito fora do quadro de Atendimentos: oportunidade é
  * a etapa **anterior** à contratação e misturá-la ao Kanban faria trabalho não
  * contratado ocupar a mesma fila do trabalho em execução.
+ *
+ * As **solicitações diretas** — as que um Cliente enviou pelo perfil desta
+ * pessoa — convivem aqui, na mesma lista, e não numa tela separada: o que se
+ * faz com elas é idêntico (analisar, propor, negociar), e separá-las criaria
+ * duas filas para a mesma decisão. O que as distingue é um rótulo e uma linha
+ * de contexto.
  *
  * O que a tela nunca mostra: proposta de outro prestador. Não é uma omissão de
  * interface — o dado não chega aqui, porque a consulta filtra por
@@ -102,8 +111,9 @@ export default function OportunidadesPage() {
         <div>
           <h2 className="text-2xl font-bold">Oportunidades</h2>
           <p className="text-muted-foreground">
-            Clientes que procuram profissionais da sua categoria. Envie sua
-            proposta para participar.
+            Clientes que procuram profissionais da sua categoria — e as
+            solicitações enviadas diretamente para você. Envie sua proposta para
+            participar.
           </p>
         </div>
       </motion.div>
@@ -121,8 +131,9 @@ export default function OportunidadesPage() {
             Nenhuma oportunidade disponível agora
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Assim que um cliente solicitar orçamento na sua categoria, ele
-            aparece aqui e no seu sino de notificações.
+            Assim que um cliente solicitar orçamento na sua categoria — ou
+            diretamente pelo seu perfil —, a solicitação aparece aqui e no seu
+            sino de notificações.
           </p>
         </div>
       ) : (
@@ -138,9 +149,18 @@ export default function OportunidadesPage() {
               } ${oportunidade.dispensada && !oportunidade.minhaProposta ? 'opacity-70' : ''}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <span className="badge-info rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
-                  {rotuloDaCategoria(oportunidade.categoria)}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge-info rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
+                    {rotuloDaCategoria(oportunidade.categoria)}
+                  </span>
+                  {/* Pílula existente do design system, sem cor nova: o que
+                      muda é a origem do pedido, não o que fazer com ele. */}
+                  {oportunidade.direcionadaAMim ? (
+                    <span className="badge-warning rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
+                      {ROTULO_VISIBILIDADE_OPORTUNIDADE.privada}
+                    </span>
+                  ) : null}
+                </div>
                 {oportunidade.minhaProposta ? (
                   <span className="badge-success flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
                     <CheckCircle2 className="size-3.5" />
@@ -167,6 +187,15 @@ export default function OportunidadesPage() {
                   ))}
                 </div>
               )}
+
+              {/* Dito com todas as letras: o Cliente escolheu esta pessoa no
+                  perfil dela, e ninguém mais recebeu o pedido. */}
+              {oportunidade.direcionadaAMim ? (
+                <p className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground">
+                  Solicitação enviada diretamente para você. Nenhum outro
+                  profissional a recebeu.
+                </p>
+              ) : null}
 
               <p className="mt-3 line-clamp-3 text-sm">
                 {oportunidade.descricao}

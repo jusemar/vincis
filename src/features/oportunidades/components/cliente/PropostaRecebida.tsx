@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, CreditCard, ExternalLink, Handshake, Star } from 'lucide-react'
+import { CheckCircle2, CreditCard, ExternalLink, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,12 +16,8 @@ import {
 import { aceitarProposta, criarContraproposta } from '../../actions/negociacao'
 import { LIMITE_MENSAGEM_CONTRAPROPOSTA } from '../../constants/oportunidade'
 import type { PropostaRecebidaDTO } from '../../types/oportunidade'
+import { CartaoPrestadorPublico } from '../compartilhado/CartaoPrestadorPublico'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
-
-function iniciais(nome: string) {
-  const partes = nome.trim().split(/\s+/).filter(Boolean)
-  return `${partes[0]?.[0] ?? ''}${partes.length > 1 ? (partes.at(-1)?.[0] ?? '') : ''}`.toUpperCase()
-}
 
 /**
  * Uma proposta recebida, do ponto de vista do Cliente.
@@ -94,49 +90,11 @@ export function PropostaRecebida({
   return (
     <li className="space-y-4 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          {proposta.perfilPublico.avatarUrl ? (
-            <img
-              src={proposta.perfilPublico.avatarUrl}
-              alt=""
-              className="size-11 shrink-0 rounded-full object-cover ring-1 ring-border"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
-            >
-              {iniciais(proposta.perfilPublico.nome)}
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">
-              {proposta.perfilPublico.nome}
-            </p>
-            {proposta.perfilPublico.destaque ? (
-              <p className="truncate text-xs text-muted-foreground">
-                {proposta.perfilPublico.destaque}
-              </p>
-            ) : null}
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1 font-medium text-foreground">
-                <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden />
-                {/* Sem avaliação não é nota zero: o traço não inventa reputação. */}
-                {proposta.perfilPublico.avaliacaoMedia != null
-                  ? proposta.perfilPublico.avaliacaoMedia
-                      .toFixed(1)
-                      .replace('.', ',')
-                  : '—'}
-              </span>
-              <span>({proposta.perfilPublico.totalAvaliacoes})</span>
-              {proposta.prestadorCidade ? (
-                <span>
-                  · {proposta.prestadorCidade}/{proposta.prestadorEstado}
-                </span>
-              ) : null}
-            </p>
-          </div>
-        </div>
+        <CartaoPrestadorPublico
+          perfil={proposta.perfilPublico}
+          cidade={proposta.prestadorCidade}
+          estado={proposta.prestadorEstado}
+        />
 
         {aceita ? (
           <Pilula

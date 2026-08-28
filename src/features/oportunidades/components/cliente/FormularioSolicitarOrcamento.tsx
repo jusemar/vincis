@@ -34,14 +34,36 @@ const CLASSE_SELECT =
 const CLASSE_AJUDA = 'text-[11px] leading-snug text-muted-foreground'
 
 /**
- * Formulário público de solicitação de orçamento.
+ * O Profissional escolhido, quando o pedido nasce no perfil dele.
  *
- * Vive dentro do bloco de `/profissionais` e não em modal: a pessoa está
- * comparando profissionais quando percebe que não sabe qual escolher, e tirá-la
- * da página para um diálogo é justamente perder esse contexto. Pelo mesmo
- * motivo o formulário é **compacto** — ele divide a tela com a vitrine, e um
- * formulário administrativo alto empurraria os profissionais para fora da
- * primeira dobra.
+ * `categorias` são as áreas públicas que **aquele** cadastro realmente alcança
+ * — nunca a lista inteira da plataforma. É o que impede o Cliente de pedir a um
+ * advogado um trabalho contábil por engano, e o servidor confere a mesma coisa
+ * contra o cadastro real antes de gravar.
+ */
+export type DestinatarioDaSolicitacao = {
+  id: string
+  nome: string
+  categorias: CategoriaOportunidade[]
+}
+
+/**
+ * Formulário de solicitação de orçamento — o mesmo nas duas portas de entrada.
+ *
+ * Sem `destinatario`, é o formulário público de `/profissionais`: a pessoa está
+ * comparando profissionais quando percebe que não sabe qual escolher, e o
+ * pedido vai para a categoria inteira. Com `destinatario`, é o mesmo formulário
+ * aberto no perfil de alguém — mesmos campos, mesmas validações, mesmos anexos
+ * —, e a única diferença é que o pedido vai só para aquela pessoa e a categoria
+ * fica restrita ao que ela pode prestar.
+ *
+ * Um componente só, e não dois, porque duplicá-lo significaria manter duas
+ * versões da mesma validação, do mesmo limite de descrição e do mesmo
+ * tratamento de sessão.
+ *
+ * Não vive em modal: a pessoa está lendo a página quando decide pedir, e tirá-la
+ * dali para um diálogo é justamente perder esse contexto. Pelo mesmo motivo o
+ * formulário é **compacto** — ele divide a tela com o que estava sendo lido.
  *
  * O envio é um `FormData` por causa dos anexos — mesmo caminho que o anexo de
  * Atendimento já usa. Nada é enviado sem sessão: a recusa vem do servidor, o
@@ -50,14 +72,26 @@ const CLASSE_AJUDA = 'text-[11px] leading-snug text-muted-foreground'
 export function FormularioSolicitarOrcamento({
   onCancelar,
   onEnviada,
+  destinatario,
 }: {
   onCancelar: () => void
   onEnviada?: () => void
+  /** Presente = solicitação privada, dirigida a este Profissional. */
+  destinatario?: DestinatarioDaSolicitacao
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
-  const [categoria, setCategoria] =
-    useState<CategoriaOportunidade>('contabilidade')
+  /**
+   * As categorias oferecidas.
+   *
+   * No privado, exatamente as do destinatário; no público, todas. A primeira
+   * já vem escolhida — no caso mais comum (um Profissional de uma área só) isso
+   * significa que não há nada para escolher, e o campo vira leitura.
+   */
+  const categoriasOferecidas = destinatario?.categorias ?? CATEGORIAS_OPORTUNIDADE
+  const [categoria, setCategoria] = useState<CategoriaOportunidade>(
+    categoriasOferecidas[0] ?? 'contabilidade',
+  )
   const [especialidades, setEspecialidades] = useState<string[]>([])
   const [descricao, setDescricao] = useState('')
   const [anexos, setAnexos] = useState<File[]>([])
@@ -83,6 +117,9 @@ export function FormularioSolicitarOrcamento({
     // As especialidades são estado do componente (chips), não campos do HTML.
     dados.delete('especialidades')
     for (const item of especialidades) dados.append('especialidades', item)
+    // A categoria também é estado quando o campo é leitura (destinatário de uma
+    // área só): sem isto o `select` inexistente não mandaria nada.
+    dados.set('categoria', categoria)
 
     iniciarTransicao(async () => {
       const resultado = await criarOportunidade(dados)
@@ -118,26 +155,44 @@ export function FormularioSolicitarOrcamento({
       className="mt-5 space-y-4 border-t pt-5"
       onSubmit={enviar}
     >
+      {/* O destinatário viaja no próprio formulário. Quem ele é, se pode
+          operar e se atende a categoria são perguntas do servidor — este campo
+          só diz para quem o Cliente quis pedir. */}
+      {destinatario ? (
+        <input type="hidden" name="destinatarioId" value={destinatario.id} />
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
         <div className="space-y-1.5">
           <Label htmlFor="oportunidade-categoria" className="text-xs">
             Categoria
           </Label>
-          <select
-            id="oportunidade-categoria"
-            name="categoria"
-            value={categoria}
-            onChange={(e) =>
-              trocarCategoria(e.target.value as CategoriaOportunidade)
-            }
-            className={CLASSE_SELECT}
-          >
-            {CATEGORIAS_OPORTUNIDADE.map((item) => (
-              <option key={item} value={item}>
-                {CATEGORIA_OPORTUNIDADE[item].rotulo}
-              </option>
-            ))}
-          </select>
+          {/* Uma categoria só não é uma escolha: mostrar um `select` de uma
+              opção pediria uma decisão que não existe. O valor continua sendo
+              enviado — vem do estado, não do campo. */}
+          {categoriasOferecidas.length === 1 ? (
+            <p
+              id="oportunidade-categoria"
+              className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm"
+            >
+              {CATEGORIA_OPORTUNIDADE[categoria].rotulo}
+            </p>
+          ) : (
+            <select
+              id="oportunidade-categoria"
+              name="categoria"
+              value={categoria}
+              onChange={(e) =>
+                trocarCategoria(e.target.value as CategoriaOportunidade)
+              }
+              className={CLASSE_SELECT}
+            >
+              {categoriasOferecidas.map((item) => (
+                <option key={item} value={item}>
+                  {CATEGORIA_OPORTUNIDADE[item].rotulo}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="oportunidade-abrangencia" className="text-xs">
@@ -260,8 +315,22 @@ export function FormularioSolicitarOrcamento({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <p className={`${CLASSE_AJUDA} max-w-md`}>
-          Sua solicitação será exibida aos profissionais compatíveis. As
-          propostas recebidas ficarão disponíveis somente no seu painel Vincis.
+          {destinatario ? (
+            <>
+              Sua solicitação será enviada somente para{' '}
+              <b className="font-semibold text-foreground">
+                {destinatario.nome}
+              </b>
+              . Nenhum outro profissional vai vê-la, e a resposta fica no seu
+              painel Vincis.
+            </>
+          ) : (
+            <>
+              Sua solicitação será exibida aos profissionais compatíveis. As
+              propostas recebidas ficarão disponíveis somente no seu painel
+              Vincis.
+            </>
+          )}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={onCancelar}>

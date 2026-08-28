@@ -1,5 +1,5 @@
 import { useState, useRef, type FormEvent } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react'
 import { CampoSenha } from '@/components/shared/CampoSenha'
 import { ModalResponsivo } from '@/components/shared/ModalResponsivo'
@@ -24,6 +24,7 @@ const CLASSES_CAMPO =
 export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
   const [view, setView] = useState<View>('login')
   const [erro, setErro] = useState<string | null>(null)
@@ -53,7 +54,17 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
         // `replace` no próprio caminho tira o `?entrar=1` da barra de endereço
         // (senão um F5 reabriria o login para quem já entrou); o `refresh`
         // recarrega os componentes de servidor com a sessão nova.
-        router.replace(pathname)
+        //
+        // O resto da query **fica**. Antes só o caminho era preservado, e quem
+        // entrava a partir de `/perfil-profissional?prestador=<id>` voltava
+        // para um perfil sem dono: o parâmetro que dizia de quem era a página
+        // ia embora junto com o `entrar=1`. Preservar a query é o que faz
+        // "continuar onde estava" ser verdade também para páginas públicas que
+        // dependem dela.
+        const restante = new URLSearchParams(searchParams.toString())
+        restante.delete('entrar')
+        const query = restante.toString()
+        router.replace(query ? `${pathname}?${query}` : pathname)
         router.refresh()
       } else {
         router.replace(destino)

@@ -65,6 +65,14 @@ export const AtendimentosBoard = ({
   const abaDoLink = parametros.get("aba");
   const canalDoLink = parametros.get("canal");
   const conviteDoLink = parametros.get("convite");
+  /**
+   * `?convites=1` — abre a caixa na lista, sem escolher um convite.
+   *
+   * É o destino do destaque do Dashboard quando há mais de um convite novo:
+   * ali não existe "o convite", existe a caixa. Com um único convite novo o
+   * destaque continua usando `?convite=<id>`, o mesmo endereço do sino.
+   */
+  const abrirCaixaDeConvites = parametros.get("convites") === "1";
   const [movendo, iniciarTransicao] = useTransition();
 
   /**
@@ -157,6 +165,12 @@ export const AtendimentosBoard = ({
     setConviteFocado(conviteDoLink);
     setConvitesAberto(true);
   }, [conviteDoLink]);
+
+  /** Destaque do Dashboard com vários convites novos: abre só a caixa. */
+  useEffect(() => {
+    if (!abrirCaixaDeConvites) return;
+    setConvitesAberto(true);
+  }, [abrirCaixaDeConvites]);
 
   /**
    * Virada do dia.

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import type { ResumoDoPainelDTO } from '@/features/atendimentos/queries/painel-do-prestador';
 import { VISUAL_TIPO_COMUNICADO } from '@/features/comunicados/constants/comunicado';
 import type { ComunicadoDTO } from '@/features/comunicados/types/comunicado';
+import { BannerConvites } from '@/features/atendimentos/components/prestador/BannerConvites';
 import { BannerOportunidades } from '@/features/oportunidades/components/prestador/BannerOportunidades';
 import { saudacaoDeBoasVindas } from '@/features/usuarios/lib/nome-de-tratamento';
 import {
@@ -156,6 +157,7 @@ export default function DashboardHome({
   comunicados = [],
   reputacao,
   oportunidadesDisponiveis = 0,
+  solicitacoesDiretas = 0,
 }: {
   clientesAtivos: number
   nomeUsuario: string
@@ -167,6 +169,15 @@ export default function DashboardHome({
    * prestador — desconta o que ele já respondeu e o que ele dispensou.
    */
   oportunidadesDisponiveis?: number
+  /**
+   * Quantas das pendentes vieram do perfil deste Profissional, dirigidas a ele.
+   *
+   * Subconjunto de `oportunidadesDisponiveis`: o banner é o mesmo, o estado é o
+   * mesmo, e a prioridade continua convite → oportunidade → meta. Só a frase
+   * muda, para que "alguém escolheu você" não se confunda com "apareceu
+   * trabalho na sua área".
+   */
+  solicitacoesDiretas?: number
   /**
    * Reputação real do prestador.
    *
@@ -196,6 +207,15 @@ export default function DashboardHome({
   // "Dr. Ricardo Mendes" vira "Olá, Dr. Ricardo!" — o tratamento vem do nome
   // cadastrado, nunca de dedução. Sem nome utilizável, a saudação é só "Olá!".
   const saudacao = saudacaoDeBoasVindas(nomeUsuario)
+  /**
+   * Convites recebidos que esta pessoa ainda nem abriu.
+   *
+   * Vem do mesmo resumo que alimenta os indicadores — nenhuma consulta nova, e
+   * nenhum estado local: se viesse do React, um F5 depois de visualizar traria
+   * o destaque de volta como se o convite fosse novo outra vez.
+   */
+  const convitesNovos = resumo?.convitesNovos ?? 0
+
   /**
    * Os dois cards de avaliação passam a mostrar o número real.
    *
@@ -310,20 +330,40 @@ export default function DashboardHome({
       </motion.div>
 
       {/*
-        Um banner só, com dois assuntos.
+        Um banner só, com três assuntos e uma ordem.
 
-        Sem oportunidade esperando ação, ele é o aviso de meta que o Dashboard
-        sempre teve — inclusive **sem** o botão "Ver Oportunidades", que ali
-        levaria a uma tela vazia. Com oportunidades pendentes, o mesmo espaço
-        passa a falar delas, em verde. Nunca os dois ao mesmo tempo: dois
-        destaques empilhados não são destaque nenhum.
+        O espaço de destaque é um: dois blocos empilhados não são destaque
+        nenhum. Quem fala nele é decidido por prioridade, e a prioridade é de
+        produto, não de tela:
+
+        1. convite novo — é dirigido a **esta** pessoa, tem prazo de validade e
+           alguém do outro lado esperando resposta;
+        2. oportunidade pendente — aberta ao mercado, continua disponível
+           enquanto ninguém responde. As solicitações **diretas** entram neste
+           mesmo estado, e não num quarto banner: o que muda é a frase, que
+           deixa claro que o Cliente escolheu esta pessoa;
+        3. meta mensal — o aviso dourado que o Dashboard sempre teve, inclusive
+           **sem** o botão "Ver Oportunidades", que ali levaria a uma tela
+           vazia.
+
+        Nada se perde na troca: o convite continua no sino e na caixa de
+        Convites, e a oportunidade continua na tela de Oportunidades. O banner
+        é destaque, não é a lista.
 
         Os números da meta continuam sendo os mockados de sempre — não existe
         fonte real de meta no banco, e inventar uma seria pior do que manter o
         mock aprovado.
       */}
-      {oportunidadesDisponiveis > 0 ? (
-        <BannerOportunidades pendentes={oportunidadesDisponiveis} />
+      {convitesNovos > 0 ? (
+        <BannerConvites
+          novos={convitesNovos}
+          primeiroConviteId={resumo?.primeiroConviteNovoId ?? null}
+        />
+      ) : oportunidadesDisponiveis > 0 ? (
+        <BannerOportunidades
+          pendentes={oportunidadesDisponiveis}
+          diretas={solicitacoesDiretas}
+        />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}

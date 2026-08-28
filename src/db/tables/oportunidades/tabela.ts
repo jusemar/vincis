@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm'
 import {
+  check,
   index,
   integer,
   pgTable,
@@ -10,7 +12,7 @@ import {
 import { usuarios } from '../usuarios/tabela'
 
 /**
- * Oportunidade pública: um Cliente procurando alguém para um trabalho.
+ * Oportunidade: um Cliente procurando alguém para um trabalho.
  *
  * É a etapa **anterior** à contratação, e por isso não é `contratacoes_servico`
  * nem `atendimentos`. Aqui ainda não existe prestador escolhido, não existe
@@ -32,6 +34,20 @@ import { usuarios } from '../usuarios/tabela'
  *
  * Nenhum dado de contato mora aqui — telefone, e-mail e endereço do Cliente
  * continuam onde estavam, fora do alcance desta tela.
+ *
+ * ## Duas portas de entrada, uma tabela
+ *
+ * `visibilidade` distingue a solicitação **pública** — nascida em
+ * `/profissionais`, que todo prestador compatível enxerga — da **privada**,
+ * nascida no perfil de alguém e dirigida só a ele. Uma tabela paralela
+ * duplicaria propostas, contrapropostas, anexos, pagamento e Atendimento: os
+ * dois fluxos são a mesma negociação, e a única diferença real é **quem
+ * alcança** a solicitação. Essa diferença cabe em duas colunas.
+ *
+ * `destinatario_id` é o Profissional escolhido. A restrição abaixo é do banco,
+ * e não da tela: privada sem destinatário seria uma solicitação que ninguém
+ * pode responder, e pública com destinatário seria uma regra de acesso
+ * silenciosamente diferente da que a vitrine aplica.
  */
 export const oportunidades = pgTable(
   'oportunidades',
@@ -43,6 +59,24 @@ export const oportunidades = pgTable(
       .references(() => usuarios.id),
     /** Categoria do cadastro profissional. Ver `CATEGORIAS_OPORTUNIDADE`. */
     categoria: varchar('categoria', { length: 30 }).notNull(),
+    /**
+     * `publica` | `privada`. Nasce pública.
+     *
+     * O padrão preserva as solicitações que já existiam: todas elas são
+     * públicas, e nenhuma linha precisou ser reescrita.
+     */
+    visibilidade: varchar('visibilidade', { length: 10 })
+      .notNull()
+      .default('publica'),
+    /**
+     * O Profissional a quem a solicitação privada foi dirigida.
+     *
+     * Nulo nas públicas — nelas ainda não existe destinatário, que é
+     * exatamente o que a etapa significa. Sem `on delete cascade`: a
+     * solicitação é do Cliente e o histórico dele não desaparece porque a
+     * outra ponta saiu.
+     */
+    destinatarioId: uuid('destinatario_id').references(() => usuarios.id),
     /**
      * Especialidades escolhidas dentro da categoria. Opcional e validado contra
      * o vocabulário fechado da taxonomia — texto livre não entra aqui.
@@ -70,6 +104,22 @@ export const oportunidades = pgTable(
      */
     status: varchar('status', { length: 20 }).notNull().default('aberta'),
     /**
+     * Por que a solicitação foi encerrada. Nulo enquanto ela não foi.
+     *
+     * `encerrada` sempre significou uma coisa só — parou de receber propostas —
+     * e passou a ter duas causas possíveis: o acordo fechado e a recusa do
+     * destinatário de uma solicitação **privada**. As duas param a distribuição
+     * do mesmo jeito, então continuam sendo o mesmo `status`; o que muda é a
+     * história que o Cliente lê, e história é motivo, não estado.
+     *
+     * Foi por isso que nem `cancelada` (ato do Cliente) nem `expirada` (o
+     * relógio) serviram: nenhuma das duas descreve "o profissional escolhido
+     * disse que não vai propor".
+     *
+     * Valores: `acordo` | `sem_interesse`.
+     */
+    motivoEncerramento: varchar('motivo_encerramento', { length: 20 }),
+    /**
      * Fim do prazo global, calculado na criação a partir da configuração da
      * Gestão. Congelado: mudar a configuração depois não deve reabrir nem
      * encurtar solicitações que já estavam em curso.
@@ -91,6 +141,24 @@ export const oportunidades = pgTable(
     clienteIdx: index('oportunidades_cliente_idx').on(
       t.clienteUsuarioId,
       t.createdAt,
+    ),
+    // A caixa do destinatário é "as dirigidas a mim, mais recentes primeiro".
+    destinatarioIdx: index('oportunidades_destinatario_idx').on(
+      t.destinatarioId,
+      t.status,
+      t.createdAt,
+    ),
+    /**
+     * Visibilidade e destinatário andam juntos — garantia do banco.
+     *
+     * Sem isto, um caminho novo que esquecesse de gravar o destinatário criaria
+     * uma solicitação "privada" que nenhuma consulta entrega a ninguém, e um
+     * que gravasse destinatário numa pública abriria uma regra de acesso que a
+     * vitrine não conhece.
+     */
+    visibilidadeCoerente: check(
+      'oportunidades_visibilidade_destinatario',
+      sql`(visibilidade = 'publica' and destinatario_id is null) or (visibilidade = 'privada' and destinatario_id is not null)`,
     ),
   }),
 )

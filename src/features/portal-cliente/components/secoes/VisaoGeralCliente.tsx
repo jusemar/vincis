@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
+import type { ConsultoriaDoClienteDTO } from '@/features/consultorias/types/agendamento'
 import { rotuloDaCategoria } from '@/features/oportunidades/constants/oportunidade'
 import type { OportunidadeDoClienteDTO } from '@/features/oportunidades/types/oportunidade'
 import { separarNomeDeTratamento } from '@/features/usuarios/lib/nome-de-tratamento'
@@ -12,6 +13,7 @@ import {
   montarItensDeAtencao,
   resumoDoAtendimento,
 } from '../../lib/painel-do-cliente'
+import { ConsultoriasDoCliente } from './ConsultoriasDoCliente'
 import {
   CabecalhoSecao,
   Indicadores,
@@ -51,11 +53,21 @@ export function VisaoGeralCliente({
   nome,
   oportunidades,
   atendimentos,
+  consultorias = [],
   contratacoes = [],
 }: {
   nome: string
   oportunidades: OportunidadeDoClienteDTO[]
   atendimentos: AtendimentoDoClienteDTO[]
+  /**
+   * Consultorias com hora marcada.
+   *
+   * Vêm separadas dos Atendimentos porque respondem a outra pergunta — *quando
+   * é a próxima?* —, embora cada uma **seja** um Atendimento. O bloco fica logo
+   * abaixo do que precisa de atenção: é compromisso com hora, e hora marcada
+   * envelhece.
+   */
+  consultorias?: ConsultoriaDoClienteDTO[]
   /**
    * Serviços contratados diretamente do catálogo.
    *
@@ -124,8 +136,20 @@ export function VisaoGeralCliente({
         )}
       </section>
 
+      <ConsultoriasDoCliente futuras={consultorias} />
+
+      {/*
+        `min-w-0` nas duas colunas.
+
+        Uma coluna de grade tem largura mínima `auto`, que é o *min-content* do
+        que está dentro dela — e uma coluna só estica a grade inteira para
+        caber. No celular de 320px isso empurrava a página para 347px de
+        largura e criava rolagem horizontal em toda a Visão Geral, não só neste
+        bloco. `min-w-0` devolve a decisão ao contêiner: quem corta o texto
+        passa a ser o `truncate` de cada card, como já estava previsto.
+      */}
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-        <section>
+        <section className="min-w-0">
           <TituloDeBloco
             titulo="Serviços em andamento"
             acao={
@@ -215,7 +239,7 @@ export function VisaoGeralCliente({
           ) : null}
         </section>
 
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-8">
           <section>
             <TituloDeBloco titulo="Solicitações abertas" />
             {solicitacoesAbertas.length === 0 ? (

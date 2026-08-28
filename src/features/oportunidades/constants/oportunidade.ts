@@ -135,6 +135,49 @@ export function especialidadesDaCategoria(categoria: CategoriaOportunidade) {
   return CATEGORIA_OPORTUNIDADE[categoria].especialidades
 }
 
+/**
+ * Como a solicitação alcança quem responde.
+ *
+ * `publica` é a de sempre: nasce em `/profissionais` e chega a todo prestador
+ * compatível com a categoria. `privada` nasce no perfil de um Profissional e
+ * chega **só a ele** — o Cliente já escolheu com quem quer falar, e distribuir
+ * o pedido dele para a categoria inteira seria trocar a decisão dele por outra.
+ *
+ * Não é um segundo fluxo: proposta, contraproposta, acordo, pagamento e
+ * Atendimento são exatamente os mesmos. A visibilidade responde a uma pergunta
+ * só — *quem alcança esta solicitação?*.
+ */
+export const VISIBILIDADES_OPORTUNIDADE = ['publica', 'privada'] as const
+export type VisibilidadeOportunidade =
+  (typeof VISIBILIDADES_OPORTUNIDADE)[number]
+
+/**
+ * Rótulo curto que diferencia as duas na tela.
+ *
+ * Discreto de propósito — a pílula que o design system já tem, sem cor nova:
+ * o que muda para quem lê é a origem do pedido, não o que fazer com ele.
+ */
+export const ROTULO_VISIBILIDADE_OPORTUNIDADE: Record<string, string> = {
+  publica: 'Oportunidade pública',
+  privada: 'Solicitação direta',
+}
+
+export function ehPrivada(visibilidade: string) {
+  return visibilidade === 'privada'
+}
+
+/**
+ * Por que a solicitação parou de receber propostas.
+ *
+ * Motivo, e não estado: `encerrada` continua respondendo "ainda recebe
+ * propostas?" (não), e todas as consultas de distribuição continuam olhando só
+ * para o status. O motivo existe para a **narrativa** — é o que permite ao
+ * Cliente ler "o profissional não vai propor" em vez de um "Encerrada" seco que
+ * ele confundiria com acordo fechado.
+ */
+export const MOTIVOS_ENCERRAMENTO = ['acordo', 'sem_interesse'] as const
+export type MotivoEncerramento = (typeof MOTIVOS_ENCERRAMENTO)[number]
+
 export const STATUS_OPORTUNIDADE = ['aberta', 'encerrada', 'cancelada'] as const
 export type StatusOportunidade = (typeof STATUS_OPORTUNIDADE)[number]
 

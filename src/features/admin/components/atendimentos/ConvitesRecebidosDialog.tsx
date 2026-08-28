@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useState, useTransition } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 import {
   X, Inbox, Calendar, Tag, CircleDot, Package, ListChecks, Paperclip, Users,
@@ -96,6 +103,29 @@ export const ConvitesRecebidosDialog = ({
   }, [open, abertoId, convites, assinarConvite, registrarContextoAtivo]);
   const [respondendo, iniciarTransicao] = useTransition();
 
+  /**
+   * O convite pedido pelo endereço abre analisado.
+   *
+   * `useState(conviteFocado ?? null)` só valia na montagem, e esta caixa está
+   * montada desde que o quadro abre — ela apenas não se desenha enquanto
+   * `open` é falso. Quando o `?convite=<id>` chegava (do sino ou, agora, do
+   * destaque do Dashboard), o valor inicial já tinha sido calculado como nulo:
+   * a caixa abria na lista e o convite apontado pelo link ficava fechado.
+   *
+   * O ajuste é no render, e não num efeito: é uma mudança de prop que precisa
+   * refletir no estado antes de a tela aparecer, e o efeito faria a caixa
+   * piscar na lista antes de expandir. Guardar qual foco já foi aplicado é o
+   * que permite fechar o convite sem que ele reabra sozinho no render
+   * seguinte.
+   */
+  const [focoAplicado, setFocoAplicado] = useState<string | null>(
+    conviteFocado ?? null,
+  );
+  if (conviteFocado && conviteFocado !== focoAplicado) {
+    setFocoAplicado(conviteFocado);
+    setAbertoId(conviteFocado);
+  }
+
   const carregarContexto = useCallback(async (conviteId: string) => {
     setCarregandoContexto(true);
     const resultado = await obterContextoConvite({ conviteId });
@@ -104,29 +134,64 @@ export const ConvitesRecebidosDialog = ({
   }, []);
 
   /**
+   * Uma busca de contexto e uma marca de leitura por convite aberto.
+   *
+   * Os dois `ref` existem porque o efeito abaixo passou a reagir também à
+   * chegada da lista: sem eles, cada recarga da caixa repetiria a consulta e a
+   * escrita.
+   */
+  const contextoPedido = useRef<string | null>(null);
+  const leituraMarcada = useRef<string | null>(null);
+
+  /**
    * O contexto é buscado ao abrir um convite, e só então.
    *
    * Carregar os oito recortes de todos os convites de uma vez seria pedir ao
    * banco o que ninguém vai ler: quem tem cinco convites analisa um de cada
    * vez. Fechar o convite limpa o contexto no próprio manipulador do clique, e
    * não aqui — o efeito existe para buscar dados, não para zerar estado.
+   *
+   * O efeito espera a lista chegar. A caixa abre por endereço — do clique no
+   * sino e, agora, do destaque do Dashboard — antes de os convites voltarem do
+   * servidor; enquanto `convites` estava vazia, `find` não achava nada e o
+   * convite ficava aberto na tela sem contexto e **sem marca de leitura**. Era
+   * o que fazia o mesmo convite continuar contando como novo depois de aberto.
    */
   useEffect(() => {
-    if (!abertoId) return;
+    if (!abertoId) {
+      contextoPedido.current = null;
+      leituraMarcada.current = null;
+      return;
+    }
     const convite = convites.find((item) => item.id === abertoId);
+    if (!convite) return;
     startTransition(async () => {
       // O recorte limitado existe para quem está decidindo se aceita. Quem
       // enviou o convite já enxerga o Atendimento inteiro pelo quadro.
-      if (convite?.papel === "destinatario") await carregarContexto(abertoId);
+      if (
+        convite.papel === "destinatario" &&
+        contextoPedido.current !== abertoId
+      ) {
+        contextoPedido.current = abertoId;
+        await carregarContexto(abertoId);
+      }
       // Abrir a negociação é o gesto de leitura: a marca avança no servidor e
       // as notificações daquele convite deixam de estar pendentes.
-      if (convite && convite.naoLidas > 0) {
+      //
+      // `novoParaDestaque` entra na condição para que o destaque do Dashboard
+      // não dependa de um acidente da contagem: é a marca de leitura que diz
+      // "este convite já foi analisado", e ela precisa existir a partir da
+      // primeira abertura, mesmo que não houvesse nada por ler.
+      if (
+        (convite.naoLidas > 0 || convite.novoParaDestaque) &&
+        leituraMarcada.current !== abertoId
+      ) {
+        leituraMarcada.current = abertoId;
         const resultado = await marcarNegociacaoLida({ conviteId: abertoId });
         if (resultado.sucesso) onRecarregar();
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abertoId, carregarContexto]);
+  }, [abertoId, convites, carregarContexto, onRecarregar]);
 
   if (!open) return null;
 
