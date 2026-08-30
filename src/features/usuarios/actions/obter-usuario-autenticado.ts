@@ -3,6 +3,7 @@ import { db } from '@/db/connection'
 import { usuarios } from '@/db/schema'
 import { buscarSessaoAtiva } from '../queries/buscar-sessao-ativa'
 import type { ResultadoPadrao, DadosUsuarioAutenticado } from '../types'
+import { montarUsuarioAutenticado } from '../lib/dados-usuario-autenticado'
 import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 
 export type ResultadoUsuarioAutenticado = ResultadoPadrao & {
@@ -45,20 +46,16 @@ export async function obterUsuarioAutenticado(token: string): Promise<ResultadoU
     }
   }
 
-  const { perfilOperacional: perfilTipo, ehGestor } =
-    await buscarCapacidadesUsuario(usuario.id)
+  const { perfilOperacional, ehGestor } = await buscarCapacidadesUsuario(
+    usuario.id,
+  )
 
   return {
     sucesso: true,
     mensagem: 'Usuário autenticado',
-    usuario: {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      whatsapp: usuario.whatsapp,
-      status: usuario.status as DadosUsuarioAutenticado['status'],
-      perfilTipo,
-      ehGestor,
-    },
+    usuario: montarUsuarioAutenticado(
+      { ...usuario, status: usuario.status as DadosUsuarioAutenticado['status'] },
+      { perfil: perfilOperacional, ehGestor },
+    ),
   }
 }

@@ -5,6 +5,7 @@ import { db } from "@/db/connection";
 import { usuarios, sessoesUsuario } from "@/db/schema";
 import { COOKIE_SESSAO } from "@/features/usuarios/constants/sessao";
 import { resolverAcessoUsuario } from "@/features/usuarios/queries/obter-destino-apos-login";
+import { montarUsuarioAutenticado } from "@/features/usuarios/lib/dados-usuario-autenticado";
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,22 +59,13 @@ export async function GET(request: NextRequest) {
 
     const acesso = await resolverAcessoUsuario(usuario.id);
     if (!acesso) return NextResponse.json({ sucesso: false, mensagem: "Acesso indisponível" }, { status: 403 });
-    const perfilTipo = acesso.perfil;
 
     const response = NextResponse.json({
       sucesso: true,
       dados: {
+        // Mesma montagem do login: uma conta descrita de um jeito só.
         usuario: {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          whatsapp: usuario.whatsapp,
-          status: usuario.status,
-          perfilTipo,
-          // A marca de Gestor viaja junto: é ela que o menu lê para exibir o
-          // grupo "Gestão da Plataforma". Continua sem autorizar nada — toda
-          // porta é fechada no servidor.
-          ehGestor: acesso.ehGestor,
+          ...montarUsuarioAutenticado(usuario, acesso),
           destino: acesso.destino,
         },
       },

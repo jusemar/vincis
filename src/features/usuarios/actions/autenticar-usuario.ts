@@ -2,6 +2,7 @@ import { LoginSchema, type LoginDTO } from '../schemas/login'
 import { buscarUsuarioPorLogin } from '../queries/buscar-usuario-por-login'
 import { compararHash } from '../lib/hash-senha'
 import { contaVerificada } from '../lib/verificacao-conta'
+import { montarUsuarioAutenticado } from '../lib/dados-usuario-autenticado'
 import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 import type { ResultadoLogin, DadosUsuarioAutenticado } from '../types'
 
@@ -56,18 +57,14 @@ export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin
     }
   }
 
-  const { perfilOperacional: perfilTipo, ehGestor } =
-    await buscarCapacidadesUsuario(usuario.id)
+  const { perfilOperacional, ehGestor } = await buscarCapacidadesUsuario(
+    usuario.id,
+  )
 
-  const usuarioAutenticado: DadosUsuarioAutenticado = {
-    id: usuario.id,
-    nome: usuario.nome,
-    email: usuario.email,
-    whatsapp: usuario.whatsapp,
-    status: usuario.status as DadosUsuarioAutenticado['status'],
-    perfilTipo,
-    ehGestor,
-  }
+  const usuarioAutenticado = montarUsuarioAutenticado(
+    { ...usuario, status: usuario.status as DadosUsuarioAutenticado['status'] },
+    { perfil: perfilOperacional, ehGestor },
+  )
 
   return {
     sucesso: true,

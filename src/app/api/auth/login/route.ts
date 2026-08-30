@@ -8,6 +8,7 @@ import { gerarTokenSessao } from "@/features/usuarios/lib/gerar-token-sessao";
 import { COOKIE_SESSAO } from "@/features/usuarios/constants/sessao";
 import { contaVerificada } from "@/features/usuarios/lib/verificacao-conta";
 import { resolverAcessoUsuario } from "@/features/usuarios/queries/obter-destino-apos-login";
+import { montarUsuarioAutenticado } from "@/features/usuarios/lib/dados-usuario-autenticado";
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,7 +92,6 @@ export async function POST(request: NextRequest) {
 
     const acesso = await resolverAcessoUsuario(usuario.id);
     if (!acesso) return NextResponse.json({ sucesso: false, mensagem: "Acesso indisponível" }, { status: 403 });
-    const perfilTipo = acesso.perfil;
     const destino = acesso.destino;
 
     const { token, hash } = gerarTokenSessao();
@@ -112,14 +112,11 @@ export async function POST(request: NextRequest) {
         tokenSessao: token,
         expiraEm: expiraEm.toISOString(),
         destino,
-        usuario: {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          whatsapp: usuario.whatsapp,
-          status: usuario.status,
-          perfilTipo,
-        },
+        // Montado pela mesma função que `/api/auth/sessao` usa: as duas
+        // respostas descrevem a conta com exatamente os mesmos campos, e
+        // entrar agora ou restaurar a sessão depois não muda o que a interface
+        // sabe sobre quem está logado.
+        usuario: montarUsuarioAutenticado(usuario, acesso),
       },
     });
     response.cookies.set(COOKIE_SESSAO, token, {
