@@ -15,7 +15,10 @@ import { listarUsuariosGestao } from '@/features/usuarios/actions/listar-usuario
 import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { possuiPermissao } from '@/features/usuarios/lib/possui-permissao'
 import { buscarPermissoesUsuario } from '@/features/usuarios/queries/buscar-permissoes-usuario'
+import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import { validarGestorVincis } from '@/features/usuarios/lib/validar-gestor-vincis'
+import { buscarCapacidadesUsuario } from '@/features/usuarios/queries/buscar-perfil-principal-usuario'
+import { resolverContextoTenant } from '@/features/empresas/lib/resolver-contexto-tenant'
 import { resolverAcessoUsuario } from '@/features/usuarios/queries/obter-destino-apos-login'
 import { entrarComo, sairDaSessao } from './setup/sessao'
 import { limparCenario, montarCenario, type Cenario, type Persona } from './setup/personas'
@@ -69,6 +72,7 @@ describe('registro de recursos administrativos', () => {
       (r) => r.rota,
     )
     expect(exclusivos).toEqual([
+      '/admin/plataforma',
       '/admin/usuarios',
       '/admin/comunicados',
       '/admin/consultorias',
@@ -264,5 +268,197 @@ describe('actions dos recursos exclusivos, chamadas direto', () => {
     expect((await listarUsuariosGestao({})).sucesso).toBe(false)
     expect((await buscarConsultoriasGestao({})).sucesso).toBe(false)
     expect((await definirPrazoOportunidade({ horas: 2 })).sucesso).toBe(false)
+  })
+})
+
+
+describe('o Gestor da Plataforma é um usuário completo', () => {
+  it('administrar a Vincis não apaga o perfil operacional da conta', async () => {
+    // Era exatamente aqui que a premissa errada morava: `gestor_vincis`
+    // liderava a prioridade de perfis e devolvia "gestor" como se fosse a
+    // pessoa inteira. Quem administrava a plataforma deixava de ser
+    // reconhecido como Profissional e perdia escritório, painel e carteira.
+    const comEscritorio = await buscarCapacidadesUsuario(
+      cenario.ids.gestorProfissional,
+    )
+    expect(comEscritorio.ehGestor).toBe(true)
+    expect(comEscritorio.perfilOperacional).toBe('profissional')
+
+    const semEscritorio = await buscarCapacidadesUsuario(cenario.ids.gestor)
+    expect(semEscritorio.ehGestor).toBe(true)
+    // Sem nenhum perfil operacional vinculado, a conta exerce o mínimo.
+    expect(semEscritorio.perfilOperacional).toBe('cliente')
+  })
+
+  it('com escritório, entra no painel como o Profissional que também é', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.gestorProfissional)
+    expect(acesso).toMatchObject({
+      perfil: 'profissional',
+      ehGestor: true,
+      tipoPrestador: 'profissional',
+      habilitado: true,
+      destino: ROTA_ADMIN,
+    })
+
+    const contexto = await resolverContextoTenant(cenario.ids.gestorProfissional)
+    expect(contexto.estado).toBe('ativo')
+    expect(contexto.contexto?.empresaId).toBe(cenario.empresaGestorId)
+  })
+
+  it('sem escritório, o painel abre pela Gestão da Plataforma', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.gestor)
+    expect(acesso?.destino).toBe(ROTA_ADMIN)
+    expect(acesso?.ehGestor).toBe(true)
+
+    // Estado final vindo do servidor: nem onboarding de escritório (que ele não
+    // poderia concluir), nem espera sem fim.
+    const contexto = await resolverContextoTenant(cenario.ids.gestor)
+    expect(contexto.estado).toBe('gestor_plataforma')
+  })
+
+  it('alcança o painel e a área do Cliente, além do próprio destino', async () => {
+    for (const persona of ['gestor', 'gestorProfissional'] as const) {
+      const acesso = await resolverAcessoUsuario(cenario.ids[persona])
+      expect(acesso?.areasPermitidas, persona).toEqual(
+        expect.arrayContaining([ROTA_ADMIN, '/cliente']),
+      )
+      for (const recurso of RECURSOS_ADMIN) {
+        expect(
+          await rotaLiberada(cenario.ids[persona], recurso.rota),
+          `${persona} → ${recurso.rota}`,
+        ).toBe(true)
+      }
+    }
+  })
+
+  it('vê o menu do painel e, somado a ele, a Gestão da Plataforma', () => {
+    const doGestor = recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)
+    expect(doGestor).toEqual([
+      'Visão geral',
+      'Usuários',
+      'Comunicados',
+      'Consultorias',
+      'Precificação',
+    ])
+    // Quem não administra a plataforma não recebe o grupo — nem um item dele.
+    expect(recursosPermitidos({ ehGestor: false })).toEqual([])
+  })
+
+  it('passa nas guardas exclusivas, tendo escritório ou não', async () => {
+    for (const persona of ['gestor', 'gestorProfissional'] as const) {
+      entrarComo(cenario.tokens[persona])
+      expect(await validarGestorVincis(), persona).not.toBeNull()
+      expect((await listarUsuariosGestao({})).sucesso, persona).toBe(true)
+    }
+  })
+
+  it('não ganha o escritório de terceiros por administrar a plataforma', async () => {
+    // O privilégio é sobre a plataforma; o tenant continua sendo o dele.
+    // Pedir explicitamente o Escritório Alfa não o entrega.
+    const forcado = await resolverContextoTenant(
+      cenario.ids.gestorProfissional,
+      cenario.empresaId,
+    )
+    expect(forcado.contexto?.empresaId).not.toBe(cenario.empresaId)
+    expect(forcado.contexto?.empresaId).toBe(cenario.empresaGestorId)
+
+    // E o Gestor sem escritório não herda nenhum.
+    const semEscritorio = await resolverContextoTenant(
+      cenario.ids.gestor,
+      cenario.empresaId,
+    )
+    expect(semEscritorio.contexto).toBeUndefined()
+    expect(semEscritorio.estado).toBe('gestor_plataforma')
+  })
+})
+
+describe('as demais personas não mudam', () => {
+  it('o Profissional comum segue no próprio painel, sem Gestão da Plataforma', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.proprietario)
+    expect(acesso?.ehGestor).toBe(false)
+    expect(acesso?.destino).toBe(ROTA_ADMIN)
+    expect(acesso?.areasPermitidas).toEqual([ROTA_ADMIN])
+    for (const recurso of RECURSOS_ADMIN) {
+      expect(
+        await rotaLiberada(cenario.ids.proprietario, recurso.rota),
+        recurso.rota,
+      ).toBe(false)
+    }
+  })
+
+  it('o Colaborador continua sem privilégio de Gestor', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.colaboradorSozinho)
+    expect(acesso?.ehGestor).toBe(false)
+    expect(await possuiPermissao(cenario.ids.colaboradorSozinho, 'usuarios.excluir')).toBe(
+      false,
+    )
+  })
+
+  it('quem não é prestador continua indo para a área do Cliente', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.gestor)
+    // Comparação de controle: a mesma ausência de prestador leva o Gestor ao
+    // painel e levaria qualquer outra conta ao portal do Cliente.
+    expect(acesso?.tipoPrestador).toBeNull()
+    expect(acesso?.destino).toBe(ROTA_ADMIN)
+    expect(acesso?.areasPermitidas).toContain('/cliente')
+  })
+})
+
+
+describe('capacidades de Cliente', () => {
+  /**
+   * A regra que os fluxos de contratar, agendar e pedir orçamento consultam.
+   * Ela vive num lugar só justamente para não voltar a ser três condições
+   * ligeiramente diferentes espalhadas por três actions.
+   */
+  it('quem presta serviço continua sem se passar por cliente', () => {
+    for (const perfilTipo of ['profissional', 'contador', 'advogado', 'colaborador'] as const) {
+      expect(podeAgirComoCliente({ perfilTipo, ehGestor: false }), perfilTipo).toBe(
+        false,
+      )
+    }
+    expect(podeAgirComoCliente({ perfilTipo: 'cliente', ehGestor: false })).toBe(true)
+  })
+
+  it('o Gestor da Plataforma age como cliente, exerça o que exercer', () => {
+    // A conta que administra e testa a Vincis precisa alcançar os dois lados do
+    // produto; sem isso, metade dele fica sem como ser exercitada por quem
+    // responde por ele.
+    for (const perfilTipo of [
+      'cliente',
+      'profissional',
+      'contador',
+      'advogado',
+      'colaborador',
+    ] as const) {
+      expect(podeAgirComoCliente({ perfilTipo, ehGestor: true }), perfilTipo).toBe(
+        true,
+      )
+    }
+  })
+
+  it('as duas contas gestoras do cenário alcançam a Área do Cliente', async () => {
+    for (const persona of ['gestor', 'gestorProfissional'] as const) {
+      const acesso = await resolverAcessoUsuario(cenario.ids[persona])
+      expect(acesso?.areasPermitidas, persona).toContain('/cliente')
+      expect(
+        podeAgirComoCliente({
+          perfilTipo: acesso!.perfil,
+          ehGestor: acesso!.ehGestor,
+        }),
+        persona,
+      ).toBe(true)
+    }
+  })
+
+  it('o Profissional comum não ganha nada disso', async () => {
+    const acesso = await resolverAcessoUsuario(cenario.ids.proprietario)
+    expect(acesso?.areasPermitidas).not.toContain('/cliente')
+    expect(
+      podeAgirComoCliente({
+        perfilTipo: acesso!.perfil,
+        ehGestor: acesso!.ehGestor,
+      }),
+    ).toBe(false)
   })
 })

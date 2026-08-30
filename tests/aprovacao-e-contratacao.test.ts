@@ -32,14 +32,27 @@ const { listarContratacoesDoPrestador, listarMinhasContratacoes } = await import
 const { criarServico } = await import('@/features/servicos/actions/catalogo')
 
 const SUFIXO = '@aprovacao.teste'
-type Caso = 'gestor' | 'profCompleto' | 'profIncompleto' | 'cliente' | 'colaborador'
+type Caso =
+  | 'gestor'
+  | 'gestorProfissional'
+  | 'profCompleto'
+  | 'profIncompleto'
+  | 'cliente'
+  | 'colaborador'
 
 const PERFIL_DE: Record<Caso, string> = {
   gestor: 'gestor_vincis',
+  // Gestor que também presta serviço: dois perfis na mesma conta, como a conta
+  // real com que a plataforma é operada e testada.
+  gestorProfissional: 'profissional',
   profCompleto: 'profissional',
   profIncompleto: 'profissional',
   cliente: 'cliente',
   colaborador: 'colaborador',
+}
+
+const PERFIS_EXTRAS: Partial<Record<Caso, string[]>> = {
+  gestorProfissional: ['gestor_vincis'],
 }
 
 let ids: Record<Caso, string>
@@ -86,11 +99,6 @@ beforeEach(async () => {
   for (const caso of Object.keys(PERFIL_DE) as Caso[]) {
     const nomePerfil = PERFIL_DE[caso]
     await db.insert(perfis).values({ nome: nomePerfil }).onConflictDoNothing()
-    const [perfil] = await db
-      .select({ id: perfis.id })
-      .from(perfis)
-      .where(eq(perfis.nome, nomePerfil))
-      .limit(1)
 
     const [usuario] = await db
       .insert(usuarios)
@@ -104,9 +112,17 @@ beforeEach(async () => {
         emailVerificadoEm: new Date(),
       })
       .returning({ id: usuarios.id })
-    await db
-      .insert(usuariosPerfis)
-      .values({ usuarioId: usuario.id, perfilId: perfil.id })
+    const extras = PERFIS_EXTRAS[caso] ?? []
+    for (const nome of extras) {
+      await db.insert(perfis).values({ nome }).onConflictDoNothing()
+    }
+    const perfisDaConta = await db
+      .select({ id: perfis.id })
+      .from(perfis)
+      .where(inArray(perfis.nome, [nomePerfil, ...extras]))
+    for (const { id: perfilId } of perfisDaConta) {
+      await db.insert(usuariosPerfis).values({ usuarioId: usuario.id, perfilId })
+    }
 
     if (nomePerfil === 'profissional' || nomePerfil === 'colaborador') {
       const completo = caso !== 'profIncompleto'
@@ -250,9 +266,9 @@ describe('quem pode contratar', () => {
     expect(linhas).toHaveLength(1)
   })
 
-  it('Profissional, Colaborador e Gestor não contratam', async () => {
+  it('quem presta serviço não contrata', async () => {
     const servicoId = await criarServicoDaAna()
-    for (const caso of ['profCompleto', 'colaborador', 'gestor'] as const) {
+    for (const caso of ['profCompleto', 'colaborador'] as const) {
       entrarComo(tokens[caso])
       const resultado = await contratarServico({ servicoId })
       expect(resultado.sucesso, caso).toBe(false)
@@ -287,5 +303,21 @@ describe('quem pode contratar', () => {
     // O colaborador não enxerga a contratação de ninguém.
     entrarComo(tokens.colaborador)
     expect((await listarContratacoesDoPrestador()).dados).toEqual([])
+  })
+
+  it('o Gestor da Plataforma contrata, com ou sem cadastro de prestador', async () => {
+    // A conta do Gestor existe para operar e testar a Vincis inteira: ser
+    // também Profissional não pode custar a ela a capacidade de contratar.
+    // Para todo prestador que não administra a plataforma, a restrição fica.
+    const servicoId = await criarServicoDaAna()
+
+    for (const caso of ['gestor', 'gestorProfissional'] as const) {
+      const antes = (await db.select().from(contratacoesServico)).length
+      entrarComo(tokens[caso])
+      const resultado = await contratarServico({ servicoId })
+
+      expect(resultado.sucesso, caso).toBe(true)
+      expect(await db.select().from(contratacoesServico)).toHaveLength(antes + 1)
+    }
   })
 })

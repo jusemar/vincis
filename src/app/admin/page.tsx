@@ -1,11 +1,5 @@
 import { redirect } from 'next/navigation'
 import AdminDashboard from '@/features/admin/components/AdminDashboard'
-import { AdminShell } from '@/features/admin/components/AdminShell'
-import { GestaoInicio } from '@/features/admin/components/GestaoInicio'
-import { PrazoOportunidadeCard } from '@/features/configuracoes/components/PrazoOportunidadeCard'
-import { obterPrazoOportunidadeHoras } from '@/features/configuracoes/queries/obter-configuracao'
-import { contarCadastrosProfissionaisPendentes } from '@/features/usuarios/queries/contar-cadastros-profissionais-pendentes'
-import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { mapearAtendimentoParaCard } from '@/features/admin/lib/atendimentos-reais'
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
 import { listarConsultoriasDoPrestador } from '@/features/consultorias/queries/agendamentos'
@@ -23,25 +17,17 @@ export default async function AdminRoute() {
 
   if (!usuario) redirect('/')
   const acesso = await resolverAcessoUsuario(usuario.id)
-  if (!acesso || acesso.destino !== '/admin') redirect(acesso?.destino ?? '/')
+  if (!acesso || !acesso.areasPermitidas.includes('/admin'))
+    redirect(acesso?.destino ?? '/')
 
-  // A Gestão da plataforma deixou de ter aplicação própria: o Gestor entra
-  // pelo mesmo `/admin`, e é aqui que as duas experiências se separam. Nada
-  // abaixo desta guarda pertence ao Gestor — nem o escritório do prestador,
-  // que não deve ser criado para quem não presta serviço.
-  if (ehGestorPlataforma(acesso)) {
-    return (
-      <AdminShell>
-        <GestaoInicio
-          nome={usuario.nome}
-          cadastrosPendentes={await contarCadastrosProfissionaisPendentes()}
-          configuracoes={
-            <PrazoOportunidadeCard horas={await obterPrazoOportunidadeHoras()} />
-          }
-        />
-      </AdminShell>
-    )
-  }
+  // A bifurcação é sobre **operação profissional**, não sobre quem administra a
+  // plataforma. Quem presta serviço vê o painel completo — inclusive o Gestor
+  // que também é Profissional, que antes perdia o painel por causa do cargo.
+  //
+  // Quem chega aqui sem cadastro de prestador aprovado só pode ser um Gestor
+  // (os demais são desviados antes): não há escritório a criar nem carteira a
+  // exibir, então a casa dele é a Visão geral da plataforma.
+  if (!acesso.habilitado) redirect('/admin/plataforma')
 
   await garantirEscritorioProfissional(usuario.id)
   // Abrir o painel deixou de emitir aviso de prazo.

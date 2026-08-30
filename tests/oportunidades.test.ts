@@ -49,6 +49,7 @@ type Chave =
   | 'colabFiscal'
   | 'colabMarketing'
   | 'contadorPendente'
+  | 'gestorProfissional'
 
 /**
  * O elenco existe para provar a regra em todas as pontas: quem casa pela
@@ -60,6 +61,7 @@ const DEFINICOES: Record<
   {
     perfil: string
     confirmada?: boolean
+    perfisExtras?: string[]
     prestador?: 'profissional' | 'colaborador'
     tipoProfissional?: string
     statusAnalise?: string
@@ -108,6 +110,15 @@ const DEFINICOES: Record<
     prestador: 'profissional',
     tipoProfissional: 'contabilidade',
     statusAnalise: 'em_analise',
+  },
+  // Gestor da Plataforma que também presta serviço: a conta com que a Vincis é
+  // operada e testada de ponta a ponta.
+  gestorProfissional: {
+    perfil: 'profissional',
+    perfisExtras: ['gestor_vincis'],
+    prestador: 'profissional',
+    tipoProfissional: 'contabilidade',
+    statusAnalise: 'aprovado',
   },
 }
 
@@ -172,12 +183,14 @@ async function montar() {
   for (const chave of Object.keys(DEFINICOES) as Chave[]) {
     const def = DEFINICOES[chave]
     const confirmada = def.confirmada ?? true
-    await db.insert(perfis).values({ nome: def.perfil }).onConflictDoNothing()
-    const [perfil] = await db
+    const nomesDePerfil = [def.perfil, ...(def.perfisExtras ?? [])]
+    for (const nome of nomesDePerfil) {
+      await db.insert(perfis).values({ nome }).onConflictDoNothing()
+    }
+    const perfisDaConta = await db
       .select({ id: perfis.id })
       .from(perfis)
-      .where(eq(perfis.nome, def.perfil))
-      .limit(1)
+      .where(inArray(perfis.nome, nomesDePerfil))
 
     const [usuario] = await db
       .insert(usuarios)
@@ -192,9 +205,9 @@ async function montar() {
       })
       .returning({ id: usuarios.id })
 
-    await db
-      .insert(usuariosPerfis)
-      .values({ usuarioId: usuario.id, perfilId: perfil.id })
+    for (const { id: perfilId } of perfisDaConta) {
+      await db.insert(usuariosPerfis).values({ usuarioId: usuario.id, perfilId })
+    }
 
     if (def.prestador) {
       await db.insert(perfisProfissionais).values({
@@ -294,11 +307,21 @@ describe('quem pode solicitar', () => {
     expect(await db.select().from(oportunidades)).toHaveLength(0)
   })
 
-  it('prestador e Gestor não solicitam orçamento', async () => {
+  it('prestador não solicita orçamento', async () => {
     entrarComo(contas.contador.token)
     expect((await criarOportunidade(montarFormulario())).sucesso).toBe(false)
     entrarComo(contas.colabFiscal.token)
     expect((await criarOportunidade(montarFormulario())).sucesso).toBe(false)
+    expect(await db.select().from(oportunidades)).toHaveLength(0)
+  })
+
+  it('o Gestor da Plataforma solicita orçamento mesmo sendo Profissional', async () => {
+    // A restrição continua valendo para todo prestador; a conta que administra
+    // e testa a plataforma é a única exceção, e ela é declarada uma vez só em
+    // `usuarios/lib/capacidades`.
+    entrarComo(contas.gestorProfissional.token)
+    expect((await criarOportunidade(montarFormulario())).sucesso).toBe(true)
+    expect(await db.select().from(oportunidades)).toHaveLength(1)
   })
 })
 

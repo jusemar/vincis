@@ -64,8 +64,14 @@ export async function proxy(request: NextRequest) {
 
   const acesso = await resolverAcessoUsuario(usuario.id)
   if (!acesso) return NextResponse.redirect(destinoPublico)
+
+  // Cada conta tem um destino — onde ela cai — e um conjunto de áreas que pode
+  // abrir. Para quase todo mundo os dois coincidem. O Gestor da Plataforma
+  // acumula `/admin` e `/cliente`, porque administrar a Vincis é uma permissão
+  // a mais e não uma troca de persona: ele continua podendo operar o próprio
+  // escritório e contratar como Cliente.
   const rotaAtual = ROTAS_PROTEGIDAS.find((rota) => pathname.startsWith(rota))
-  if (rotaAtual !== acesso.destino)
+  if (rotaAtual && !acesso.areasPermitidas.includes(rotaAtual))
     return NextResponse.redirect(new URL(acesso.destino, request.url))
 
   // Recursos exclusivos do Gestor da Plataforma. Quem responde quais são é o

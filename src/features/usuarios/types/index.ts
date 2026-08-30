@@ -46,6 +46,11 @@ export type DadosUsuarioAutenticado = {
   whatsapp: string | null
   status: UsuarioStatus
   perfilTipo: PerfilTipo
+  /**
+   * A conta administra a plataforma. É uma capacidade somada ao `perfilTipo`,
+   * e não um valor dele — Gestor continua sendo Profissional ou Cliente.
+   */
+  ehGestor: boolean
 }
 
 export type ResultadoLogin = ResultadoPadrao & {

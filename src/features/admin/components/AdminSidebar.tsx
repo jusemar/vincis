@@ -17,6 +17,7 @@ import {
   Megaphone,
   CalendarClock,
   BadgeDollarSign,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -37,13 +38,23 @@ interface SidebarProps {
    */
   reputacao?: { media: number | null; total: number };
   /**
-   * A sessão é do Gestor da Plataforma.
+   * A sessão administra a plataforma.
    *
-   * Vem do perfil autenticado, resolvido pelo `AdminShell` — não da rota
+   * Vem do acesso autenticado, resolvido pelo `AdminShell` — não da rota
    * aberta. É o mesmo valor que decide o menu mobile, para que um item nunca
-   * apareça num e falte no outro.
+   * apareça num e falte no outro. O que ele acrescenta é um **grupo a mais**:
+   * o menu do painel continua inteiro por baixo dele.
    */
   ehGestor?: boolean;
+  /**
+   * A conta exerce operação profissional.
+   *
+   * O menu do painel leva a telas do prestador; sem cadastro de prestador elas
+   * abririam vazias. Quem administra a plataforma e ainda não presta serviço vê
+   * só o Início e a Gestão da Plataforma — e passa a ver o painel inteiro no dia
+   * em que completar o cadastro, sem nenhuma mudança de código.
+   */
+  ehPrestador?: boolean;
 }
 
 /**
@@ -78,6 +89,7 @@ const navItems = [
  * num padrão em vez de sumir do menu.
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
+  plataforma: Gauge,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
@@ -90,11 +102,13 @@ export default function AdminSidebar({
   nomeUsuario,
   reputacao,
   ehGestor = false,
+  ehPrestador = true,
 }: SidebarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  // Fora da raiz do painel a pessoa está numa tela de Gestão: nenhum item de
-  // `?pagina=` pode ficar aceso, ou "Dashboard" marcaria presença onde não está.
+  // Fora da raiz do painel a pessoa está num recurso com rota própria: nenhum
+  // item de `?pagina=` pode ficar aceso, ou "Dashboard" marcaria presença onde
+  // não está.
   const noPainel = pathname === ROTA_ADMIN;
   const currentPage = noPainel ? searchParams.get("pagina") || "dashboard" : "";
   // Uma só lista, filtrada pela autorização real — e não pela tela em que a
@@ -119,19 +133,76 @@ export default function AdminSidebar({
           gap: 4,
         }}
       >
-        {ehGestor ? (
-          <>
-            <Link href={ROTA_ADMIN} style={{ textDecoration: "none" }}>
+        {!ehPrestador ? (
+          <Link href={ROTA_ADMIN} style={{ textDecoration: "none" }}>
+            <motion.button
+              className={`nav-btn ${noPainel ? "active" : ""}`}
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onToggle}
+            >
+              <LayoutDashboard size={18} className="nav-icon" />
+              <span className="nav-label">Início</span>
+            </motion.button>
+          </Link>
+        ) : null}
+
+        {ehPrestador && navItems.map((item) => {
+          const isActive = currentPage === item.id;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.id}
+              href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
+              style={{ textDecoration: "none" }}
+            >
               <motion.button
-                className={`nav-btn ${noPainel ? "active" : ""}`}
+                className={`nav-btn ${isActive ? "active" : ""}`}
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onToggle}
               >
-                <LayoutDashboard size={18} className="nav-icon" />
-                <span className="nav-label">Início</span>
+                <Icon size={18} className="nav-icon" />
+                <span className="nav-label">{item.label}</span>
+                {item.badge && (
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      height: 20,
+                      minWidth: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "999px",
+                      background: "hsl(var(--primary))",
+                      color: "hsl(var(--primary-foreground))",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "0 6px",
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </motion.button>
             </Link>
+          );
+        })}
+
+        {/*
+          O grupo extra do Gestor da Plataforma.
+
+          Vem **depois** do menu do painel, e não no lugar dele: administrar a
+          Vincis é um privilégio somado, não uma persona que substitui a de
+          quem opera um escritório. A separação é a mesma linha fina que a
+          barra já usa no rodapé, e o título acompanha `.nav-label` — some
+          junto com os demais rótulos quando a barra está recolhida.
+        */}
+        {ehGestor && recursos.length > 0 ? (
+          <>
+            <div className="nav-grupo">
+              <span className="nav-label">Gestão da Plataforma</span>
+            </div>
             {recursos.map((recurso) => {
               const Icon = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard;
               const isActive =
@@ -156,49 +227,7 @@ export default function AdminSidebar({
               );
             })}
           </>
-        ) : (
-          navItems.map((item) => {
-              const isActive = currentPage === item.id;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.id}
-                  href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <motion.button
-                    className={`nav-btn ${isActive ? "active" : ""}`}
-                    whileHover={{ x: 2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onToggle}
-                  >
-                    <Icon size={18} className="nav-icon" />
-                    <span className="nav-label">{item.label}</span>
-                    {item.badge && (
-                      <span
-                        style={{
-                          marginLeft: "auto",
-                          height: 20,
-                          minWidth: 20,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "999px",
-                          background: "hsl(var(--primary))",
-                          color: "hsl(var(--primary-foreground))",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: "0 6px",
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </motion.button>
-                </Link>
-              );
-            })
-        )}
+        ) : null}
       </nav>
 
       {/* Settings */}

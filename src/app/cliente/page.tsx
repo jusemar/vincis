@@ -14,9 +14,10 @@ import { resolverAcessoUsuario } from '@/features/usuarios/queries/obter-destino
  * Área autenticada do Cliente.
  *
  * A guarda repete o padrão das demais rotas protegidas: a resolução central
- * decide para onde cada pessoa vai, e a página só abre quando o destino
- * resolvido é exatamente esta rota. Um prestador ou o Gestor que digitarem
- * `/cliente` são devolvidos ao próprio destino.
+ * decide o que cada conta alcança, e a página só abre para quem tem esta área
+ * entre as suas. Um prestador que digitar `/cliente` é devolvido ao próprio
+ * destino; o Gestor da Plataforma entra, porque administrar a Vincis não tira
+ * dele o direito de contratar como qualquer pessoa.
  */
 export default async function ClienteRoute({
   searchParams,
@@ -27,7 +28,8 @@ export default async function ClienteRoute({
   if (!usuario) redirect('/?entrar=1')
 
   const acesso = await resolverAcessoUsuario(usuario.id)
-  if (!acesso || acesso.destino !== '/cliente') redirect(acesso?.destino ?? '/')
+  if (!acesso || !acesso.areasPermitidas.includes('/cliente'))
+    redirect(acesso?.destino ?? '/')
 
   const dados = await obterDadosCliente(usuario.id)
   if (!dados) redirect('/')

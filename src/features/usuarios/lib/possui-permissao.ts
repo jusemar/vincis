@@ -1,6 +1,5 @@
-import { buscarPerfilPrincipalUsuario } from '../queries/buscar-perfil-principal-usuario'
+import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 import { buscarPermissoesUsuario } from '../queries/buscar-permissoes-usuario'
-import { ehGestorPlataforma } from './gestor-plataforma'
 
 /**
  * Uma permissão nomeada do RBAC da plataforma (`perfis_permissoes`).
@@ -18,7 +17,7 @@ import { ehGestorPlataforma } from './gestor-plataforma'
  * entre inquilinos, não administrar a plataforma.
  */
 export async function possuiPermissao(usuarioId: string, permissao: string): Promise<boolean> {
-  if (ehGestorPlataforma(await buscarPerfilPrincipalUsuario(usuarioId))) return true
+  if ((await buscarCapacidadesUsuario(usuarioId)).ehGestor) return true
 
   const permissoes = await buscarPermissoesUsuario(usuarioId)
   return permissoes.some((p) => p.nome === permissao)

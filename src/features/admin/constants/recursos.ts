@@ -33,6 +33,17 @@ export type RecursoAdmin = {
 
 export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
   {
+    // A casa do grupo. Existe porque a Gestão da Plataforma deixou de ser a
+    // experiência principal do Gestor: ele entra no painel do próprio
+    // escritório, e os assuntos da plataforma — cadastros pendentes, prazo das
+    // oportunidades — precisam de um lugar próprio para continuarem
+    // alcançáveis.
+    id: 'plataforma',
+    rota: '/admin/plataforma',
+    rotulo: 'Visão geral',
+    exclusivoDoGestor: true,
+  },
+  {
     id: 'usuarios',
     rota: '/admin/usuarios',
     rotulo: 'Usuários',

@@ -1,4 +1,4 @@
-import { eq, inArray, like } from 'drizzle-orm'
+import { inArray, like } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   clientes,
@@ -21,6 +21,14 @@ export type ContaDeTeste = { id: string; token: string }
 
 export type DefinicaoConta = {
   perfil: string
+  /**
+   * Perfis adicionais na mesma conta.
+   *
+   * `usuarios_perfis` é muitos-para-muitos, e o Gestor da Plataforma é o caso
+   * real disso: administra a Vincis e presta serviço ao mesmo tempo. Sem isto
+   * nenhum teste consegue montar essa conta.
+   */
+  perfisExtras?: string[]
   prestador?: 'profissional' | 'colaborador'
 }
 
@@ -43,12 +51,14 @@ export async function criarContas<Chave extends string>(
 
   for (const chave of Object.keys(definicoes) as Chave[]) {
     const definicao = definicoes[chave]
-    await db.insert(perfis).values({ nome: definicao.perfil }).onConflictDoNothing()
-    const [perfil] = await db
+    const nomesDePerfil = [definicao.perfil, ...(definicao.perfisExtras ?? [])]
+    for (const nome of nomesDePerfil) {
+      await db.insert(perfis).values({ nome }).onConflictDoNothing()
+    }
+    const perfisDaConta = await db
       .select({ id: perfis.id })
       .from(perfis)
-      .where(eq(perfis.nome, definicao.perfil))
-      .limit(1)
+      .where(inArray(perfis.nome, nomesDePerfil))
 
     const [usuario] = await db
       .insert(usuarios)
@@ -63,9 +73,9 @@ export async function criarContas<Chave extends string>(
       })
       .returning({ id: usuarios.id })
 
-    await db
-      .insert(usuariosPerfis)
-      .values({ usuarioId: usuario.id, perfilId: perfil.id })
+    for (const { id: perfilId } of perfisDaConta) {
+      await db.insert(usuariosPerfis).values({ usuarioId: usuario.id, perfilId })
+    }
 
     if (definicao.prestador) {
       await db.insert(perfisProfissionais).values({

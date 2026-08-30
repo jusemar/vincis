@@ -1,5 +1,5 @@
 import { ehPessoaColaborador } from '@/features/usuarios/lib/prestador'
-import { buscarPerfilPrincipalUsuario } from '@/features/usuarios/queries/buscar-perfil-principal-usuario'
+import { buscarCapacidadesUsuario } from '@/features/usuarios/queries/buscar-perfil-principal-usuario'
 import { buscarEmpresasAtivasUsuario } from '../queries/buscar-empresas-usuario'
 import { buscarContextoProfissionalIndividual } from '../queries/buscar-contexto-profissional-individual'
 import { buscarVinculoAtivoEmpresa } from '../queries/buscar-vinculo-empresa'
@@ -38,14 +38,30 @@ export async function resolverContextoTenant(
       }
     }
 
+    const { perfilOperacional, ehGestor } =
+      await buscarCapacidadesUsuario(usuarioId)
+
     // O Colaborador não abre escritório: ficar sem tenant é o estado normal
     // dele. Sem este ramo, cairia no onboarding de empresa — que o servidor
     // recusaria, deixando a conta presa numa tela sem saída.
-    if (ehPessoaColaborador(await buscarPerfilPrincipalUsuario(usuarioId))) {
+    if (ehPessoaColaborador(perfilOperacional)) {
       return {
         sucesso: true,
         estado: 'colaborador',
         mensagem: 'Colaborador sem vínculo de escritório',
+      }
+    }
+
+    // Quem administra a plataforma e ainda não é prestador entra no painel
+    // pela Gestão da Plataforma. Oferecer o onboarding de escritório aqui
+    // seria oferecer uma porta que o servidor fecha: abrir escritório exige
+    // cadastro de Profissional aprovado. Assim que esse cadastro existir, a
+    // conta volta a cair no ramo normal e o onboarding aparece.
+    if (ehGestor) {
+      return {
+        sucesso: true,
+        estado: 'gestor_plataforma',
+        mensagem: 'Gestor da Plataforma sem escritório próprio',
       }
     }
 

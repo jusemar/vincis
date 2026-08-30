@@ -37,6 +37,7 @@ import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 
 export const PAPEIS_PERSONA = [
   'gestor',
+  'gestorProfissional',
   'profissionalSozinho',
   'colaboradorSozinho',
   'proprietario',
@@ -52,12 +53,29 @@ export type Persona = (typeof PAPEIS_PERSONA)[number]
 
 type DefinicaoPersona = {
   perfil: string
+  /**
+   * Perfis adicionais vinculados à mesma conta.
+   *
+   * `usuarios_perfis` sempre foi muitos-para-muitos, e o Gestor da Plataforma é
+   * o caso real disso: ele administra a Vincis **e** presta serviço. Sem uma
+   * persona assim, nenhum teste enxergaria a diferença entre "quem a pessoa é"
+   * e "o que ela pode administrar".
+   */
+  perfisExtras?: string[]
   tipoPrestador?: 'profissional' | 'colaborador'
   statusAnalise?: string
 }
 
 const DEFINICOES: Record<Persona, DefinicaoPersona> = {
+  /** Administra a plataforma e não presta serviço nenhum. */
   gestor: { perfil: 'gestor_vincis' },
+  /** Administra a plataforma **e** tem escritório próprio, como Profissional. */
+  gestorProfissional: {
+    perfil: 'profissional',
+    perfisExtras: ['gestor_vincis'],
+    tipoPrestador: 'profissional',
+    statusAnalise: 'aprovado',
+  },
   profissionalSozinho: {
     perfil: 'profissional',
     tipoPrestador: 'profissional',
@@ -109,6 +127,8 @@ export type Cenario = {
   ids: Record<Persona, string>
   tokens: Record<Persona, string>
   empresaId: string
+  /** Escritório próprio do Gestor que também é Profissional. */
+  empresaGestorId: string
   clienteA: string
   clienteB: string
   clienteSozinho: string
@@ -141,7 +161,7 @@ async function garantirPerfis() {
   return new Map(registros.map(({ nome, id }) => [nome, id]))
 }
 
-async function criarUsuario(persona: Persona, perfilId: string) {
+async function criarUsuario(persona: Persona, perfilIds: string[]) {
   const definicao = DEFINICOES[persona]
   const [usuario] = await db
     .insert(usuarios)
@@ -154,7 +174,9 @@ async function criarUsuario(persona: Persona, perfilId: string) {
     })
     .returning({ id: usuarios.id })
 
-  await db.insert(usuariosPerfis).values({ usuarioId: usuario.id, perfilId })
+  for (const perfilId of perfilIds) {
+    await db.insert(usuariosPerfis).values({ usuarioId: usuario.id, perfilId })
+  }
 
   if (definicao.tipoPrestador) {
     await db.insert(perfisProfissionais).values({
@@ -221,8 +243,11 @@ export async function montarCenario(): Promise<Cenario> {
   const ids = {} as Record<Persona, string>
   const tokens = {} as Record<Persona, string>
   for (const persona of PAPEIS_PERSONA) {
-    const perfilId = perfilPorNome.get(DEFINICOES[persona].perfil)!
-    const criado = await criarUsuario(persona, perfilId)
+    const definicao = DEFINICOES[persona]
+    const perfilIds = [definicao.perfil, ...(definicao.perfisExtras ?? [])].map(
+      (nome) => perfilPorNome.get(nome)!,
+    )
+    const criado = await criarUsuario(persona, perfilIds)
     ids[persona] = criado.id
     tokens[persona] = criado.token
   }
@@ -259,6 +284,30 @@ export async function montarCenario(): Promise<Cenario> {
     .update(usuarios)
     .set({ empresaId: empresa.id })
     .where(eq(usuarios.id, ids.proprietario))
+
+  // O escritório do Gestor que também é Profissional. Existir separado do
+  // Alfa é o que permite provar que administrar a plataforma não dá a ninguém
+  // o tenant dos outros.
+  const [empresaGestor] = await db
+    .insert(empresas)
+    .values({
+      nome: 'Escritório do Gestor',
+      tipo: 'prestadora',
+      segmento: 'contabilidade',
+      status: 'ativo',
+    })
+    .returning({ id: empresas.id })
+
+  await db.insert(empresaMembros).values({
+    empresaId: empresaGestor.id,
+    usuarioId: ids.gestorProfissional,
+    funcao: 'proprietario',
+    status: 'ativo',
+  })
+  await db
+    .update(usuarios)
+    .set({ empresaId: empresaGestor.id })
+    .where(eq(usuarios.id, ids.gestorProfissional))
 
   const clienteA = await criarCliente(ids.proprietario, empresa.id, 'Cliente A')
   const clienteB = await criarCliente(ids.proprietario, empresa.id, 'Cliente B')
@@ -301,6 +350,7 @@ export async function montarCenario(): Promise<Cenario> {
     ids,
     tokens,
     empresaId: empresa.id,
+    empresaGestorId: empresaGestor.id,
     clienteA,
     clienteB,
     clienteSozinho,
@@ -339,7 +389,9 @@ export async function limparCenario() {
     .where(inArray(convitesEmpresa.destinatarioId, ids))
   await db.delete(empresaMembros).where(inArray(empresaMembros.usuarioId, ids))
   await db.update(usuarios).set({ empresaId: null }).where(inArray(usuarios.id, ids))
-  await db.delete(empresas).where(eq(empresas.nome, 'Escritório Alfa'))
+  await db
+    .delete(empresas)
+    .where(inArray(empresas.nome, ['Escritório Alfa', 'Escritório do Gestor']))
   await db.delete(sessoesUsuario).where(inArray(sessoesUsuario.usuarioId, ids))
   await db
     .delete(perfisProfissionais)

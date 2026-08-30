@@ -1,9 +1,8 @@
 'use server'
 
-import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
-import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
+import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import { obterIdentidadePublica } from '@/features/servicos/queries/identidade-publica'
 import { MENSAGEM_HORARIO_INDISPONIVEL } from '../constants/contratacao'
 import { listarHorariosDoDia } from '../queries/agenda-publica'
@@ -80,12 +79,9 @@ export async function prepararContratacaoConsultoria(
   }
 
   // Contratar é ato de Cliente — a mesma regra que `contratarServico` já
-  // aplica. Profissional, Colaborador e Gestor são recusados aqui, no
-  // servidor, e não apenas no botão.
-  if (
-    ehGestorPlataforma(sessao) ||
-    tipoPrestadorDoPerfil(sessao.perfilTipo)
-  ) {
+  // aplica, pela mesma função. Profissional e Colaborador são recusados aqui,
+  // no servidor, e não apenas no botão.
+  if (!podeAgirComoCliente(sessao)) {
     return {
       situacao: 'perfil_nao_pode_contratar',
       mensagem: 'Apenas contas de Cliente podem contratar consultorias.',

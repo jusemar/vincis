@@ -281,6 +281,9 @@ html[data-theme="dark"] .admin-dashboard .glass-card *, html[data-theme="dark"] 
 .nav-btn.active { color: hsl(var(--primary)); background: hsl(45 93% 47% / 0.12); }
 .nav-btn.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: hsl(var(--primary)); border-radius: 0 3px 3px 0; box-shadow: 0 0 8px hsl(var(--primary)); }
 .nav-label { opacity: 0; font-size: 13px; font-weight: 500; transition: opacity 0.2s 0.05s; overflow: hidden; width: 0; }
+/* Cabeçalho de um grupo da barra lateral. A linha marca a separação mesmo com a barra recolhida, quando o rótulo está oculto. */
+.nav-grupo { width: 100%; margin-top: 10px; padding: 12px 20px 4px; border-top: 1px solid hsl(var(--border)); }
+.nav-grupo .nav-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
 .nav-icon { flex-shrink: 0; }
 .sidebar-footer { width: 100%; border-top: 1px solid hsl(var(--border)); padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
 .sidebar-avatar { width: 32px; height: 32px; border-radius: 10px; background: hsl(var(--primary)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: hsl(var(--primary-foreground)); flex-shrink: 0; }

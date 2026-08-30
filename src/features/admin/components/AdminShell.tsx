@@ -9,6 +9,7 @@ import { TelaCarregandoEspaco } from "@/components/shared/TelaCarregandoEspaco";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/features/usuarios";
 import { ehGestorPlataforma } from "@/features/usuarios/lib/gestor-plataforma";
+import { tipoPrestadorDoPerfil } from "@/features/usuarios/lib/tipos-pessoa";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 import { MobileAdminNavigation } from "./MobileAdminNavigation";
@@ -35,11 +36,22 @@ export function AdminShell({
   const { theme } = useTheme();
   const { estaAutenticado, estaCarregando, erroSessao, refreshSession, usuario } =
     useAuth();
-  // Quem vê os recursos exclusivos é decidido pelo perfil da sessão — a mesma
+  // Quem vê o grupo "Gestão da Plataforma" é decidido pela sessão — a mesma
   // regra que o middleware e as guardas de servidor aplicam —, nunca pela URL
   // aberta. Esconder menu não autoriza nada; o que este valor faz é impedir que
   // a barra ofereça uma porta que o servidor vai fechar.
   const ehGestor = ehGestorPlataforma(usuario);
+  /*
+    Há operação profissional nesta conta?
+
+    É o que decide se o menu do painel — Clientes, Agenda, Atendimentos — tem
+    para onde levar. A pergunta é sobre o que a pessoa **exerce**, nunca sobre
+    o cargo: o Gestor que também é Profissional vê o painel inteiro, e uma
+    conta sem cadastro de prestador não vê itens que abririam telas vazias.
+  */
+  const ehPrestador = usuario
+    ? tipoPrestadorDoPerfil(usuario.perfilTipo) !== null
+    : false;
 
   useEffect(() => {
     // Sem sessão e sem erro de conferência: a pessoa realmente não está
@@ -103,17 +115,18 @@ export function AdminShell({
           nomeUsuario={usuario?.nome ?? "Profissional"}
           reputacao={reputacao}
           ehGestor={ehGestor}
+          ehPrestador={ehPrestador}
         />
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader ocultarPerfil={ehGestor} />
+        <AdminHeader ocultarPerfil={!ehPrestador} />
 
         <main className="flex-1 overflow-y-auto p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6">
           {children}
         </main>
       </div>
-      <MobileAdminNavigation ehGestor={ehGestor} />
+      <MobileAdminNavigation ehGestor={ehGestor} ehPrestador={ehPrestador} />
     </div>
   );
 }

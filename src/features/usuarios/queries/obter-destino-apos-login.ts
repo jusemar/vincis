@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
-import { ehGestorPlataforma } from '../lib/gestor-plataforma'
 import {
   ROTA_CADASTRO_PRESTADOR,
   type TipoPrestador,
@@ -9,13 +8,27 @@ import {
 import { prestadorHabilitado, tipoPrestadorDoPerfil } from '../lib/prestador'
 import { contaVerificada } from '../lib/verificacao-conta'
 import type { PerfilTipo } from '../types'
-import { buscarPerfilPrincipalUsuario } from './buscar-perfil-principal-usuario'
+import { buscarCapacidadesUsuario } from './buscar-perfil-principal-usuario'
 
 export type AcessoUsuario = {
+  /** O que a pessoa exerce: prestador ou cliente. Nunca `gestor_vincis`. */
   perfil: PerfilTipo
-  /** Tipo de prestador da pessoa; `null` para cliente e gestor da Vincis. */
+  /**
+   * Administra a plataforma. É uma capacidade **somada** ao perfil, não um
+   * substituto dele: o Gestor continua sendo Profissional, dono do próprio
+   * escritório e Cliente quando o fluxo permitir.
+   */
+  ehGestor: boolean
+  /** Tipo de prestador da pessoa; `null` para quem não presta serviço. */
   tipoPrestador: TipoPrestador | null
+  /** Onde a pessoa cai ao entrar. Não é a única área que ela pode abrir. */
   destino: string
+  /**
+   * Áreas protegidas que esta conta pode abrir. O destino é a primeira; o
+   * Gestor acumula `/admin` (a Gestão da Plataforma vive lá) e `/cliente`
+   * (administrar a Vincis não tira dele o direito de contratar).
+   */
+  areasPermitidas: string[]
   /** Situação do cadastro de prestador, quando existir. */
   statusProfissional: string | null
   /** O cadastro de prestador está completo e habilitado a operar. */
@@ -27,12 +40,17 @@ export type AcessoUsuario = {
  * vai — o middleware, as páginas e a sessão do servidor consultam esta função
  * em vez de repetir a regra.
  *
- * - Gestor Vincis          → /admin (área administrativa unificada)
  * - Profissional habilitado → /admin
  * - Profissional pendente   → /cadastro-profissional
  * - Colaborador habilitado  → /admin
  * - Colaborador pendente    → /cadastro-colaborador
- * - Cliente                 → home (o portal do cliente ainda não existe)
+ * - Cliente                 → /cliente
+ *
+ * Ser Gestor da Plataforma **não muda** nenhuma dessas linhas: ela não é uma
+ * sexta persona, é uma permissão que se soma. Um Gestor que também é
+ * Profissional cai no painel dele; um Gestor sem cadastro de prestador cai em
+ * `/admin`, porque é lá que a Gestão da Plataforma vive. Em qualquer dos casos
+ * `areasPermitidas` guarda o que mais aquela conta alcança.
  */
 export async function resolverAcessoUsuario(
   usuarioId: string,
@@ -51,29 +69,34 @@ export async function resolverAcessoUsuario(
   if (!usuario || usuario.status !== 'ativo' || !contaVerificada(usuario))
     return null
 
-  const perfil = await buscarPerfilPrincipalUsuario(usuarioId)
-  if (ehGestorPlataforma(perfil)) {
-    return {
-      perfil,
-      tipoPrestador: null,
-      destino: '/admin',
-      statusProfissional: null,
-      habilitado: false,
-    }
-  }
+  const { perfilOperacional: perfil, ehGestor } =
+    await buscarCapacidadesUsuario(usuarioId)
+
+  /**
+   * O Gestor alcança o painel e a área do Cliente além do próprio destino.
+   * Esconder isso do middleware faria a Gestão da Plataforma ficar inacessível
+   * para um Gestor cujo cadastro de prestador ainda estivesse em análise.
+   */
+  const areasDoGestor = ehGestor ? ['/admin', '/cliente'] : []
+  const montar = (acesso: Omit<AcessoUsuario, 'areasPermitidas'>) => ({
+    ...acesso,
+    areasPermitidas: [...new Set([acesso.destino, ...areasDoGestor])],
+  })
 
   const tipoPrestador = tipoPrestadorDoPerfil(perfil)
 
-  // Cliente tem área própria, separada do painel do prestador. Quem não é
-  // prestador nem gestor entra por aqui — nunca no `/admin`.
+  // Cliente tem área própria, separada do painel do prestador. Quem não presta
+  // serviço entra por lá — a não ser que administre a plataforma, e aí o
+  // destino é o painel, onde a Gestão vive.
   if (!tipoPrestador) {
-    return {
+    return montar({
       perfil,
+      ehGestor,
       tipoPrestador: null,
-      destino: '/cliente',
+      destino: ehGestor ? '/admin' : '/cliente',
       statusProfissional: null,
       habilitado: false,
-    }
+    })
   }
 
   const [cadastro] = await db
@@ -90,13 +113,17 @@ export async function resolverAcessoUsuario(
   const habilitado =
     cadastro?.tipoPrestador === tipoPrestador && prestadorHabilitado(cadastro)
 
-  return {
+  return montar({
     perfil,
+    ehGestor,
     tipoPrestador,
+    // Cadastro pendente leva ao cadastro, inclusive para o Gestor: ele precisa
+    // conseguir completá-lo para atuar como profissional. O acesso à Gestão da
+    // Plataforma não se perde por isso — está em `areasPermitidas`.
     destino: habilitado ? '/admin' : ROTA_CADASTRO_PRESTADOR[tipoPrestador],
     statusProfissional: cadastro?.statusAnalise ?? null,
     habilitado,
-  }
+  })
 }
 
 export async function obterDestinoAposLogin(usuarioId: string) {

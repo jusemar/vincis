@@ -47,5 +47,6 @@ export async function obterSessaoServidor(): Promise<DadosUsuarioAutenticado | n
     whatsapp: usuario.whatsapp,
     status: usuario.status,
     perfilTipo: acesso.perfil,
+    ehGestor: acesso.ehGestor,
   }
 }

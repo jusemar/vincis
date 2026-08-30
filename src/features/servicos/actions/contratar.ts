@@ -8,8 +8,7 @@ import { contratacoesServico, servicos } from '@/db/schema'
 import { garantirClienteNaCarteira } from '@/features/clientes/lib/garantir-cliente-na-carteira'
 import { garantirAtendimentoDaContratacao } from '@/features/atendimentos/lib/criar-atendimento-da-contratacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
-import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
-import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
+import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import type { ModeloPreco } from '../schemas/servico'
 
 const ContratarSchema = z.object({
@@ -55,11 +54,9 @@ export async function contratarServico(entrada: unknown) {
     }
   }
 
-  // Contratar é ato de Cliente. Prestadores e Gestor não se passam por cliente.
-  if (
-    ehGestorPlataforma(sessao) ||
-    tipoPrestadorDoPerfil(sessao.perfilTipo)
-  ) {
+  // Contratar é ato de Cliente: quem presta serviço não se passa por cliente.
+  // A única exceção é o Gestor da Plataforma, e ela mora em `capacidades.ts`.
+  if (!podeAgirComoCliente(sessao)) {
     return {
       sucesso: false as const,
       mensagem: 'Apenas contas de Cliente podem contratar serviços.',

@@ -12,10 +12,9 @@ import { obterPrazoOportunidadeHoras } from '@/features/configuracoes/queries/ob
 import { resumirTexto } from '@/features/notificacoes/lib/emitir'
 import type { AnexoEnviado } from '@/lib/anexos-privados'
 import { SEM_AUTORIZACAO_COM_DADOS } from '@/features/usuarios/constants/autorizacao'
-import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
-import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
+import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import type { CategoriaOportunidade } from '../constants/oportunidade'
 import { enviarAnexoDaOportunidade, validarAnexosDaOportunidade } from '../lib/arquivo-oportunidade'
 import {
@@ -82,10 +81,8 @@ export async function criarOportunidade(formData: FormData) {
     }
   }
 
-  if (
-    ehGestorPlataforma(sessao) ||
-    tipoPrestadorDoPerfil(sessao.perfilTipo)
-  ) {
+  // Pedir orçamento é ato de Cliente, pela mesma regra de contratar.
+  if (!podeAgirComoCliente(sessao)) {
     return {
       sucesso: false as const,
       mensagem: 'Apenas contas de Cliente podem solicitar orçamentos.',

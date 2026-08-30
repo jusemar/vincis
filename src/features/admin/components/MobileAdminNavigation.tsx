@@ -14,6 +14,7 @@ import {
   Menu,
   Star,
   BadgeDollarSign,
+  Gauge,
   Target,
   Ticket,
   User,
@@ -21,7 +22,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from 'lucide-react'
-import { recursosPermitidos, ROTA_ADMIN } from '../constants/recursos'
+import { recursosPermitidos } from '../constants/recursos'
 import {
   Drawer,
   DrawerContent,
@@ -56,6 +57,7 @@ const DEMAIS = [
  * consulta — é isso que impede o menu de divergir entre desktop e mobile.
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
+  plataforma: Gauge,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
@@ -68,12 +70,15 @@ function destino(id: string) {
 
 export function MobileAdminNavigation({
   ehGestor = false,
+  ehPrestador = true,
 }: {
   /**
    * A sessão é do Gestor da Plataforma — resolvido pelo `AdminShell` a partir
    * do perfil autenticado, o mesmo valor que a barra lateral recebe.
    */
   ehGestor?: boolean
+  /** A conta exerce operação profissional. Ver `AdminSidebar`. */
+  ehPrestador?: boolean
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -81,8 +86,16 @@ export function MobileAdminNavigation({
   const [maisAberto, setMaisAberto] = useState(false)
   const paginaNoMais = DEMAIS.some(({ id }) => id === paginaAtual)
 
-  if (ehGestor) {
-    const recursos = recursosPermitidos({ ehGestor })
+  // Os recursos da plataforma entram no mesmo lugar em que as demais áreas do
+  // painel já moram: a gaveta "Mais". A barra inferior tem cinco colunas e é
+  // a navegação do dia a dia — empurrar cinco itens de administração para
+  // dentro dela trocaria o menu do painel pelo da Gestão, que é justamente o
+  // que não se quer.
+  const recursos = ehGestor ? recursosPermitidos({ ehGestor }) : []
+
+  // Sem operação profissional, a barra do painel levaria a telas vazias: a
+  // navegação vira a da Gestão da Plataforma, com o Início ao lado.
+  if (!ehPrestador && recursos.length > 0) {
     return (
       <nav
         aria-label="Navegação da Gestão"
@@ -95,9 +108,9 @@ export function MobileAdminNavigation({
           }}
         >
           <Link
-            href={ROTA_ADMIN}
+            href="/admin"
             className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors ${
-              pathname === ROTA_ADMIN
+              pathname === '/admin'
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground'
             }`}
@@ -191,6 +204,33 @@ export function MobileAdminNavigation({
                 </Link>
               )
             })}
+
+            {recursos.length > 0 ? (
+              <>
+                <p className="col-span-2 pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Gestão da Plataforma
+                </p>
+                {recursos.map((recurso) => {
+                  const Icone = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard
+                  const ativo =
+                    pathname === recurso.rota ||
+                    pathname.startsWith(`${recurso.rota}/`)
+                  return (
+                    <Link
+                      key={recurso.id}
+                      href={recurso.rota}
+                      onClick={() => setMaisAberto(false)}
+                      className={`flex items-center gap-3 rounded-xl border p-4 text-sm font-medium transition-colors hover:bg-accent ${
+                        ativo ? 'border-primary bg-primary/10' : 'bg-card'
+                      }`}
+                    >
+                      <Icone className="size-5 text-primary" />
+                      {recurso.rotulo}
+                    </Link>
+                  )
+                })}
+              </>
+            ) : null}
           </nav>
         </DrawerContent>
       </Drawer>

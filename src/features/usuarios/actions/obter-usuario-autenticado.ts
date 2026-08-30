@@ -3,7 +3,7 @@ import { db } from '@/db/connection'
 import { usuarios } from '@/db/schema'
 import { buscarSessaoAtiva } from '../queries/buscar-sessao-ativa'
 import type { ResultadoPadrao, DadosUsuarioAutenticado } from '../types'
-import { buscarPerfilPrincipalUsuario } from '../queries/buscar-perfil-principal-usuario'
+import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 
 export type ResultadoUsuarioAutenticado = ResultadoPadrao & {
   usuario?: DadosUsuarioAutenticado
@@ -45,7 +45,8 @@ export async function obterUsuarioAutenticado(token: string): Promise<ResultadoU
     }
   }
 
-  const perfilTipo = await buscarPerfilPrincipalUsuario(usuario.id)
+  const { perfilOperacional: perfilTipo, ehGestor } =
+    await buscarCapacidadesUsuario(usuario.id)
 
   return {
     sucesso: true,
@@ -57,6 +58,7 @@ export async function obterUsuarioAutenticado(token: string): Promise<ResultadoU
       whatsapp: usuario.whatsapp,
       status: usuario.status as DadosUsuarioAutenticado['status'],
       perfilTipo,
+      ehGestor,
     },
   }
 }

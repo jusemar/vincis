@@ -65,9 +65,17 @@ import { entrarComo, sairDaSessao } from './setup/sessao'
 const SUFIXO = '@consultoria-contratacao.teste'
 const FUSO = 'America/Sao_Paulo'
 
-type Chave = 'profissional' | 'cliente' | 'clientePendente' | 'outroProfissional'
+type Chave =
+  | 'profissional'
+  | 'cliente'
+  | 'clientePendente'
+  | 'outroProfissional'
+  | 'gestorProfissional'
 
-const DEFINICOES: Record<Chave, { perfil: string; prestador?: 'profissional' }> = {
+const DEFINICOES: Record<
+  Chave,
+  { perfil: string; prestador?: 'profissional'; perfisExtras?: string[] }
+> = {
   // Dono da agenda contratada.
   profissional: { perfil: 'profissional', prestador: 'profissional' },
   // Quem pode contratar.
@@ -76,6 +84,13 @@ const DEFINICOES: Record<Chave, { perfil: string; prestador?: 'profissional' }> 
   clientePendente: { perfil: 'cliente' },
   // Profissional autenticado tentando contratar como se fosse Cliente.
   outroProfissional: { perfil: 'profissional', prestador: 'profissional' },
+  // Gestor da Plataforma que também presta serviço: a conta com que a Vincis
+  // é testada de ponta a ponta.
+  gestorProfissional: {
+    perfil: 'profissional',
+    prestador: 'profissional',
+    perfisExtras: ['gestor_vincis'],
+  },
 }
 
 const CONFIGURACAO = {
@@ -348,6 +363,21 @@ describe('preparar contratação — quem pode seguir', () => {
     })
     sairDaSessao()
     expect(resultado.situacao).toBe('perfil_nao_pode_contratar')
+  })
+
+  it('o Gestor da Plataforma contrata mesmo sendo Profissional', async () => {
+    // A restrição "prestador não se passa por cliente" continua valendo para
+    // todo prestador — menos para a conta que existe para operar e testar a
+    // plataforma inteira.
+    entrarComo(contas.gestorProfissional.token)
+    const resultado = await prepararContratacaoConsultoria({
+      prestadorId: contas.profissional.id,
+      data: dataAlvo,
+      inicio: primeiroHorario,
+      descricao: 'Gestor contratando uma consultoria.',
+    })
+    sairDaSessao()
+    expect(resultado.situacao).not.toBe('perfil_nao_pode_contratar')
   })
 
   it('o dono da agenda não contrata a própria consultoria', async () => {

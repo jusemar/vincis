@@ -70,6 +70,10 @@ export async function GET(request: NextRequest) {
           whatsapp: usuario.whatsapp,
           status: usuario.status,
           perfilTipo,
+          // A marca de Gestor viaja junto: é ela que o menu lê para exibir o
+          // grupo "Gestão da Plataforma". Continua sem autorizar nada — toda
+          // porta é fechada no servidor.
+          ehGestor: acesso.ehGestor,
           destino: acesso.destino,
         },
       },

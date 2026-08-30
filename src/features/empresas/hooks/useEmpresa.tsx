@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { TelaCarregandoEspaco } from '@/components/shared/TelaCarregandoEspaco'
 import { useAuth } from '@/features/usuarios'
-import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { ehPessoaProfissional } from '@/features/usuarios/lib/tipos-pessoa'
 import { obterContextoEmpresa } from '../actions/obter-contexto-empresa'
 import { telaDoEspaco } from '../lib/tela-do-espaco'
@@ -70,13 +69,10 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     setCarregando(false)
   }, [carregarContexto])
 
-  // Calculado fora do efeito de propósito: a dependência continua sendo o
-  // perfil (um booleano estável), e não o objeto de usuário inteiro, que muda
-  // de identidade a cada renovação de sessão e refaria a consulta à toa.
-  const ehGestor = ehGestorPlataforma(usuario)
-
   useEffect(() => {
-    if (estaCarregando || !estaAutenticado || !tokenSessao || ehGestor) return
+    // O Gestor da Plataforma passa por aqui como qualquer outra conta: ele pode
+    // ter escritório, e é o servidor que diz em que estado ele está.
+    if (estaCarregando || !estaAutenticado || !tokenSessao) return
 
     let cancelado = false
 
@@ -102,7 +98,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelado = true
     }
-  }, [ehGestor, estaAutenticado, estaCarregando, pathname, tokenSessao])
+  }, [estaAutenticado, estaCarregando, pathname, tokenSessao])
 
   function concluirOnboarding(novoContexto: ContextoEmpresa) {
     setContexto(novoContexto)
@@ -124,7 +120,6 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     naAreaAdministrativa: estaNaAreaAdministrativa,
     autenticacaoCarregando: estaCarregando,
     autenticado: estaAutenticado,
-    ehGestor,
     contextoCarregando: carregando,
     contextoAtualizado: tokenContexto === tokenSessao,
     perfilProfissional,

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, LayoutDashboard, LogOut, User } from 'lucide-react'
-import { ehGestorPlataforma } from '../lib/gestor-plataforma'
 import { useAuth } from '../hooks/useAuth'
 import { tipoPrestadorDoPerfil } from '../lib/tipos-pessoa'
 import type { PerfilTipo } from '../types'
@@ -17,24 +16,29 @@ function iniciais(nome: string) {
 }
 
 /**
- * Para onde cada perfil vai a partir do site público.
+ * Para onde cada conta vai a partir do site público.
  *
- * O Cliente tem "Área do Cliente"; prestador e Gestor mantêm os nomes das
- * próprias áreas. Nenhum destes links autoriza coisa alguma — o middleware
- * continua resolvendo o destino real de cada conta, e um prestador com cadastro
- * pendente que clicar em "Meu painel" é levado ao cadastro, como sempre foi.
+ * A pergunta é sobre o que a pessoa **exerce**: quem presta serviço vai para o
+ * painel, quem não presta vai para a Área do Cliente. Administrar a plataforma
+ * não muda esse destino — o Gestor que também é Profissional tem painel como
+ * qualquer prestador, e o Gestor que ainda não é prestador entra no painel
+ * porque é lá que a Gestão da Plataforma vive.
+ *
+ * Nenhum destes links autoriza coisa alguma: o middleware continua resolvendo
+ * o destino real de cada conta, e um prestador com cadastro pendente que
+ * clicar em "Meu painel" é levado ao cadastro, como sempre foi.
  */
-function areasDoPerfil(perfil: PerfilTipo) {
-  if (ehGestorPlataforma(perfil)) {
-    return {
-      painel: { rotulo: 'Gestão Vincis', href: '/admin' },
-      conta: { rotulo: 'Minha conta', href: '/admin' },
-    }
-  }
+function areasDoPerfil(perfil: PerfilTipo, ehGestor: boolean) {
   if (tipoPrestadorDoPerfil(perfil)) {
     return {
       painel: { rotulo: 'Meu painel', href: '/admin' },
       conta: { rotulo: 'Minha conta', href: '/admin?pagina=profile' },
+    }
+  }
+  if (ehGestor) {
+    return {
+      painel: { rotulo: 'Gestão Vincis', href: '/admin' },
+      conta: { rotulo: 'Minha conta', href: '/admin' },
     }
   }
   return {
@@ -69,7 +73,7 @@ export function MenuUsuarioPublico({
 
   if (!usuario) return null
 
-  const areas = areasDoPerfil(usuario.perfilTipo)
+  const areas = areasDoPerfil(usuario.perfilTipo, usuario.ehGestor)
 
   async function sair() {
     if (saindo) return

@@ -2,7 +2,7 @@ import { LoginSchema, type LoginDTO } from '../schemas/login'
 import { buscarUsuarioPorLogin } from '../queries/buscar-usuario-por-login'
 import { compararHash } from '../lib/hash-senha'
 import { contaVerificada } from '../lib/verificacao-conta'
-import { buscarPerfilPrincipalUsuario } from '../queries/buscar-perfil-principal-usuario'
+import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 import type { ResultadoLogin, DadosUsuarioAutenticado } from '../types'
 
 export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin> {
@@ -56,7 +56,8 @@ export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin
     }
   }
 
-  const perfilTipo = await buscarPerfilPrincipalUsuario(usuario.id)
+  const { perfilOperacional: perfilTipo, ehGestor } =
+    await buscarCapacidadesUsuario(usuario.id)
 
   const usuarioAutenticado: DadosUsuarioAutenticado = {
     id: usuario.id,
@@ -65,6 +66,7 @@ export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin
     whatsapp: usuario.whatsapp,
     status: usuario.status as DadosUsuarioAutenticado['status'],
     perfilTipo,
+    ehGestor,
   }
 
   return {

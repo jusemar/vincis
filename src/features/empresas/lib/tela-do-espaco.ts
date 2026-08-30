@@ -6,11 +6,16 @@ import type { EstadoContextoEmpresa } from '../types'
  * ## Por que isto é uma função pura, e não um `if` dentro do provider
  *
  * Porque foi ali que nasceu um travamento: o `EmpresaProvider` esperava pelo
- * contexto de empresa de **todo mundo**, mas só carregava o contexto de quem
- * tinha empresa. O Gestor da Plataforma não tem escritório — a busca era
- * pulada de propósito para ele —, e ainda assim a tela ficava aguardando um
- * resultado que ninguém tinha pedido. Resultado: "Preparando seu espaço de
- * trabalho..." para sempre, em qualquer rota de `/admin`.
+ * contexto de empresa de **todo mundo**, mas pulava a busca desse contexto
+ * para o Gestor da Plataforma — a tela ficava aguardando um resultado que
+ * ninguém tinha pedido, e "Preparando seu espaço de trabalho..." não terminava
+ * nunca.
+ *
+ * A pulada foi embora junto com a premissa que a justificava: o Gestor é um
+ * usuário completo, pode ter escritório e carrega contexto como qualquer
+ * outro. Quem não tem escritório — Colaborador, ou Gestor ainda sem cadastro
+ * de prestador — recebe um **estado final** vindo do servidor, e não uma
+ * espera.
  *
  * A regra saiu de dentro da renderização para poder ser lida, testada e
  * conferida caso a caso. E ela tem uma invariante que o código anterior não
@@ -26,8 +31,6 @@ export type SituacaoDoEspaco = {
   /** A sessão ainda está sendo lida no navegador. */
   autenticacaoCarregando: boolean
   autenticado: boolean
-  /** Gestor da Plataforma: administra a Vincis, não um escritório. */
-  ehGestor: boolean
   /** Uma consulta de contexto está em andamento agora. */
   contextoCarregando: boolean
   /** O contexto em memória corresponde à sessão atual. */
@@ -41,6 +44,7 @@ const ESTADOS_OPERACIONAIS: EstadoContextoEmpresa[] = [
   'ativo',
   'perfil_profissional',
   'colaborador',
+  'gestor_plataforma',
 ]
 
 export function telaDoEspaco(situacao: SituacaoDoEspaco): TelaDoEspaco {
@@ -55,11 +59,6 @@ export function telaDoEspaco(situacao: SituacaoDoEspaco): TelaDoEspaco {
   // Sem sessão quem decide é a moldura do painel, que redireciona. Bloquear
   // aqui só trocaria um redirecionamento por uma tela parada.
   if (!situacao.autenticado) return 'pronto'
-
-  // O Gestor não tem escritório e o contexto dele nunca é buscado. Esperar por
-  // esse contexto era esperar para sempre — é exatamente o travamento que esta
-  // função existe para não deixar acontecer de novo.
-  if (situacao.ehGestor) return 'pronto'
 
   if (situacao.contextoCarregando || !situacao.contextoAtualizado) {
     return 'carregando'

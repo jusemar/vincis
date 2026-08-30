@@ -26,6 +26,13 @@ export type EstadoContextoEmpresa =
    * empresa nem em uma tela de erro por "falta de tenant".
    */
   | 'colaborador'
+  /**
+   * Administra a plataforma e ainda não tem escritório nem cadastro de
+   * prestador. Estado final e válido: o painel abre com a Gestão da
+   * Plataforma, e o onboarding de escritório — que exige cadastro de
+   * Profissional aprovado — não é oferecido a quem não pode concluí-lo.
+   */
+  | 'gestor_plataforma'
   | 'sem_tenant'
   | 'selecao_necessaria'
   | 'nao_autenticado'
