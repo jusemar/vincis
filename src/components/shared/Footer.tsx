@@ -19,7 +19,7 @@ const footerLinks = {
     { name: 'Assistência Jurídica', href: '#' },
     { name: 'Serviços Avulsos', href: '#' },
     { name: 'Diretório de Advogados', href: '#' },
-    { name: 'Planos e Preços', href: '#' },
+    { name: 'Planos e Preços', href: '/precos' },
   ],
   empresa: [
     { name: 'Sobre Nós', href: '#' },
