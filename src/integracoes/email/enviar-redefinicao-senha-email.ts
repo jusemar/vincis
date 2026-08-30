@@ -53,9 +53,14 @@ export async function enviarEmailRedefinicaoSenha({
 }: DadosEmailRedefinicao): Promise<ResultadoEnvioEmail> {
   const apiKey = process.env.RESEND_API_KEY
   const remetente = process.env.EMAIL_FROM
+  const appUrl = process.env.APP_URL
 
-  if (!apiKey || !remetente || !process.env.APP_URL) {
-    console.error('[EMAIL_REDEFINICAO_SENHA] Configuração de e-mail incompleta')
+  if (!apiKey || !remetente || !appUrl) {
+    console.error('[EMAIL_REDEFINICAO_SENHA] Configuração de e-mail incompleta', {
+      appUrlConfigurada: Boolean(appUrl),
+      resendConfigurada: Boolean(apiKey),
+      emailFromConfigurado: Boolean(remetente),
+    })
     return { sucesso: false, motivo: 'configuracao' }
   }
 
