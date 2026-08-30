@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
-import { PERFIL_GESTOR_VINCIS } from '../constants/perfis'
+import { ehGestorPlataforma } from '../lib/gestor-plataforma'
 import {
   ROTA_CADASTRO_PRESTADOR,
   type TipoPrestador,
@@ -27,7 +27,7 @@ export type AcessoUsuario = {
  * vai — o middleware, as páginas e a sessão do servidor consultam esta função
  * em vez de repetir a regra.
  *
- * - Gestor Vincis          → /gestao
+ * - Gestor Vincis          → /admin (área administrativa unificada)
  * - Profissional habilitado → /admin
  * - Profissional pendente   → /cadastro-profissional
  * - Colaborador habilitado  → /admin
@@ -52,11 +52,11 @@ export async function resolverAcessoUsuario(
     return null
 
   const perfil = await buscarPerfilPrincipalUsuario(usuarioId)
-  if (perfil === PERFIL_GESTOR_VINCIS) {
+  if (ehGestorPlataforma(perfil)) {
     return {
       perfil,
       tipoPrestador: null,
-      destino: '/gestao',
+      destino: '/admin',
       statusProfissional: null,
       habilitado: false,
     }

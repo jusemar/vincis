@@ -7,25 +7,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { RevenueRangeId } from "../../lib/pricing";
-import { revenueRanges } from "../../lib/pricing";
+import type { FaixaPrecificacao } from "@/features/precificacao/types/precificacao";
 
 export function CampoFaturamento({
+  faixas,
   value,
   onChange,
 }: {
-  value: RevenueRangeId;
-  onChange: (v: RevenueRangeId) => void;
+  faixas: FaixaPrecificacao[];
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as RevenueRangeId)}>
+    <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full" aria-label="Faturamento mensal">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {revenueRanges.map((r) => (
-          <SelectItem key={r.id} value={r.id}>
-            {r.label}
+        {faixas.map((r) => (
+          <SelectItem key={r.codigo} value={r.codigo}>
+            {r.rotulo}
           </SelectItem>
         ))}
       </SelectContent>

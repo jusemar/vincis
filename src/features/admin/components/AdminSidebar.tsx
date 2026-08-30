@@ -14,9 +14,14 @@ import {
   Headphones,
   Target,
   UsersRound,
+  Megaphone,
+  CalendarClock,
+  Tags,
+  type LucideIcon,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { recursosPermitidos, ROTA_ADMIN } from "../constants/recursos";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -31,6 +36,14 @@ interface SidebarProps {
    * ou perfil sem reputação) cai no traço, nunca num número inventado.
    */
   reputacao?: { media: number | null; total: number };
+  /**
+   * A sessão é do Gestor da Plataforma.
+   *
+   * Vem do perfil autenticado, resolvido pelo `AdminShell` — não da rota
+   * aberta. É o mesmo valor que decide o menu mobile, para que um item nunca
+   * apareça num e falte no outro.
+   */
+  ehGestor?: boolean;
 }
 
 /**
@@ -57,14 +70,36 @@ const navItems = [
   { id: "achievements", label: "Conquistas", icon: Award },
 ];
 
+/**
+ * Ícone de cada recurso administrativo que é rota própria.
+ *
+ * A lista de recursos e a regra de quem os vê ficam no registro central
+ * (`constants/recursos`); aqui mora só o desenho. Recurso novo sem ícone cai
+ * num padrão em vez de sumir do menu.
+ */
+const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
+  usuarios: Users,
+  comunicados: Megaphone,
+  consultorias: CalendarClock,
+  precificacao: Tags,
+};
+
 export default function AdminSidebar({
   isCollapsed,
   onToggle,
   nomeUsuario,
   reputacao,
+  ehGestor = false,
 }: SidebarProps) {
   const searchParams = useSearchParams();
-  const currentPage = searchParams.get("pagina") || "dashboard";
+  const pathname = usePathname();
+  // Fora da raiz do painel a pessoa está numa tela de Gestão: nenhum item de
+  // `?pagina=` pode ficar aceso, ou "Dashboard" marcaria presença onde não está.
+  const noPainel = pathname === ROTA_ADMIN;
+  const currentPage = noPainel ? searchParams.get("pagina") || "dashboard" : "";
+  // Uma só lista, filtrada pela autorização real — e não pela tela em que a
+  // pessoa está. O menu mobile lê exatamente esta função.
+  const recursos = recursosPermitidos({ ehGestor });
 
   return (
     <aside className={`sidebar ${isCollapsed ? "" : "expanded"}`}>
@@ -84,47 +119,86 @@ export default function AdminSidebar({
           gap: 4,
         }}
       >
-        {navItems.map((item) => {
-          const isActive = currentPage === item.id;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.id}
-              href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
-              style={{ textDecoration: "none" }}
-            >
+        {ehGestor ? (
+          <>
+            <Link href={ROTA_ADMIN} style={{ textDecoration: "none" }}>
               <motion.button
-                className={`nav-btn ${isActive ? "active" : ""}`}
+                className={`nav-btn ${noPainel ? "active" : ""}`}
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onToggle}
               >
-                <Icon size={18} className="nav-icon" />
-                <span className="nav-label">{item.label}</span>
-                {item.badge && (
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      height: 20,
-                      minWidth: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "999px",
-                      background: "hsl(var(--primary))",
-                      color: "hsl(var(--primary-foreground))",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: "0 6px",
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
+                <LayoutDashboard size={18} className="nav-icon" />
+                <span className="nav-label">Início</span>
               </motion.button>
             </Link>
-          );
-        })}
+            {recursos.map((recurso) => {
+              const Icon = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard;
+              const isActive =
+                pathname === recurso.rota ||
+                pathname.startsWith(`${recurso.rota}/`);
+              return (
+                <Link
+                  key={recurso.id}
+                  href={recurso.rota}
+                  style={{ textDecoration: "none" }}
+                >
+                  <motion.button
+                    className={`nav-btn ${isActive ? "active" : ""}`}
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onToggle}
+                  >
+                    <Icon size={18} className="nav-icon" />
+                    <span className="nav-label">{recurso.rotulo}</span>
+                  </motion.button>
+                </Link>
+              );
+            })}
+          </>
+        ) : (
+          navItems.map((item) => {
+              const isActive = currentPage === item.id;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.id}
+                  href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <motion.button
+                    className={`nav-btn ${isActive ? "active" : ""}`}
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onToggle}
+                  >
+                    <Icon size={18} className="nav-icon" />
+                    <span className="nav-label">{item.label}</span>
+                    {item.badge && (
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          height: 20,
+                          minWidth: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "999px",
+                          background: "hsl(var(--primary))",
+                          color: "hsl(var(--primary-foreground))",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "0 6px",
+                        }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </motion.button>
+                </Link>
+              );
+            })
+        )}
       </nav>
 
       {/* Settings */}
@@ -146,13 +220,21 @@ export default function AdminSidebar({
         </div>
         <div className="nav-label" style={{ opacity: 1, width: "auto" }}>
           <p style={{ fontSize: 12, fontWeight: 600 }}>{nomeUsuario}</p>
-          <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
-            ★{' '}
-            {reputacao?.media != null
-              ? reputacao.media.toFixed(1)
-              : '—'}{' '}
-            · {reputacao?.total ?? 0} avaliações
-          </p>
+          {/* Reputação é coisa de quem presta serviço: na Gestão não há nota a
+              exibir, e um "★ — · 0 avaliações" ali seria um dado inventado. */}
+          {ehGestor ? (
+            <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
+              Gestão da plataforma
+            </p>
+          ) : (
+            <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
+              ★{' '}
+              {reputacao?.media != null
+                ? reputacao.media.toFixed(1)
+                : '—'}{' '}
+              · {reputacao?.total ?? 0} avaliações
+            </p>
+          )}
         </div>
       </div>
     </aside>

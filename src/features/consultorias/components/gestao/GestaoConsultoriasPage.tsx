@@ -1,10 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import {
   AlertTriangle,
-  ArrowLeft,
   CalendarDays,
   Search,
   Video,
@@ -122,16 +120,9 @@ export function GestaoConsultoriasPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <Link
-            href="/gestao"
-            className="mb-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden />
-            Gestão
-          </Link>
           <h1 className="text-2xl font-bold">Consultorias</h1>
           <p className="text-sm text-muted-foreground">
             Acompanhamento operacional. {gestorNome}, esta tela é somente de
@@ -347,7 +338,7 @@ export function GestaoConsultoriasPage({
       {detalhe ? (
         <DetalheDaConsultoria dados={detalhe} aoFechar={() => setDetalhe(null)} />
       ) : null}
-    </main>
+    </div>
   )
 }
 

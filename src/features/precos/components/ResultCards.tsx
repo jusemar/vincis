@@ -4,84 +4,92 @@ import { useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { Answers, OfferId, OfferPrice } from "../lib/pricing";
-import { currency, periods, priceForOffer } from "../lib/pricing";
+import { rotuloDaLinha } from "@/features/precificacao/lib/descricao";
+import { formatarCentavos, reaisDeCentavos } from "@/features/precificacao/lib/formato";
+import { calcularPreco } from "@/features/precificacao/lib/motor";
+import type {
+  RespostasPrecificacao,
+  ResultadoPrecificacao,
+  ServicoPrecificacao,
+  TabelaPrecificacao,
+} from "@/features/precificacao/types/precificacao";
+import type { ServicoTab } from "../types";
 import { AnimatedPrice } from "./AnimatedPrice";
 
-interface OfferCopy {
-  name: string;
-  pitch: string;
-  highlight?: boolean;
+/**
+ * Os cards de preço.
+ *
+ * Nada é calculado aqui: nome, texto comercial, valores, prazos e economia do
+ * combo vêm do motor e da tabela. Antes o card do Pacote refazia a subtração da
+ * economia por conta própria — duas contas para o mesmo número, e a chance de
+ * uma delas mudar sozinha.
+ */
+
+/** Selo do card. É desenho da vitrine, e por isso continua na tela. */
+const SELO_DO_SERVICO: Record<string, string> = {
+  consultiva: "Acompanhamento mais próximo",
+  combo: "Economia no combo",
+};
+
+function PrecosPorPeriodo({ resultado }: { resultado: ResultadoPrecificacao }) {
+  return (
+    <div className="mt-4 space-y-2">
+      {resultado.periodos.map((p, indice) => {
+        const ultimo = indice === resultado.periodos.length - 1;
+        return (
+          <div
+            key={p.periodo}
+            className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+              ultimo ? "bg-primary/10" : "bg-muted/50"
+            }`}
+          >
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">{p.rotulo}</p>
+              {p.economiaMensalCentavos > 0 ? (
+                <p className="text-[11px] font-medium text-primary">
+                  Economize {formatarCentavos(p.economiaMensalCentavos)}/mês
+                </p>
+              ) : null}
+            </div>
+            <p className="flex items-baseline gap-1">
+              <span className="text-xs font-medium text-muted-foreground">R$</span>
+              <span className="text-xl font-bold tabular-nums text-foreground">
+                <AnimatedPrice value={reaisDeCentavos(p.mensalCentavos)} />
+              </span>
+              <span className="text-xs text-muted-foreground">/mês</span>
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-const offerCopy: Record<Exclude<OfferId, "combo">, OfferCopy> = {
-  padrao: {
-    name: "Contabilidade Padrão",
-    pitch: "Execução das rotinas contábeis, fiscais e trabalhistas da empresa com segurança, organização e pontualidade.",
-  },
-  consultiva: {
-    name: "Contabilidade Consultiva",
-    pitch: "Uma relação mais próxima com sua empresa, com acompanhamento, análises e orientação para apoiar decisões e crescimento.",
-    highlight: true,
-  },
-  juridico: {
-    name: "Assistência Jurídica",
-    pitch: "Consultas, contratos e suporte trabalhista e societário para proteger sua empresa no dia a dia.",
-  },
-};
-
-const comboCopy: OfferCopy = {
-  name: "Pacote Empresarial Completo",
-  pitch: "Contabilidade Consultiva somada à Assistência Jurídica para empresas que querem acompanhamento mais completo e segurança no dia a dia.",
-};
-
-function OfferCard({ price, copy }: { price: OfferPrice; copy: OfferCopy }) {
+function OfferCard({
+  servico,
+  resultado,
+}: {
+  servico: ServicoPrecificacao;
+  resultado: ResultadoPrecificacao;
+}) {
   const [open, setOpen] = useState(false);
+  const selo = SELO_DO_SERVICO[servico.codigo];
 
   return (
     <article
       className={`flex flex-col rounded-2xl border p-5 ${
-        copy.highlight ? "border-primary bg-card shadow-md" : "border-border bg-card"
+        servico.destaque ? "border-primary bg-card shadow-md" : "border-border bg-card"
       }`}
     >
-      {copy.highlight ? (
+      {servico.destaque && selo ? (
         <span className="mb-2 inline-block w-fit rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-          Acompanhamento mais próximo
+          {selo}
         </span>
       ) : null}
-      <h3 className="text-lg font-bold text-foreground">{copy.name}</h3>
-      <p className="mt-1 text-xs leading-snug text-muted-foreground">{copy.pitch}</p>
+      <h3 className="text-lg font-bold text-foreground">{servico.nome}</h3>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground">{servico.chamada}</p>
 
-      <div className="mt-4 space-y-2">
-        {periods.map((p) => {
-          const pp = price.periods.find((x) => x.period === p.id)!;
-          const isTwelve = p.id === "doze_meses";
-          return (
-            <div
-              key={p.id}
-              className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-                isTwelve ? "bg-primary/10" : "bg-muted/50"
-              }`}
-            >
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">{p.label}</p>
-                {pp.savingsVsMonthly > 0 ? (
-                  <p className="text-[11px] font-medium text-primary">
-                    Economize {currency(pp.savingsVsMonthly)}/mês
-                  </p>
-                ) : null}
-              </div>
-              <p className="flex items-baseline gap-1">
-                <span className="text-xs font-medium text-muted-foreground">R$</span>
-                <span className="text-xl font-bold tabular-nums text-foreground">
-                  <AnimatedPrice value={pp.monthlyEquivalent} />
-                </span>
-                <span className="text-xs text-muted-foreground">/mês</span>
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      <PrecosPorPeriodo resultado={resultado} />
 
       <Collapsible open={open} onOpenChange={setOpen} className="mt-3">
         <CollapsibleTrigger asChild>
@@ -95,91 +103,71 @@ function OfferCard({ price, copy }: { price: OfferPrice; copy: OfferCopy }) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <ul className="mt-3 space-y-1.5 rounded-lg bg-muted/50 p-3 text-xs">
-            {price.lines.map((l) => (
-              <li key={l.label} className="flex items-baseline justify-between gap-3">
-                <span className="text-muted-foreground">{l.label}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-foreground">
-                  {l.value < 0 ? "− " : ""}
-                  {currency(Math.abs(l.value))}
-                </span>
-              </li>
-            ))}
+            {resultado.linhas.map((l) => {
+              const rotulo = rotuloDaLinha(l, servico.grupoBase ?? "");
+              return (
+                <li key={rotulo} className="flex items-baseline justify-between gap-3">
+                  <span className="text-muted-foreground">{rotulo}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                    {l.valorCentavos < 0 ? "− " : ""}
+                    {formatarCentavos(Math.abs(l.valorCentavos))}
+                  </span>
+                </li>
+              );
+            })}
             <li className="flex items-baseline justify-between gap-3 border-t border-border pt-1.5 font-semibold text-foreground">
               <span>Total mensal</span>
-              <span className="tabular-nums">{currency(price.baseMonthly)}</span>
+              <span className="tabular-nums">{formatarCentavos(resultado.mensalCentavos)}</span>
             </li>
           </ul>
         </CollapsibleContent>
       </Collapsible>
 
-      <Button className="mt-4 w-full" variant={copy.highlight ? "default" : "secondary"}>
+      <Button className="mt-4 w-full" variant={servico.destaque ? "default" : "secondary"}>
         Contratar <ArrowRight className="size-4" />
       </Button>
     </article>
   );
 }
 
-function ComboCard({ answers }: { answers: Answers }) {
-  const combo = priceForOffer("combo", answers);
-  const consultiva = priceForOffer("consultiva", answers);
-  const juridico = priceForOffer("juridico", answers);
-  const separateMonthly = consultiva.baseMonthly + juridico.baseMonthly;
-  const savingsMonthly = separateMonthly - combo.baseMonthly;
+function ComboCard({
+  servico,
+  resultado,
+}: {
+  servico: ServicoPrecificacao;
+  resultado: ResultadoPrecificacao;
+}) {
+  const combo = resultado.combo;
+  if (!combo) return null;
 
   return (
     <article className="flex flex-col rounded-2xl border border-primary bg-card p-5 shadow-md">
       <span className="mb-2 inline-block w-fit rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-        Economia no combo
+        {SELO_DO_SERVICO[servico.codigo]}
       </span>
-      <h3 className="text-lg font-bold text-foreground">{comboCopy.name}</h3>
-      <p className="mt-1 text-xs leading-snug text-muted-foreground">{comboCopy.pitch}</p>
+      <h3 className="text-lg font-bold text-foreground">{servico.nome}</h3>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground">{servico.chamada}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-muted/50 px-3 py-2">
           <p className="text-muted-foreground">Separados</p>
           <p className="font-semibold text-foreground line-through decoration-muted-foreground/60">
-            {currency(separateMonthly)}/mês
+            {formatarCentavos(combo.separadoCentavos)}/mês
           </p>
         </div>
         <div className="rounded-lg bg-primary/10 px-3 py-2">
           <p className="text-primary">No combo</p>
-          <p className="font-semibold text-foreground">{currency(combo.baseMonthly)}/mês</p>
+          <p className="font-semibold text-foreground">
+            {formatarCentavos(resultado.mensalCentavos)}/mês
+          </p>
         </div>
       </div>
       <p className="mt-2 text-xs font-medium text-primary">
-        Economia de {currency(savingsMonthly)}/mês · {currency(savingsMonthly * 12)}/ano
+        Economia de {formatarCentavos(combo.economiaMensalCentavos)}/mês ·{" "}
+        {formatarCentavos(combo.economiaAnualCentavos)}/ano
       </p>
 
-      <div className="mt-4 space-y-2">
-        {periods.map((p) => {
-          const pp = combo.periods.find((x) => x.period === p.id)!;
-          const isTwelve = p.id === "doze_meses";
-          return (
-            <div
-              key={p.id}
-              className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-                isTwelve ? "bg-primary/10" : "bg-muted/50"
-              }`}
-            >
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">{p.label}</p>
-                {pp.savingsVsMonthly > 0 ? (
-                  <p className="text-[11px] font-medium text-primary">
-                    Economize {currency(pp.savingsVsMonthly)}/mês
-                  </p>
-                ) : null}
-              </div>
-              <p className="flex items-baseline gap-1">
-                <span className="text-xs font-medium text-muted-foreground">R$</span>
-                <span className="text-xl font-bold tabular-nums text-foreground">
-                  <AnimatedPrice value={pp.monthlyEquivalent} />
-                </span>
-                <span className="text-xs text-muted-foreground">/mês</span>
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      <PrecosPorPeriodo resultado={resultado} />
 
       <Button className="mt-4 w-full">
         Contratar pacote completo <ArrowRight className="size-4" />
@@ -188,37 +176,42 @@ function ComboCard({ answers }: { answers: Answers }) {
   );
 }
 
+/** Serviços exibidos em cada aba. A aba de contabilidade mostra os dois planos. */
+const SERVICOS_DA_ABA: Record<ServicoTab, string[]> = {
+  consultiva: ["padrao", "consultiva"],
+  juridico: ["juridico"],
+  combo: ["combo"],
+};
+
 export function ResultCards({
+  tabela,
   tab,
-  answers,
+  respostas,
 }: {
-  tab: "consultiva" | "juridico" | "combo";
-  answers: Answers;
+  tabela: TabelaPrecificacao;
+  tab: ServicoTab;
+  respostas: RespostasPrecificacao;
 }) {
-  if (tab === "juridico") {
-    const price = priceForOffer("juridico", answers);
-    return (
-      <div className="grid gap-4 sm:grid-cols-1">
-        <OfferCard price={price} copy={offerCopy.juridico} />
-      </div>
-    );
-  }
+  const cartoes = SERVICOS_DA_ABA[tab].map((codigo) => ({
+    servico: tabela.servicos.find((s) => s.codigo === codigo)!,
+    resultado: calcularPreco(tabela, codigo, respostas),
+  }));
 
   if (tab === "combo") {
     return (
       <div className="grid gap-4">
-        <ComboCard answers={answers} />
+        {cartoes.map(({ servico, resultado }) => (
+          <ComboCard key={servico.codigo} servico={servico} resultado={resultado} />
+        ))}
       </div>
     );
   }
 
-  const padrao = priceForOffer("padrao", answers);
-  const consultiva = priceForOffer("consultiva", answers);
-
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <OfferCard price={padrao} copy={offerCopy.padrao} />
-      <OfferCard price={consultiva} copy={offerCopy.consultiva} />
+    <div className={`grid gap-4 ${cartoes.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+      {cartoes.map(({ servico, resultado }) => (
+        <OfferCard key={servico.codigo} servico={servico} resultado={resultado} />
+      ))}
     </div>
   );
 }

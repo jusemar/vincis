@@ -64,7 +64,7 @@ export async function listarComunicadosDoMural(
  * Todos os comunicados, para a área do Gestor.
  *
  * Rascunho, publicado e arquivado juntos: é a mesa de trabalho de quem escreve.
- * A autorização não está aqui — quem chama é a página `/gestao/comunicados`,
+ * A autorização não está aqui — quem chama é a página `/admin/comunicados`,
  * que já passou por `validarGestorVincis`.
  */
 export async function listarComunicadosDaGestao(): Promise<ComunicadoGestaoDTO[]> {

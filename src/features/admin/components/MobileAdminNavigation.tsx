@@ -2,21 +2,26 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
   Award,
   Calendar,
+  CalendarClock,
   DollarSign,
   Headphones,
   LayoutDashboard,
+  Megaphone,
   Menu,
   Star,
+  Tags,
   Target,
   Ticket,
   User,
   Users,
   UsersRound,
+  type LucideIcon,
 } from 'lucide-react'
+import { recursosPermitidos, ROTA_ADMIN } from '../constants/recursos'
 import {
   Drawer,
   DrawerContent,
@@ -44,15 +49,84 @@ const DEMAIS = [
   { id: 'achievements', label: 'Conquistas', icon: Award },
 ] as const
 
+/**
+ * Ícone de cada recurso administrativo que é rota própria.
+ *
+ * A lista e a regra de visibilidade vêm do mesmo registro que a barra lateral
+ * consulta — é isso que impede o menu de divergir entre desktop e mobile.
+ */
+const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
+  usuarios: Users,
+  comunicados: Megaphone,
+  consultorias: CalendarClock,
+  precificacao: Tags,
+}
+
 function destino(id: string) {
   return id === 'dashboard' ? '/admin' : `/admin?pagina=${id}`
 }
 
-export function MobileAdminNavigation() {
+export function MobileAdminNavigation({
+  ehGestor = false,
+}: {
+  /**
+   * A sessão é do Gestor da Plataforma — resolvido pelo `AdminShell` a partir
+   * do perfil autenticado, o mesmo valor que a barra lateral recebe.
+   */
+  ehGestor?: boolean
+}) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const paginaAtual = searchParams.get('pagina') || 'dashboard'
   const [maisAberto, setMaisAberto] = useState(false)
   const paginaNoMais = DEMAIS.some(({ id }) => id === paginaAtual)
+
+  if (ehGestor) {
+    const recursos = recursosPermitidos({ ehGestor })
+    return (
+      <nav
+        aria-label="Navegação da Gestão"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur-lg lg:hidden"
+      >
+        <div
+          className="mx-auto grid max-w-lg gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${recursos.length + 1}, minmax(0, 1fr))`,
+          }}
+        >
+          <Link
+            href={ROTA_ADMIN}
+            className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors ${
+              pathname === ROTA_ADMIN
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground'
+            }`}
+          >
+            <LayoutDashboard className="size-5" />
+            <span className="truncate">Início</span>
+          </Link>
+          {recursos.map((recurso) => {
+            const Icone = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard
+            const ativo =
+              pathname === recurso.rota ||
+              pathname.startsWith(`${recurso.rota}/`)
+            return (
+              <Link
+                key={recurso.id}
+                href={recurso.rota}
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors ${
+                  ativo ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <Icone className="size-5" />
+                <span className="truncate">{recurso.rotulo}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
+    )
+  }
 
   return (
     <>

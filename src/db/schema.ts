@@ -143,3 +143,21 @@ export { consultoriaAgendamentosRelations } from './tables/consultoria_agendamen
 
 export { consultoriaPagamentos } from './tables/consultoria_pagamentos/tabela'
 export { consultoriaPagamentosRelations } from './tables/consultoria_pagamentos/relacoes'
+
+export { precificacaoServicos } from './tables/precificacao_servicos/tabela'
+export { precificacaoServicosRelations } from './tables/precificacao_servicos/relacoes'
+
+export { precificacaoPrecosBase } from './tables/precificacao_precos_base/tabela'
+
+export { precificacaoDimensoes } from './tables/precificacao_dimensoes/tabela'
+export { precificacaoDimensoesRelations } from './tables/precificacao_dimensoes/relacoes'
+
+export { precificacaoOpcoes } from './tables/precificacao_opcoes/tabela'
+export { precificacaoOpcoesRelations } from './tables/precificacao_opcoes/relacoes'
+
+export { precificacaoFaixas } from './tables/precificacao_faixas/tabela'
+
+export { precificacaoAdicionais } from './tables/precificacao_adicionais/tabela'
+
+export { precificacaoDescontos } from './tables/precificacao_descontos/tabela'
+export { precificacaoDescontosRelations } from './tables/precificacao_descontos/relacoes'

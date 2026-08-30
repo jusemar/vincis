@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/usuarios";
-import AdminSidebar from "./AdminSidebar";
-import { MobileAdminNavigation } from "./MobileAdminNavigation";
-import AdminHeader from "./AdminHeader";
+import { AdminShell } from "./AdminShell";
 import DashboardHome from "./DashboardHome";
 import ClientsPage from "./ClientsPage";
 import ServicesPage from "./ServicesPage";
@@ -73,26 +69,9 @@ export default function AdminDashboard({
   /** Consultorias agendadas deste Profissional, da mais próxima em diante. */
   consultorias?: ConsultoriaDoPrestadorDTO2[]
 }) {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const currentPage = searchParams.get("pagina") || "dashboard";
-  const { theme } = useTheme();
-  const { estaAutenticado, estaCarregando, usuario } = useAuth();
-
-  useEffect(() => {
-    if (!estaCarregando && !estaAutenticado) {
-      router.replace("/");
-    }
-  }, [estaAutenticado, estaCarregando, router]);
-
-  if (estaCarregando || !estaAutenticado) {
-    return null;
-  }
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
+  const { usuario } = useAuth();
 
   /** Média e quantidade, no formato enxuto que o rodapé e o card consomem. */
   const reputacao = painelDeAvaliacoes
@@ -159,37 +138,18 @@ export default function AdminDashboard({
   };
 
   return (
-    <div
-      className="admin-dashboard flex h-dvh bg-background overflow-hidden"
-      data-theme={theme}
-    >
-      <div className="hidden lg:contents">
-        <AdminSidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggle={toggleSidebar}
-          nomeUsuario={usuario?.nome ?? "Profissional"}
-          reputacao={reputacao}
-        />
-      </div>
-
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader />
-
-        <main className="flex-1 overflow-y-auto p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:pb-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderPage()}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </div>
-      <MobileAdminNavigation />
-    </div>
+    <AdminShell reputacao={reputacao}>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPage}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderPage()}
+        </motion.div>
+      </AnimatePresence>
+    </AdminShell>
   );
 }

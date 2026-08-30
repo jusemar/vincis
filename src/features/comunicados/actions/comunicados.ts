@@ -71,7 +71,7 @@ export async function criarComunicado(
     })
     .returning({ id: comunicados.id })
 
-  revalidatePath('/gestao/comunicados')
+  revalidatePath('/admin/comunicados')
   revalidatePath('/admin')
   return {
     sucesso: true,
@@ -112,7 +112,7 @@ export async function atualizarComunicado(
     return { sucesso: false, mensagem: 'Comunicado não encontrado.' }
   }
 
-  revalidatePath('/gestao/comunicados')
+  revalidatePath('/admin/comunicados')
   revalidatePath('/admin')
   return { sucesso: true, mensagem: 'Comunicado atualizado.' }
 }
@@ -156,7 +156,7 @@ async function mudarStatus(
     })
     .where(eq(comunicados.id, validacao.data.comunicadoId))
 
-  revalidatePath('/gestao/comunicados')
+  revalidatePath('/admin/comunicados')
   revalidatePath('/admin')
   return { sucesso: true, mensagem }
 }

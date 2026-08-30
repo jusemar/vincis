@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, LayoutDashboard, LogOut, User } from 'lucide-react'
-import { PERFIL_GESTOR_VINCIS } from '../constants/perfis'
+import { ehGestorPlataforma } from '../lib/gestor-plataforma'
 import { useAuth } from '../hooks/useAuth'
 import { tipoPrestadorDoPerfil } from '../lib/tipos-pessoa'
 import type { PerfilTipo } from '../types'
@@ -25,10 +25,10 @@ function iniciais(nome: string) {
  * pendente que clicar em "Meu painel" é levado ao cadastro, como sempre foi.
  */
 function areasDoPerfil(perfil: PerfilTipo) {
-  if (perfil === PERFIL_GESTOR_VINCIS) {
+  if (ehGestorPlataforma(perfil)) {
     return {
-      painel: { rotulo: 'Gestão Vincis', href: '/gestao' },
-      conta: { rotulo: 'Minha conta', href: '/gestao' },
+      painel: { rotulo: 'Gestão Vincis', href: '/admin' },
+      conta: { rotulo: 'Minha conta', href: '/admin' },
     }
   }
   if (tipoPrestadorDoPerfil(perfil)) {

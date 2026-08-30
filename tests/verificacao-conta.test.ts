@@ -8,6 +8,7 @@ import {
   usuarios,
   usuariosPerfis,
 } from '@/db/schema'
+import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
 import { gerarToken } from '@/features/usuarios/lib/gerar-token'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { sessoesUsuario } from '@/db/schema'
@@ -314,11 +315,14 @@ describe('roteamento após verificação', () => {
     expect(acesso?.habilitado).toBe(false)
   })
 
-  it('nenhum verificado via WhatsApp alcança /gestao', async () => {
+  it('confirmar identidade não promove ninguém a Gestor da plataforma', async () => {
+    // Antes da unificação isto se lia no destino (`/gestao`). Agora `/admin` é
+    // destino comum, então o que prova a mesma coisa é o perfil resolvido: a
+    // confirmação por WhatsApp continua sendo identidade, nunca promoção.
     entrarComo(contas.gestor.token)
     await confirmarContaViaWhatsappGestao({ usuarioId: contas.profissional.id })
     const acesso = await resolverAcessoUsuario(contas.profissional.id)
-    expect(acesso?.destino).not.toBe('/gestao')
+    expect(acesso?.perfil).not.toBe(PERFIL_GESTOR_VINCIS)
   })
 })
 

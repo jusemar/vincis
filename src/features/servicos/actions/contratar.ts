@@ -9,7 +9,7 @@ import { garantirClienteNaCarteira } from '@/features/clientes/lib/garantir-clie
 import { garantirAtendimentoDaContratacao } from '@/features/atendimentos/lib/criar-atendimento-da-contratacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
-import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import type { ModeloPreco } from '../schemas/servico'
 
 const ContratarSchema = z.object({
@@ -57,7 +57,7 @@ export async function contratarServico(entrada: unknown) {
 
   // Contratar é ato de Cliente. Prestadores e Gestor não se passam por cliente.
   if (
-    sessao.perfilTipo === PERFIL_GESTOR_VINCIS ||
+    ehGestorPlataforma(sessao) ||
     tipoPrestadorDoPerfil(sessao.perfilTipo)
   ) {
     return {

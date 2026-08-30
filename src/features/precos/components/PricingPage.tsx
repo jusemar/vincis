@@ -1,18 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import type { Answers, OfferId } from "../lib/pricing";
-import { defaultAnswers } from "../lib/pricing";
+import { respostasIniciais } from "@/features/precificacao/lib/respostas";
+import type {
+  RespostasPrecificacao,
+  TabelaPrecificacao,
+} from "@/features/precificacao/types/precificacao";
+import type { ServicoTab } from "../types";
 import { ComparisonTable } from "./ComparisonTable";
 import { Configurador } from "./Configurador";
 import { ResultCards } from "./ResultCards";
 import { ServiceTypeSelector } from "./ServiceTypeSelector";
 
-type ServiceTabId = Extract<OfferId, "consultiva" | "juridico" | "combo">;
-
-export default function PricingPage() {
-  const [tab, setTab] = useState<ServiceTabId>("consultiva");
-  const [answers, setAnswers] = useState<Answers>(defaultAnswers);
+/**
+ * A vitrine de preços.
+ *
+ * A configuração comercial chega pronta do servidor (`app/precos/page.tsx`) e
+ * vive aqui como propriedade. É o que mantém as duas coisas que a página
+ * precisa ter ao mesmo tempo: preço que vem do banco e recálculo instantâneo a
+ * cada clique — o motor é puro e roda no navegador sobre a tabela já carregada,
+ * sem uma ida ao servidor por resposta do configurador.
+ */
+export default function PricingPage({ tabela }: { tabela: TabelaPrecificacao }) {
+  const [tab, setTab] = useState<ServicoTab>("consultiva");
+  const [respostas, setRespostas] = useState<RespostasPrecificacao>(() =>
+    respostasIniciais(tabela),
+  );
 
   return (
     <main className="min-h-screen bg-background">
@@ -39,11 +52,15 @@ export default function PricingPage() {
       <section className="mx-auto max-w-6xl px-5 py-10">
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] lg:items-start">
           <div className="min-w-0">
-            <Configurador answers={answers} onChange={setAnswers} />
+            <Configurador
+              tabela={tabela}
+              respostas={respostas}
+              onChange={setRespostas}
+            />
           </div>
 
           <div className="min-w-0" id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`}>
-            <ResultCards tab={tab} answers={answers} />
+            <ResultCards tabela={tabela} tab={tab} respostas={respostas} />
             <ComparisonTable tab={tab} />
             <p className="mt-4 text-xs text-muted-foreground">
               Valores calculados a partir do perfil informado, com regras ainda demonstrativas — a

@@ -3,9 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
-  LogOut,
   MessageCircle,
   Search,
   ShieldAlert,
@@ -14,8 +12,6 @@ import {
   UserX,
   Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import ThemeToggle from "@/components/shared/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAuth } from "@/features/usuarios";
 import {
   desativarUsuarioGestao,
   reativarUsuarioGestao,
@@ -50,6 +45,7 @@ import {
   rotuloVerificacao,
 } from "../../lib/verificacao-conta";
 import { listarUsuariosGestao } from "../../actions/listar-usuarios-gestao";
+import { ehGestorPlataforma } from "../../lib/gestor-plataforma";
 import type {
   ResultadoListaUsuarios,
   UsuarioGestao,
@@ -107,8 +103,6 @@ export function GestaoUsuariosPage({
   gestorNome,
   resultadoInicial,
 }: GestaoUsuariosPageProps) {
-  const router = useRouter();
-  const { logout } = useAuth();
   const [usuarios, setUsuarios] = useState(resultadoInicial.usuarios);
   const [total, setTotal] = useState(resultadoInicial.total);
   const [pagina, setPagina] = useState(resultadoInicial.pagina);
@@ -188,12 +182,6 @@ export function GestaoUsuariosPage({
     });
   }
 
-  async function sair() {
-    await logout();
-    router.replace("/");
-    router.refresh();
-  }
-
   /**
    * Estado da verificação de identidade. Nunca afirma que o e-mail foi
    * confirmado quando só houve confirmação pelo WhatsApp.
@@ -226,7 +214,7 @@ export function GestaoUsuariosPage({
   }
 
   function AcoesUsuario({ usuario }: { usuario: UsuarioGestao }) {
-    const gestor = usuario.perfil === "gestor_vincis";
+    const gestor = ehGestorPlataforma(usuario.perfil);
     // A ação só faz sentido para quem ainda não comprovou identidade e tem
     // número cadastrado. O servidor revalida as duas condições.
     const podeConfirmarWhatsapp =
@@ -283,7 +271,7 @@ export function GestaoUsuariosPage({
    * usuário — são formas de atuação, exibidas separadamente em `formaAtuacao`.
    */
   function classificacao(usuario: UsuarioGestao) {
-    if (usuario.perfil === "gestor_vincis") return "Gestor Vincis";
+    if (ehGestorPlataforma(usuario.perfil)) return "Gestor Vincis";
     if (usuario.tipoPrestador === "colaborador") return "Colaborador";
     if (usuario.tipoPrestador === "profissional") return "Profissional";
     return usuario.perfil === "cliente"
@@ -299,34 +287,8 @@ export function GestaoUsuariosPage({
   }
 
   return (
-    <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.1),transparent_32%),hsl(var(--background))]">
-      <header className="border-b bg-card/90 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button asChild variant="ghost" size="icon">
-              <Link href="/gestao" aria-label="Voltar à gestão">
-                <ArrowLeft />
-              </Link>
-            </Button>
-            <div className="min-w-0">
-              <p className="truncate font-serif text-lg font-semibold">
-                Gestão da Vincis
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {gestorNome}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={() => void sair()}>
-              <LogOut /> Sair
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <div className="mx-auto max-w-7xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -334,7 +296,8 @@ export function GestaoUsuariosPage({
             </div>
             <h1 className="mt-4 font-serif text-3xl font-bold">Usuários</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Consulte contas e controle o acesso à plataforma.
+              Consulte contas e controle o acesso à plataforma. {gestorNome}, as
+              decisões desta tela valem para toda a Vincis.
             </p>
           </div>
           <form onSubmit={buscar} className="flex w-full max-w-md gap-2">
@@ -474,7 +437,7 @@ export function GestaoUsuariosPage({
                           <TableCell>
                             <Link
                               className="font-medium hover:underline"
-                              href={`/gestao/usuarios/${usuario.id}`}
+                              href={`/admin/usuarios/${usuario.id}`}
                             >
                               {usuario.nome}
                             </Link>
@@ -557,7 +520,7 @@ export function GestaoUsuariosPage({
                       <div>
                         <Link
                           className="font-medium hover:underline"
-                          href={`/gestao/usuarios/${usuario.id}`}
+                          href={`/admin/usuarios/${usuario.id}`}
                         >
                           {usuario.nome}
                         </Link>
@@ -646,7 +609,7 @@ export function GestaoUsuariosPage({
             </Button>
           </div>
         </div>
-      </main>
+      </div>
 
       <AlertDialog
         open={Boolean(confirmacao)}
@@ -727,6 +690,6 @@ export function GestaoUsuariosPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

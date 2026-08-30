@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Megaphone, Pencil, Plus } from 'lucide-react'
+import { Megaphone, Pencil, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -136,32 +135,22 @@ export function ComunicadosGestaoPage({
   }
 
   return (
-    <div className="min-h-dvh bg-background">
-      <header className="border-b bg-card/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Megaphone className="size-5" />
-            </div>
-            <div>
-              <p className="font-serif text-lg font-semibold leading-none">
-                Comunicados
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Mural institucional da Vincis · {gestorNome}
-              </p>
-            </div>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/gestao">
-              <ArrowLeft className="size-4" />
-              Voltar
-            </Link>
-          </Button>
+    <>
+      {/* Título da tela. A barra lateral, o cabeçalho e o logout vêm do
+          AdminShell — a Gestão não tem mais cabeçalho próprio. */}
+      <div className="mx-auto mb-6 flex max-w-6xl items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Megaphone className="size-5" />
         </div>
-      </header>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold">Comunicados</h1>
+          <p className="truncate text-sm text-muted-foreground">
+            Mural institucional da Vincis · {gestorNome}
+          </p>
+        </div>
+      </div>
 
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[22rem_1fr]">
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[22rem_1fr]">
         <Card className="h-fit">
           <CardContent className="space-y-4 p-5">
             <h2 className="flex items-center gap-2 font-semibold">
@@ -363,7 +352,7 @@ export function ComunicadosGestaoPage({
             </Card>
           ))}
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   )
 }

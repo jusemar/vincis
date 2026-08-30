@@ -13,6 +13,7 @@ import { Building2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/features/usuarios'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { ehPessoaProfissional } from '@/features/usuarios/lib/tipos-pessoa'
 import { obterContextoEmpresa } from '../actions/obter-contexto-empresa'
 import { OnboardingEmpresa } from '../components/OnboardingEmpresa'
@@ -67,14 +68,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     setCarregando(false)
   }, [carregarContexto])
 
+  // Calculado fora do efeito de propósito: a dependência continua sendo o
+  // perfil (um booleano estável), e não o objeto de usuário inteiro, que muda
+  // de identidade a cada renovação de sessão e refaria a consulta à toa.
+  const ehGestor = ehGestorPlataforma(usuario)
+
   useEffect(() => {
-    if (
-      estaCarregando ||
-      !estaAutenticado ||
-      !tokenSessao ||
-      usuario?.perfilTipo === 'gestor_vincis'
-    )
-      return
+    if (estaCarregando || !estaAutenticado || !tokenSessao || ehGestor) return
 
     let cancelado = false
 
@@ -100,13 +100,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelado = true
     }
-  }, [
-    estaAutenticado,
-    estaCarregando,
-    pathname,
-    tokenSessao,
-    usuario?.perfilTipo,
-  ])
+  }, [ehGestor, estaAutenticado, estaCarregando, pathname, tokenSessao])
 
   function concluirOnboarding(novoContexto: ContextoEmpresa) {
     setContexto(novoContexto)

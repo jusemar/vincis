@@ -67,8 +67,8 @@ export async function analisarPerfilProfissional(entrada: { usuarioId: string; d
     updatedAt: new Date(),
   }).where(and(eq(perfisProfissionais.usuarioId, usuarioId), eq(perfisProfissionais.statusAnalise, 'aguardando_analise'))).returning({ id: perfisProfissionais.id })
   if (!atualizado) return { sucesso: false, mensagem: 'O cadastro não está aguardando análise ou já foi atualizado.' }
-  revalidatePath('/gestao/usuarios')
-  revalidatePath(`/gestao/usuarios/${usuarioId}`)
+  revalidatePath('/admin/usuarios')
+  revalidatePath(`/admin/usuarios/${usuarioId}`)
   revalidatePath('/cadastro-profissional')
   return { sucesso: true, mensagem: decisao === 'aprovado' ? 'Cadastro aprovado.' : decisao === 'rejeitado' ? 'Cadastro rejeitado.' : 'Correção solicitada.' }
 }

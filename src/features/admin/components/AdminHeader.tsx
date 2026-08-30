@@ -116,7 +116,16 @@ function linhasDoSino(reais: NotificacaoDTO[]): LinhaDoSino[] {
   ];
 }
 
-export default function AdminHeader() {
+export default function AdminHeader({
+  /**
+   * "Meu Perfil" é destino do prestador (`/admin?pagina=profile`). Nas telas
+   * incorporadas da Gestão esse destino não existe, então o item sai do menu —
+   * o logout e o resto do cabeçalho seguem iguais.
+   */
+  ocultarPerfil = false,
+}: {
+  ocultarPerfil?: boolean
+} = {}) {
   const router = useRouter();
   const { usuario, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -323,14 +332,16 @@ export default function AdminHeader() {
                     <p className="truncate text-sm font-medium">{nomeUsuario}</p>
                   </div>
                   <div className="p-2">
-                    <Link
-                      href="/admin?pagina=profile"
-                      onClick={() => setShowProfile(false)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
-                    >
-                      <User className="w-4 h-4" />
-                      Meu Perfil
-                    </Link>
+                    {!ocultarPerfil && (
+                      <Link
+                        href="/admin?pagina=profile"
+                        onClick={() => setShowProfile(false)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        Meu Perfil
+                      </Link>
+                    )}
                     <button
                       type="button"
                       disabled

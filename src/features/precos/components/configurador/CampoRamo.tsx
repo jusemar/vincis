@@ -2,17 +2,18 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import type { SectorId } from "../../lib/pricing";
-import { sectors } from "../../lib/pricing";
+import type { OpcaoPrecificacao } from "@/features/precificacao/types/precificacao";
 
 export function CampoRamo({
+  opcoes,
   value,
   onChange,
 }: {
-  value: SectorId[];
-  onChange: (v: SectorId[]) => void;
+  opcoes: OpcaoPrecificacao[];
+  value: string[];
+  onChange: (v: string[]) => void;
 }) {
-  const toggle = (id: SectorId, checked: boolean) => {
+  const toggle = (id: string, checked: boolean) => {
     if (checked) {
       if (!value.includes(id)) onChange([...value, id]);
       return;
@@ -23,21 +24,21 @@ export function CampoRamo({
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      {sectors.map((s) => {
-        const checked = value.includes(s.id);
+      {opcoes.map((s) => {
+        const checked = value.includes(s.codigo);
         return (
           <label
-            key={s.id}
+            key={s.codigo}
             className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors ${
               checked ? "border-primary bg-accent" : "border-border hover:bg-accent/50"
             }`}
           >
             <Checkbox
               checked={checked}
-              onCheckedChange={(v) => toggle(s.id, v === true)}
-              aria-label={s.label}
+              onCheckedChange={(v) => toggle(s.codigo, v === true)}
+              aria-label={s.rotulo}
             />
-            <Label className="cursor-pointer text-sm font-medium">{s.label}</Label>
+            <Label className="cursor-pointer text-sm font-medium">{s.rotulo}</Label>
           </label>
         );
       })}

@@ -3,12 +3,13 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db/connection'
 import { perfisProfissionais } from '@/db/schema'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 
 export async function GET(_: Request, contexto: { params: Promise<{ usuarioId: string }> }) {
   const sessao = await obterSessaoServidor()
   const { usuarioId } = await contexto.params
-  if (!sessao || (sessao.id !== usuarioId && sessao.perfilTipo !== 'gestor_vincis')) return new NextResponse('Acesso não autorizado.', { status: 403 })
+  if (!sessao || (sessao.id !== usuarioId && !ehGestorPlataforma(sessao))) return new NextResponse('Acesso não autorizado.', { status: 403 })
 
   const [perfil] = await db.select({ chave: perfisProfissionais.comprovanteRegistroChave, nome: perfisProfissionais.comprovanteRegistroNomeOriginal })
     .from(perfisProfissionais).where(eq(perfisProfissionais.usuarioId, usuarioId)).limit(1)

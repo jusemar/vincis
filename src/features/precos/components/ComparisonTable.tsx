@@ -1,15 +1,8 @@
 "use client";
 
 import { Check } from "lucide-react";
-import type { OfferId } from "../lib/pricing";
-import { comparisonGroups, comparisonOffersFor } from "../lib/pricing";
-
-const offerLabel: Record<OfferId, string> = {
-  padrao: "Padrão",
-  consultiva: "Consultiva",
-  juridico: "Jurídico",
-  combo: "Completo",
-};
+import type { ServicoTab } from "../types";
+import { GRUPOS_COMPARATIVO, ROTULO_DA_OFERTA, ofertasComparadas } from "../lib/comparativo";
 
 function Cell({ value }: { value: string | boolean | undefined }) {
   if (value === undefined) return <span className="text-muted-foreground/40">—</span>;
@@ -18,8 +11,8 @@ function Cell({ value }: { value: string | boolean | undefined }) {
   return <span className="text-muted-foreground">{value}</span>;
 }
 
-export function ComparisonTable({ tab }: { tab: "consultiva" | "juridico" | "combo" }) {
-  const offers = comparisonOffersFor(tab);
+export function ComparisonTable({ tab }: { tab: ServicoTab }) {
+  const offers = ofertasComparadas(tab);
   const gridCols = `minmax(0,1.6fr) repeat(${offers.length}, minmax(0,1fr))`;
 
   return (
@@ -39,12 +32,12 @@ export function ComparisonTable({ tab }: { tab: "consultiva" | "juridico" | "com
             </span>
             {offers.map((o) => (
               <span key={o} className="text-center text-xs font-bold text-foreground">
-                {offerLabel[o]}
+                {ROTULO_DA_OFERTA[o]}
               </span>
             ))}
           </div>
 
-          {comparisonGroups.map((group) => {
+          {GRUPOS_COMPARATIVO.map((group) => {
             const rowsWithData = group.rows.filter((row) =>
               offers.some((o) => row.values[o] !== undefined),
             );

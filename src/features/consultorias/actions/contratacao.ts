@@ -1,6 +1,6 @@
 'use server'
 
-import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
@@ -83,7 +83,7 @@ export async function prepararContratacaoConsultoria(
   // aplica. Profissional, Colaborador e Gestor são recusados aqui, no
   // servidor, e não apenas no botão.
   if (
-    sessao.perfilTipo === PERFIL_GESTOR_VINCIS ||
+    ehGestorPlataforma(sessao) ||
     tipoPrestadorDoPerfil(sessao.perfilTipo)
   ) {
     return {

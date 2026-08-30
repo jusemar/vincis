@@ -1,11 +1,9 @@
 "use client";
 
 import { Calculator, Scale, Sparkles } from "lucide-react";
-import type { OfferId } from "../lib/pricing";
+import type { ServicoTab } from "../types";
 
-type ServiceTabId = Extract<OfferId, "consultiva" | "juridico" | "combo">;
-
-const tabs: { id: ServiceTabId; label: string; desc: string; icon: typeof Calculator }[] = [
+const tabs: { id: ServicoTab; label: string; desc: string; icon: typeof Calculator }[] = [
   { id: "consultiva", label: "Contabilidade", desc: "Padrão ou consultiva", icon: Calculator },
   { id: "juridico", label: "Assistência Jurídica", desc: "Consultas e contratos", icon: Scale },
   { id: "combo", label: "Pacote Empresarial Completo", desc: "Contabilidade + Jurídico", icon: Sparkles },
@@ -15,8 +13,8 @@ export function ServiceTypeSelector({
   value,
   onChange,
 }: {
-  value: ServiceTabId;
-  onChange: (v: ServiceTabId) => void;
+  value: ServicoTab;
+  onChange: (v: ServicoTab) => void;
 }) {
   return (
     <div role="tablist" aria-label="Tipo de serviço" className="grid gap-3 sm:grid-cols-3">

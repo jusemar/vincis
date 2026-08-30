@@ -29,6 +29,8 @@ export const ACOES_AUDITORIA = {
   consultoriaConcluida: 'consultoria_concluida',
   /** O Profissional mexeu na própria agenda: faixas, bloqueios, preço, duração. */
   agendaConsultoriaAlterada: 'agenda_consultoria_alterada',
+  /** O Gestor alterou a precificação dos planos da plataforma. */
+  precificacaoAlterada: 'precificacao_alterada',
 } as const
 
 export type AcaoAuditoria =

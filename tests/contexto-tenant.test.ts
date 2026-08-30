@@ -272,8 +272,8 @@ describe('roteamento preservado', () => {
     }
   })
 
-  it('Gestor continua exclusivo de /gestao e Cliente de /cliente', async () => {
-    expect((await resolverAcessoUsuario(ids.gestor))?.destino).toBe('/gestao')
+  it('Gestor entra na área administrativa unificada e Cliente em /cliente', async () => {
+    expect((await resolverAcessoUsuario(ids.gestor))?.destino).toBe('/admin')
     expect((await resolverAcessoUsuario(ids.cliente))?.destino).toBe('/cliente')
   })
 })

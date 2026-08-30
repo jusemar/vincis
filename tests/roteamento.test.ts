@@ -25,7 +25,6 @@ afterAll(async () => {
  * digitada à mão, sem precisar de um servidor HTTP.
  */
 const ROTAS_PROTEGIDAS = [
-  '/gestao',
   '/cadastro-profissional',
   '/cadastro-colaborador',
   '/admin',
@@ -41,9 +40,9 @@ async function rotaLiberada(usuarioId: string, rota: string) {
 }
 
 describe('resolução central de destino', () => {
-  it('Gestor Vincis vai para /gestao', async () => {
+  it('Gestor Vincis vai para /admin, a área unificada', async () => {
     const acesso = await resolverAcessoUsuario(cenario.ids.gestor)
-    expect(acesso?.destino).toBe('/gestao')
+    expect(acesso?.destino).toBe('/admin')
     expect(acesso?.tipoPrestador).toBeNull()
   })
 
@@ -100,19 +99,22 @@ describe('resolução central de destino', () => {
 })
 
 describe('URL digitada à mão', () => {
-  it('o Gestor só entra em /gestao', async () => {
-    expect(await rotaLiberada(cenario.ids.gestor, '/gestao')).toBe(true)
-    expect(await rotaLiberada(cenario.ids.gestor, '/gestao/usuarios')).toBe(true)
-    expect(await rotaLiberada(cenario.ids.gestor, '/admin')).toBe(false)
+  it('o Gestor entra em /admin e nas telas incorporadas da Gestão', async () => {
+    expect(await rotaLiberada(cenario.ids.gestor, '/admin')).toBe(true)
+    expect(await rotaLiberada(cenario.ids.gestor, '/admin/usuarios')).toBe(true)
     expect(
       await rotaLiberada(cenario.ids.gestor, '/cadastro-profissional'),
     ).toBe(false)
     expect(await rotaLiberada(cenario.ids.gestor, '/cadastro-colaborador')).toBe(
       false,
     )
+    expect(await rotaLiberada(cenario.ids.gestor, '/cliente')).toBe(false)
   })
 
-  it('nenhum prestador alcança /gestao', async () => {
+  it('prestador alcança /admin, mas o middleware não é o que fecha a Gestão', async () => {
+    // Depois da unificação, `/admin` é destino comum: prestador e Gestor
+    // passam pela mesma porta. Quem separa os recursos exclusivos da Gestão é
+    // `validarGestorVincis`, no servidor de cada página — o teste abaixo.
     for (const persona of [
       'proprietario',
       'adminProfissional',
@@ -123,10 +125,6 @@ describe('URL digitada à mão', () => {
       'colaboradorSozinho',
       'colaboradorExterno',
     ] as const) {
-      expect(
-        await rotaLiberada(cenario.ids[persona], '/gestao'),
-        `${persona} não deveria alcançar /gestao`,
-      ).toBe(false)
       expect(await rotaLiberada(cenario.ids[persona], '/admin')).toBe(true)
     }
   })
@@ -150,8 +148,24 @@ describe('porta de entrada dos prestadores', () => {
     entrarComo(cenario.tokens.gestor)
     expect(await validarGestorVincis()).not.toBeNull()
 
-    entrarComo(cenario.tokens.proprietario)
-    expect(await validarGestorVincis()).toBeNull()
+    // Nenhum prestador atravessa a guarda, mesmo agora que compartilha /admin
+    // com o Gestor: as telas incorporadas continuam fechadas no servidor.
+    for (const persona of [
+      'proprietario',
+      'adminProfissional',
+      'adminColaborador',
+      'profissionalMembro',
+      'colaboradorMembro',
+      'profissionalSozinho',
+      'colaboradorSozinho',
+      'colaboradorExterno',
+    ] as const) {
+      entrarComo(cenario.tokens[persona])
+      expect(
+        await validarGestorVincis(),
+        `${persona} não deveria passar pela guarda da Gestão`,
+      ).toBeNull()
+    }
 
     sairDaSessao()
     expect(await validarGestorVincis()).toBeNull()

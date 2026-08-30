@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { db } from '@/db/connection'
 import { configuracoesPlataforma } from '@/db/schema'
 import { SEM_AUTORIZACAO } from '@/features/usuarios/constants/autorizacao'
-import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import {
   CHAVE_PRAZO_OPORTUNIDADE,
@@ -32,7 +32,7 @@ const PrazoSchema = z.object({
  */
 export async function definirPrazoOportunidade(entrada: unknown) {
   const sessao = await obterSessaoServidor()
-  if (!sessao || sessao.perfilTipo !== PERFIL_GESTOR_VINCIS) {
+  if (!sessao || !ehGestorPlataforma(sessao)) {
     return SEM_AUTORIZACAO
   }
 
@@ -60,7 +60,7 @@ export async function definirPrazoOportunidade(entrada: unknown) {
       },
     })
 
-  revalidatePath('/gestao')
+  revalidatePath('/admin')
   return {
     sucesso: true as const,
     mensagem: `Prazo das oportunidades definido em ${validacao.data.horas} horas.`,

@@ -9,6 +9,7 @@ import {
   usuariosPerfis,
   eventosAuditoria,
 } from '@/db/schema'
+import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
 import { gerarToken } from '@/features/usuarios/lib/gerar-token'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { entrarComo, sairDaSessao } from './setup/sessao'
@@ -213,7 +214,7 @@ describe('confirmação e destino', () => {
     await liberarPorEmail('clienteA')
     const acesso = await resolverAcessoUsuario(contas.clienteA.id)
     expect(acesso?.destino).not.toBe('/admin')
-    expect(acesso?.destino).not.toBe('/gestao')
+    expect(acesso?.perfil).not.toBe(PERFIL_GESTOR_VINCIS)
     expect(acesso?.destino).not.toBe('/cadastro-profissional')
     expect(acesso?.destino).not.toBe('/cadastro-colaborador')
   })

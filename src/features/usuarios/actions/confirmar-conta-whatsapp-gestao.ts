@@ -122,7 +122,7 @@ export async function confirmarContaViaWhatsappGestao(
       }
     }
 
-    revalidatePath('/gestao/usuarios')
+    revalidatePath('/admin/usuarios')
     return {
       sucesso: true,
       mensagem: `Identidade de ${resultado.nome} confirmada via WhatsApp.`,

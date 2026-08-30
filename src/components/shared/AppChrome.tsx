@@ -13,10 +13,10 @@ export function AppChrome({ children }: AppChromeProps) {
   const pathname = usePathname()
   // Áreas autenticadas têm cabeçalho próprio: a navegação pública do site não
   // deve aparecer sobre elas. `/cliente` entra aqui pelo mesmo motivo que
-  // `/admin` e `/gestao` — é uma área logada, com header e logout próprios.
+  // `/admin` — é uma área logada, com header e logout próprios. A antiga
+  // `/gestao` saiu da lista: virou parte de `/admin`.
   const AREAS_AUTENTICADAS = [
     '/admin',
-    '/gestao',
     '/cliente',
     '/profissional',
     '/cadastro-profissional',

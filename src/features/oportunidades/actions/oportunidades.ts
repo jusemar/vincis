@@ -12,7 +12,7 @@ import { obterPrazoOportunidadeHoras } from '@/features/configuracoes/queries/ob
 import { resumirTexto } from '@/features/notificacoes/lib/emitir'
 import type { AnexoEnviado } from '@/lib/anexos-privados'
 import { SEM_AUTORIZACAO_COM_DADOS } from '@/features/usuarios/constants/autorizacao'
-import { PERFIL_GESTOR_VINCIS } from '@/features/usuarios/constants/perfis'
+import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
@@ -83,7 +83,7 @@ export async function criarOportunidade(formData: FormData) {
   }
 
   if (
-    sessao.perfilTipo === PERFIL_GESTOR_VINCIS ||
+    ehGestorPlataforma(sessao) ||
     tipoPrestadorDoPerfil(sessao.perfilTipo)
   ) {
     return {
