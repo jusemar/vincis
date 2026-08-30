@@ -1,7 +1,4 @@
 export { default as ChatDemo } from './components/ChatDemo'
 export { default as ServicesHub } from './components/ServicesHub'
-export { default as CTA } from './components/CTA'
 export { default as Banners } from './components/Banners'
-export { default as Hero } from './components/Hero'
-export { default as Pricing } from './components/Pricing'
 export { default as SimpleSteps } from './components/SimpleSteps'

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import type { Answers, OfferId } from "../lib/pricing";
 import { defaultAnswers } from "../lib/pricing";
 import { ComparisonTable } from "./ComparisonTable";
@@ -18,16 +17,12 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-background">
       <section className="border-b border-border/60">
-        <div className="mx-auto max-w-6xl px-5 pb-10 pt-14 sm:pt-20">
-          <span className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-accent-foreground ring-1 ring-border">
-            <Sparkles className="size-3.5 text-primary" /> Preço calculado ao vivo, sem "fale com
-            vendas"
-          </span>
-          <h1 className="mt-6 max-w-3xl text-3xl leading-[1.1] font-bold text-foreground sm:text-5xl">
-            Sua empresa não é igual às outras. Seu preço também não precisa ser.
+        <div className="mx-auto max-w-6xl px-5 pb-12 pt-16 sm:pt-24">
+          <h1 className="max-w-3xl text-3xl leading-[1.1] font-bold text-foreground sm:text-5xl">
+            Sua empresa não é igual às outras
           </h1>
-          <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-            Monte sua estrutura e veja, em tempo real, quanto cada formato de atendimento custa.
+          <p className="mt-3 max-w-3xl text-2xl leading-[1.15] font-semibold text-muted-foreground sm:text-4xl">
+            Seu preço também não precisa ser.
           </p>
         </div>
       </section>
