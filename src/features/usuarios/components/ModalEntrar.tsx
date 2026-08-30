@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react'
 import { CampoSenha } from '@/components/shared/CampoSenha'
 import { ModalResponsivo } from '@/components/shared/ModalResponsivo'
 import { useAuth } from '../hooks/useAuth'
+import { solicitarRedefinicaoSenha } from '../actions/solicitar-redefinicao-senha'
 
 interface ModalEntrarProps {
   aberto: boolean
@@ -31,6 +32,9 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
   const [carregando, setCarregando] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
   const senhaRef = useRef<HTMLInputElement>(null)
+  const recuperacaoRef = useRef<HTMLInputElement>(null)
+  const [mensagemRecuperacao, setMensagemRecuperacao] = useState<string | null>(null)
+  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false)
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
@@ -76,9 +80,22 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
     setCarregando(false)
   }
 
-  function handleEsqueciSenha(e: FormEvent) {
+  async function handleEsqueciSenha(e: FormEvent) {
     e.preventDefault()
-    setView('login')
+    setMensagemRecuperacao(null)
+
+    const emailOuWhatsapp = recuperacaoRef.current?.value ?? ''
+    if (!emailOuWhatsapp) return
+
+    setEnviandoRecuperacao(true)
+    const resultado = await solicitarRedefinicaoSenha({ emailOuWhatsapp })
+    setMensagemRecuperacao(resultado.mensagem)
+    setEnviandoRecuperacao(false)
+  }
+
+  function abrirRecuperacao() {
+    setMensagemRecuperacao(null)
+    setView('esqueci-senha')
   }
 
   const ehLogin = view === 'login'
@@ -127,9 +144,10 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
           <button
             type="submit"
             form={ID_FORM_RECUPERACAO}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+            disabled={enviandoRecuperacao}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Enviar link de recuperação
+            {enviandoRecuperacao ? 'Enviando...' : 'Enviar link de recuperação'}
           </button>
         )
       }
@@ -162,7 +180,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
               </label>
               <button
                 type="button"
-                onClick={() => setView('esqueci-senha')}
+                onClick={abrirRecuperacao}
                 className="text-xs font-medium text-primary hover:underline"
               >
                 Esqueci minha senha
@@ -215,6 +233,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
             </label>
             <input
               id="recuperacao-identificador"
+              ref={recuperacaoRef}
               type="text"
               required
               autoComplete="username"
@@ -222,6 +241,12 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
               className={CLASSES_CAMPO}
             />
           </div>
+
+          {mensagemRecuperacao && (
+            <p className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center text-sm text-foreground">
+              {mensagemRecuperacao}
+            </p>
+          )}
         </form>
       )}
     </ModalResponsivo>
