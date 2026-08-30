@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { TelaCarregandoEspaco } from "@/components/shared/TelaCarregandoEspaco";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/features/usuarios";
 import { ehGestorPlataforma } from "@/features/usuarios/lib/gestor-plataforma";
@@ -29,7 +33,8 @@ export function AdminShell({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
   const { theme } = useTheme();
-  const { estaAutenticado, estaCarregando, usuario } = useAuth();
+  const { estaAutenticado, estaCarregando, erroSessao, refreshSession, usuario } =
+    useAuth();
   // Quem vê os recursos exclusivos é decidido pelo perfil da sessão — a mesma
   // regra que o middleware e as guardas de servidor aplicam —, nunca pela URL
   // aberta. Esconder menu não autoriza nada; o que este valor faz é impedir que
@@ -37,13 +42,53 @@ export function AdminShell({
   const ehGestor = ehGestorPlataforma(usuario);
 
   useEffect(() => {
-    if (!estaCarregando && !estaAutenticado) {
+    // Sem sessão e sem erro de conferência: a pessoa realmente não está
+    // logada. Com erro, ficar é o certo — deslogar alguém por causa de uma
+    // resposta que não chegou é perder trabalho por um soluço de rede.
+    if (!estaCarregando && !estaAutenticado && !erroSessao) {
       router.replace("/");
     }
-  }, [estaAutenticado, estaCarregando, router]);
+  }, [estaAutenticado, estaCarregando, erroSessao, router]);
 
-  if (estaCarregando || !estaAutenticado) {
-    return null;
+  /*
+    Toda saída daqui é uma tela, nunca `null`.
+
+    Devolver nada deixava a página em branco com o fundo do tema — e quem
+    olhava não conseguia distinguir "está chegando" de "quebrou". São três
+    situações distintas e cada uma diz o que é: a sessão sendo lida, a
+    conferência que não pôde ser feita (com botão de tentar de novo) e o
+    intervalo curto até o redirecionamento de quem não está logado.
+  */
+  if (estaCarregando) {
+    return <TelaCarregandoEspaco mensagem="Carregando sua conta..." />;
+  }
+
+  if (erroSessao && !estaAutenticado) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="px-6">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShieldAlert className="size-5" />
+            </div>
+            <h1 className="mt-5 font-serif text-2xl font-semibold">
+              Não foi possível confirmar sua sessão
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              A conexão com o servidor falhou. Sua sessão continua guardada —
+              tente novamente em instantes.
+            </p>
+            <Button className="mt-6 w-full" onClick={() => void refreshSession()}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!estaAutenticado) {
+    return <TelaCarregandoEspaco mensagem="Redirecionando..." />;
   }
 
   return (

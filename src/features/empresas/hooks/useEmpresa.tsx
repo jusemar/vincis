@@ -9,13 +9,15 @@ import {
   type ReactNode,
 } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, RefreshCw } from 'lucide-react'
+import { Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { TelaCarregandoEspaco } from '@/components/shared/TelaCarregandoEspaco'
 import { useAuth } from '@/features/usuarios'
 import { ehGestorPlataforma } from '@/features/usuarios/lib/gestor-plataforma'
 import { ehPessoaProfissional } from '@/features/usuarios/lib/tipos-pessoa'
 import { obterContextoEmpresa } from '../actions/obter-contexto-empresa'
+import { telaDoEspaco } from '../lib/tela-do-espaco'
 import { OnboardingEmpresa } from '../components/OnboardingEmpresa'
 import type {
   ContextoEmpresa,
@@ -115,41 +117,29 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     ? ehPessoaProfissional(usuario.perfilTipo)
     : false
 
-  if (
-    estaNaAreaAdministrativa &&
-    (estaCarregando ||
-      (estaAutenticado &&
-        (carregando ||
-          tokenContexto !== tokenSessao ||
-          (perfilProfissional && estado === 'sem_tenant'))))
-  ) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-        <div className="text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <RefreshCw className="size-5 animate-spin" />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Preparando seu espaço de trabalho...
-          </p>
-        </div>
-      </div>
-    )
+  // Uma regra só, escrita fora da renderização, decide o que a área
+  // administrativa mostra. `colaborador` é estado final válido: o Colaborador
+  // opera no painel sem escritório próprio.
+  const tela = telaDoEspaco({
+    naAreaAdministrativa: estaNaAreaAdministrativa,
+    autenticacaoCarregando: estaCarregando,
+    autenticado: estaAutenticado,
+    ehGestor,
+    contextoCarregando: carregando,
+    contextoAtualizado: tokenContexto === tokenSessao,
+    perfilProfissional,
+    estadoContexto: estado,
+  })
+
+  if (tela === 'carregando') {
+    return <TelaCarregandoEspaco />
   }
 
-  if (estaNaAreaAdministrativa && estaAutenticado && estado === 'sem_tenant') {
+  if (tela === 'onboarding') {
     return <OnboardingEmpresa onConcluido={concluirOnboarding} />
   }
 
-  // `colaborador` é um estado final válido: o Colaborador opera no painel sem
-  // escritório próprio, sobre os clientes dele e os que lhe foram atribuídos.
-  if (
-    estaNaAreaAdministrativa &&
-    estaAutenticado &&
-    estado !== 'ativo' &&
-    estado !== 'perfil_profissional' &&
-    estado !== 'colaborador'
-  ) {
+  if (tela === 'erro') {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background px-4">
         <Card className="w-full max-w-md text-center">

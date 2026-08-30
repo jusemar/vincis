@@ -13,7 +13,7 @@ import {
   Megaphone,
   Menu,
   Star,
-  Tags,
+  BadgeDollarSign,
   Target,
   Ticket,
   User,
@@ -59,7 +59,7 @@ const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
-  precificacao: Tags,
+  precificacao: BadgeDollarSign,
 }
 
 function destino(id: string) {

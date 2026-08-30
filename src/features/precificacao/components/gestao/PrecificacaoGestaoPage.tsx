@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Tags } from 'lucide-react'
+import { BadgeDollarSign } from 'lucide-react'
 import type { TabelaPrecificacao } from '../../types/precificacao'
 import { SecaoAdicionais } from './SecaoAdicionais'
 import { SecaoDescontos } from './SecaoDescontos'
@@ -52,7 +52,7 @@ export function PrecificacaoGestaoPage({
     <>
       <div className="mx-auto mb-6 flex max-w-5xl items-center gap-3">
         <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Tags className="size-5" />
+          <BadgeDollarSign className="size-5" />
         </div>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold">Precificação</h1>

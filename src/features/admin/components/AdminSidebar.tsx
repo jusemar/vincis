@@ -16,7 +16,7 @@ import {
   UsersRound,
   Megaphone,
   CalendarClock,
-  Tags,
+  BadgeDollarSign,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -81,7 +81,7 @@ const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
-  precificacao: Tags,
+  precificacao: BadgeDollarSign,
 };
 
 export default function AdminSidebar({

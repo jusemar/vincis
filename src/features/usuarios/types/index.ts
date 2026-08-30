@@ -67,6 +67,13 @@ export type AuthContextType = {
   tokenSessao: string | null
   estaCarregando: boolean
   estaAutenticado: boolean
+  /**
+   * A conferência da sessão não pôde ser feita — rede fora, servidor sem
+   * resposta. Não é o mesmo que sessão inválida: o token continua guardado e
+   * a tela pode oferecer "tentar novamente" em vez de deslogar quem estava
+   * legitimamente autenticado.
+   */
+  erroSessao: boolean
   login: (dados: LoginDTO) => Promise<ResultadoLogin>
   logout: () => Promise<ResultadoPadrao>
   refreshSession: () => Promise<void>
