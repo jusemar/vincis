@@ -58,11 +58,34 @@ export const CONFIGURACOES = {
 
 export type ChaveConfiguracao = keyof typeof CONFIGURACOES
 
-/** Texto guardado → número válido. Valor corrompido cai no padrão. */
+/**
+ * Texto guardado → número válido.
+ *
+ * **Ausente** e **ilegível** não são a mesma coisa, e por isso terminam
+ * diferente. Sem registro, vale o `padrao`: é o ponto de partida documentado,
+ * e é para isso que ele existe. Com registro que não se lê — texto que não é
+ * número, ou número fora dos limites declarados —, a leitura falha.
+ *
+ * Cair no padrão nesse segundo caso era um fallback silencioso: o
+ * arredondamento do preço voltaria a R$ 5 porque o valor gravado ficou
+ * corrompido, e ninguém veria diferença nenhuma até alguém contratar pelo
+ * número errado. Falhar aqui leva `/precos` à página comercial de
+ * indisponibilidade — que é a decisão desta etapa: entre um preço em que não se
+ * pode confiar e nenhum preço, a Vincis prefere nenhum.
+ */
 export function lerNumero(chave: ChaveConfiguracao, valor: string | null | undefined) {
   const definicao = CONFIGURACOES[chave]
-  const numero = Number.parseInt((valor ?? '').trim(), 10)
-  if (!Number.isFinite(numero)) return definicao.padrao
-  if (numero < definicao.minimo || numero > definicao.maximo) return definicao.padrao
+  const texto = (valor ?? '').trim()
+  if (texto === '') return definicao.padrao
+
+  const numero = Number.parseInt(texto, 10)
+  if (!Number.isFinite(numero)) {
+    throw new Error(`Configuração ${chave} guardada em formato ilegível.`)
+  }
+  if (numero < definicao.minimo || numero > definicao.maximo) {
+    throw new Error(
+      `Configuração ${chave} fora dos limites (${definicao.minimo}–${definicao.maximo}).`,
+    )
+  }
   return numero
 }

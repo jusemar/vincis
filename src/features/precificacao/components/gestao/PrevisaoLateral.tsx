@@ -253,6 +253,48 @@ export function PrevisaoLateral({
             onRespostas({ ...respostas, rotina: v }),
           )}
         </div>
+
+        {/* Os adicionais completam o cenário. Sem eles a trilha respondia a
+            cinco das seis famílias configuráveis: mudar o preço de um adicional
+            não movia número nenhum, e a simulação era exatamente o lugar onde
+            essa pergunta se faz. */}
+        {tabela.adicionais.filter((a) => a.ativo).length > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-[11px] text-muted-foreground">Adicionais</p>
+            {tabela.adicionais
+              .filter((a) => a.ativo)
+              .map((adicional) => {
+                const id = `${prefixo}-sim-adicional-${adicional.codigo}`
+                const marcado = respostas.adicionais.includes(adicional.codigo)
+                return (
+                  <label
+                    key={adicional.codigo}
+                    htmlFor={id}
+                    className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground"
+                  >
+                    <input
+                      id={id}
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={(evento) =>
+                        onRespostas({
+                          ...respostas,
+                          adicionais: evento.target.checked
+                            ? [...respostas.adicionais, adicional.codigo]
+                            : respostas.adicionais.filter((c) => c !== adicional.codigo),
+                        })
+                      }
+                      className="size-3.5 accent-primary"
+                    />
+                    <span className="min-w-0 truncate">{adicional.rotulo}</span>
+                    <span className="ml-auto shrink-0 tabular-nums">
+                      +{formatarCentavos(adicional.valorMensalCentavos)}
+                    </span>
+                  </label>
+                )
+              })}
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-border/70 bg-card p-5 shadow-sm">

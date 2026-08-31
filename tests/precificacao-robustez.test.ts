@@ -11,6 +11,11 @@ import {
   precificacaoServicos,
 } from '@/db/schema'
 import { ACOES_AUDITORIA } from '@/features/auditoria/lib/registrar-evento'
+import { configuracoesPlataforma } from '@/db/schema'
+import {
+  CHAVE_PRECIFICACAO_ARREDONDAMENTO,
+  lerNumero,
+} from '@/features/configuracoes/lib/configuracoes'
 import {
   salvarAdicionais,
   salvarDescontos,
@@ -333,6 +338,51 @@ describe('a vitrine prefere não mostrar preço a mostrar preço errado', () => 
     await expect(obterTabelaDaVitrine()).rejects.toThrow()
 
     await db.insert(precificacaoPrecosBase).values(removida)
+    await expect(obterTabelaDaVitrine()).resolves.toBeTruthy()
+  })
+})
+
+describe('um parâmetro corrompido não vira um preço diferente em silêncio', () => {
+  /*
+    O arredondamento e a quantidade de funcionários do configurador não moram
+    em `precificacao_*`: moram em `configuracoes_plataforma`, como texto. A
+    leitura desse texto voltava ao padrão do código sempre que ele não era um
+    número válido — e o padrão é exatamente o R$ 5 de hoje. Um valor corrompido
+    trocaria o arredondamento configurado pelo do código sem sintoma nenhum:
+    a vitrine seguiria mostrando preço, só que outro. Ausência e corrupção
+    passaram a terminar diferente.
+  */
+  it('sem registro, vale o padrão documentado', () => {
+    expect(lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, null)).toBe(500)
+    expect(lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, '')).toBe(500)
+    expect(lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, '   ')).toBe(500)
+  })
+
+  it('registro ilegível ou fora dos limites falha, em vez de virar o padrão', () => {
+    expect(() => lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, 'x')).toThrow()
+    expect(() => lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, '0')).toThrow()
+    expect(() => lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, '999999')).toThrow()
+    expect(lerNumero(CHAVE_PRECIFICACAO_ARREDONDAMENTO, '1000')).toBe(1000)
+  })
+
+  it('com o parâmetro corrompido no banco, a vitrine não calcula', async () => {
+    const [antes] = await db
+      .select({ valor: configuracoesPlataforma.valor })
+      .from(configuracoesPlataforma)
+      .where(eq(configuracoesPlataforma.chave, CHAVE_PRECIFICACAO_ARREDONDAMENTO))
+
+    await db
+      .update(configuracoesPlataforma)
+      .set({ valor: 'cinco reais' })
+      .where(eq(configuracoesPlataforma.chave, CHAVE_PRECIFICACAO_ARREDONDAMENTO))
+
+    await expect(obterTabelaPrecificacao()).rejects.toThrow()
+    await expect(obterTabelaDaVitrine()).rejects.toThrow()
+
+    await db
+      .update(configuracoesPlataforma)
+      .set({ valor: antes.valor })
+      .where(eq(configuracoesPlataforma.chave, CHAVE_PRECIFICACAO_ARREDONDAMENTO))
     await expect(obterTabelaDaVitrine()).resolves.toBeTruthy()
   })
 })
