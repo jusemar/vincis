@@ -17,12 +17,16 @@ import {
   Megaphone,
   CalendarClock,
   BadgeDollarSign,
-  Gauge,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { recursosPermitidos, ROTA_ADMIN } from "../constants/recursos";
+import {
+  modulosDaCentral,
+  recursosPermitidos,
+  ROTA_ADMIN,
+} from "../constants/recursos";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -89,7 +93,7 @@ const navItems = [
  * num padrão em vez de sumir do menu.
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
-  plataforma: Gauge,
+  central: Landmark,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
@@ -114,6 +118,10 @@ export default function AdminSidebar({
   // Uma só lista, filtrada pela autorização real — e não pela tela em que a
   // pessoa está. O menu mobile lê exatamente esta função.
   const recursos = recursosPermitidos({ ehGestor });
+  // Qualquer módulo da Central conta como "estar na Central" para a barra.
+  const emModuloDaCentral = modulosDaCentral().some(
+    ({ rota }) => pathname === rota || pathname.startsWith(`${rota}/`),
+  );
 
   return (
     <aside className={`sidebar ${isCollapsed ? "" : "expanded"}`}>
@@ -190,44 +198,40 @@ export default function AdminSidebar({
         })}
 
         {/*
-          O grupo extra do Gestor da Plataforma.
+          A porta da plataforma, para quem administra a Vincis.
 
-          Vem **depois** do menu do painel, e não no lugar dele: administrar a
-          Vincis é um privilégio somado, não uma persona que substitui a de
-          quem opera um escritório. A separação é a mesma linha fina que a
-          barra já usa no rodapé, e o título acompanha `.nav-label` — some
-          junto com os demais rótulos quando a barra está recolhida.
+          É **um** item ao lado dos demais, e não um grupo com cinco linhas: os
+          módulos (Usuários, Comunicados, Consultorias, Precificação) vivem
+          dentro da Central. Quem opera o próprio escritório o dia inteiro não
+          precisa de cinco linhas de administração competindo com o trabalho
+          dele na mesma barra.
         */}
-        {ehGestor && recursos.length > 0 ? (
-          <>
-            <div className="nav-grupo">
-              <span className="nav-label">Gestão da Plataforma</span>
-            </div>
-            {recursos.map((recurso) => {
-              const Icon = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard;
-              const isActive =
-                pathname === recurso.rota ||
-                pathname.startsWith(`${recurso.rota}/`);
-              return (
-                <Link
-                  key={recurso.id}
-                  href={recurso.rota}
-                  style={{ textDecoration: "none" }}
-                >
-                  <motion.button
-                    className={`nav-btn ${isActive ? "active" : ""}`}
-                    whileHover={{ x: 2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onToggle}
-                  >
-                    <Icon size={18} className="nav-icon" />
-                    <span className="nav-label">{recurso.rotulo}</span>
-                  </motion.button>
-                </Link>
-              );
-            })}
-          </>
-        ) : null}
+        {recursos.map((recurso) => {
+          const Icon = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard;
+          const isActive =
+            pathname === recurso.rota ||
+            pathname.startsWith(`${recurso.rota}/`) ||
+            // Estar num módulo da Central mantém a Central acesa: é o nível
+            // acima dele, e a barra precisa dizer onde a pessoa está.
+            (recurso.id === "central" && emModuloDaCentral);
+          return (
+            <Link
+              key={recurso.id}
+              href={recurso.rota}
+              style={{ textDecoration: "none" }}
+            >
+              <motion.button
+                className={`nav-btn ${isActive ? "active" : ""}`}
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onToggle}
+              >
+                <Icon size={18} className="nav-icon" />
+                <span className="nav-label">{recurso.rotulo}</span>
+              </motion.button>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Settings */}
@@ -253,7 +257,7 @@ export default function AdminSidebar({
               exibir, e um "★ — · 0 avaliações" ali seria um dado inventado. */}
           {ehGestor ? (
             <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>
-              Gestão da plataforma
+              Central Vincis
             </p>
           ) : (
             <p style={{ fontSize: 10, color: "hsl(var(--primary))" }}>

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { ROTA_CENTRAL } from '@/features/admin/constants/recursos'
 import AdminDashboard from '@/features/admin/components/AdminDashboard'
 import { mapearAtendimentoParaCard } from '@/features/admin/lib/atendimentos-reais'
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
@@ -26,8 +27,8 @@ export default async function AdminRoute() {
   //
   // Quem chega aqui sem cadastro de prestador aprovado só pode ser um Gestor
   // (os demais são desviados antes): não há escritório a criar nem carteira a
-  // exibir, então a casa dele é a Visão geral da plataforma.
-  if (!acesso.habilitado) redirect('/admin/plataforma')
+  // exibir, então a casa dele é a Central Vincis.
+  if (!acesso.habilitado) redirect(ROTA_CENTRAL)
 
   await garantirEscritorioProfissional(usuario.id)
   // Abrir o painel deixou de emitir aviso de prazo.

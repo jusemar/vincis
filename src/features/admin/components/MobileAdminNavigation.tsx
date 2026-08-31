@@ -14,7 +14,7 @@ import {
   Menu,
   Star,
   BadgeDollarSign,
-  Gauge,
+  Landmark,
   Target,
   Ticket,
   User,
@@ -57,7 +57,7 @@ const DEMAIS = [
  * consulta — é isso que impede o menu de divergir entre desktop e mobile.
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
-  plataforma: Gauge,
+  central: Landmark,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
@@ -207,9 +207,6 @@ export function MobileAdminNavigation({
 
             {recursos.length > 0 ? (
               <>
-                <p className="col-span-2 pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Gestão da Plataforma
-                </p>
                 {recursos.map((recurso) => {
                   const Icone = ICONE_DO_RECURSO[recurso.id] ?? LayoutDashboard
                   const ativo =

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { CalendarClock, Megaphone, Users } from 'lucide-react'
+import { BadgeDollarSign, CalendarClock, Megaphone, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -18,12 +18,12 @@ type GestaoInicioProps = {
 }
 
 /**
- * Início da Gestão da plataforma, agora dentro do Admin.
+ * Visão geral da Central Vincis.
  *
  * A tela perdeu o cabeçalho e o menu próprios que tinha em `/gestao`: barra
- * lateral, cabeçalho, tema e logout passaram a vir do `AdminShell`, o mesmo do
- * painel. O conteúdo — atalhos, cadastros pendentes e configurações — é o que
- * já existia, apenas apontando para os destinos incorporados em `/admin`.
+ * lateral, cabeçalho, tema e logout vêm do `AdminShell`, e a troca de módulo
+ * vem da navegação da Central. O conteúdo — atalhos, cadastros pendentes e
+ * configurações da plataforma — é o que já existia.
  */
 const ATALHOS = [
   {
@@ -44,6 +44,12 @@ const ATALHOS = [
     titulo: 'Consultorias',
     descricao: 'Acompanhamento operacional das consultorias agendadas.',
   },
+  {
+    href: '/admin/precificacao',
+    icon: BadgeDollarSign,
+    titulo: 'Precificação',
+    descricao: 'Valores e regras que alimentam a página pública de preços.',
+  },
 ]
 
 export function GestaoInicio({ nome, cadastrosPendentes, configuracoes }: GestaoInicioProps) {
@@ -51,12 +57,13 @@ export function GestaoInicio({ nome, cadastrosPendentes, configuracoes }: Gestao
     <div className="flex flex-col gap-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          Gestão da plataforma
+          Central Vincis
         </p>
         <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Olá, {nome}</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Este é o ambiente reservado à gestão da Vincis, agora dentro da área
-          administrativa.
+          O que é da plataforma inteira mora aqui — contas, mural, consultorias
+          e os preços da vitrine. O painel do seu escritório continua na barra
+          ao lado.
         </p>
       </div>
 

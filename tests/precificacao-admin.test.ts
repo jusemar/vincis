@@ -13,6 +13,7 @@ import {
 import { ACOES_AUDITORIA } from '@/features/auditoria/lib/registrar-evento'
 import {
   RECURSOS_ADMIN,
+  modulosDaCentral,
   recursosPermitidos,
   rotaExigeGestor,
 } from '@/features/admin/constants/recursos'
@@ -146,10 +147,11 @@ describe('acesso ao módulo', () => {
     expect(rotaExigeGestor('/admin/precificacao')).toBe(true)
     expect(rotaExigeGestor('/admin/precificacao/qualquer-coisa')).toBe(true)
 
-    const doGestor = recursosPermitidos({ ehGestor: true }).map((r) => r.rota)
-    const dosOutros = recursosPermitidos({ ehGestor: false }).map((r) => r.rota)
-    expect(doGestor).toContain('/admin/precificacao')
-    expect(dosOutros).not.toContain('/admin/precificacao')
+    // A Precificação é um módulo da Central: não ocupa linha na barra lateral,
+    // mas continua barrada por rota para quem não administra a plataforma.
+    const naCentral = modulosDaCentral().map((m) => m.rota)
+    expect(naCentral).toContain('/admin/precificacao')
+    expect(recursosPermitidos({ ehGestor: false })).toEqual([])
     // Desktop e mobile leem esta mesma lista: um item nunca aparece só num deles.
     expect(RECURSOS_ADMIN.some((r) => r.id === 'precificacao')).toBe(true)
   })

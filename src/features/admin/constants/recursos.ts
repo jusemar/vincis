@@ -29,45 +29,70 @@ export type RecursoAdmin = {
    * servidor — os três leem esta mesma marca.
    */
   exclusivoDoGestor: boolean
+  /**
+   * Aparece na barra lateral do painel.
+   *
+   * Só a Central Vincis aparece. Os cinco módulos da plataforma ocupavam cinco
+   * linhas na barra de quem, no dia a dia, opera o próprio escritório — cinco
+   * linhas para um assunto que não é o trabalho dele. Agora eles ficam um
+   * nível abaixo, dentro da Central.
+   */
+  noMenuPrincipal: boolean
+  /** É um módulo da Central Vincis, na navegação secundária dela. */
+  naCentral: boolean
+  /** Nome do módulo dentro da Central, quando difere do nome no menu. */
+  rotuloNaCentral?: string
 }
 
 export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
   {
-    // A casa do grupo. Existe porque a Gestão da Plataforma deixou de ser a
-    // experiência principal do Gestor: ele entra no painel do próprio
-    // escritório, e os assuntos da plataforma — cadastros pendentes, prazo das
-    // oportunidades — precisam de um lugar próprio para continuarem
-    // alcançáveis.
-    id: 'plataforma',
-    rota: '/admin/plataforma',
-    rotulo: 'Visão geral',
+    // A porta única da plataforma na barra lateral, e ao mesmo tempo a Visão
+    // geral de dentro da Central. É a mesma tela: entrar na Central é chegar
+    // nela.
+    id: 'central',
+    rota: '/admin/central',
+    rotulo: 'Central Vincis',
+    rotuloNaCentral: 'Visão geral',
     exclusivoDoGestor: true,
+    noMenuPrincipal: true,
+    naCentral: true,
   },
   {
     id: 'usuarios',
     rota: '/admin/usuarios',
     rotulo: 'Usuários',
     exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
   },
   {
     id: 'comunicados',
     rota: '/admin/comunicados',
     rotulo: 'Comunicados',
     exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
   },
   {
     id: 'consultorias',
     rota: '/admin/consultorias',
     rotulo: 'Consultorias',
     exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
   },
   {
     id: 'precificacao',
     rota: '/admin/precificacao',
     rotulo: 'Precificação',
     exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
   },
 ]
+
+/** Raiz da Central Vincis — a área global de gestão da plataforma. */
+export const ROTA_CENTRAL = '/admin/central'
 
 /** Raiz da área administrativa — destino de quem é barrado num recurso dela. */
 export const ROTA_ADMIN = '/admin'
@@ -93,10 +118,11 @@ export function rotaExigeGestor(caminho: string): boolean {
 }
 
 /**
- * Recursos que a pessoa pode ver e abrir.
+ * Itens da barra lateral do painel.
  *
  * Menu de desktop e menu mobile chamam esta função — é o que impede um item de
- * sumir num e continuar aparecendo no outro.
+ * sumir num e continuar aparecendo no outro. Hoje ela devolve, no máximo, a
+ * Central Vincis: os módulos da plataforma vivem dentro dela.
  */
 export function recursosPermitidos({
   ehGestor,
@@ -104,6 +130,23 @@ export function recursosPermitidos({
   ehGestor: boolean
 }): RecursoAdmin[] {
   return RECURSOS_ADMIN.filter(
-    (recurso) => ehGestor || !recurso.exclusivoDoGestor,
+    (recurso) =>
+      recurso.noMenuPrincipal && (ehGestor || !recurso.exclusivoDoGestor),
+  )
+}
+
+/**
+ * Módulos da Central Vincis, na ordem da navegação secundária.
+ *
+ * A mesma lista que protege as rotas alimenta o menu de dentro da Central —
+ * não existe uma segunda relação de módulos escrita à mão em componente
+ * nenhum.
+ */
+export function modulosDaCentral(): (RecursoAdmin & { rotuloCurto: string })[] {
+  return RECURSOS_ADMIN.filter((recurso) => recurso.naCentral).map(
+    (recurso) => ({
+      ...recurso,
+      rotuloCurto: recurso.rotuloNaCentral ?? recurso.rotulo,
+    }),
   )
 }

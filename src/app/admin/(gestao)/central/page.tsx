@@ -5,18 +5,15 @@ import { obterPrazoOportunidadeHoras } from '@/features/configuracoes/queries/ob
 import { contarCadastrosProfissionaisPendentes } from '@/features/usuarios/queries/contar-cadastros-profissionais-pendentes'
 
 /**
- * A casa da Gestão da Plataforma.
+ * A Visão geral da Central Vincis, e a porta dela.
  *
- * Ela existe porque o Gestor deixou de ser uma persona à parte: ele entra em
- * `/admin` e encontra o painel do próprio escritório, como qualquer
+ * A Central existe porque o Gestor deixou de ser uma persona à parte: ele
+ * entra em `/admin` e encontra o painel do próprio escritório, como qualquer
  * Profissional. Os assuntos da plataforma — cadastros esperando análise, prazo
- * das oportunidades, atalhos para os recursos exclusivos — ficariam sem
- * endereço se dependessem daquela tela inicial.
- *
- * O conteúdo é o mesmo de antes; o que mudou foi deixar de ser a única coisa
- * que o Gestor via ao entrar.
+ * das oportunidades, atalhos para os módulos — vivem aqui, um nível abaixo da
+ * barra lateral, que agora carrega um item só em vez de cinco.
  */
-export default async function PlataformaRoute() {
+export default async function CentralVincisRoute() {
   const gestor = await exigirGestorDaPlataforma()
 
   return (

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   RECURSOS_ADMIN,
   ROTA_ADMIN,
+  modulosDaCentral,
   recursoDaRota,
   recursosPermitidos,
   rotaExigeGestor,
@@ -72,7 +73,7 @@ describe('registro de recursos administrativos', () => {
       (r) => r.rota,
     )
     expect(exclusivos).toEqual([
-      '/admin/plataforma',
+      '/admin/central',
       '/admin/usuarios',
       '/admin/comunicados',
       '/admin/consultorias',
@@ -95,15 +96,27 @@ describe('registro de recursos administrativos', () => {
     expect(rotaExigeGestor('/admin?pagina=clients')).toBe(false)
   })
 
-  it('a mesma lista alimenta o menu de desktop e o de mobile', () => {
-    expect(recursosPermitidos({ ehGestor: true })).toHaveLength(
-      RECURSOS_ADMIN.length,
-    )
+  it('a barra lateral carrega uma porta, e não cinco', () => {
+    // Os módulos da plataforma ocupavam cinco linhas na barra de quem opera o
+    // próprio escritório. Agora existe a Central, e eles moram dentro dela.
+    expect(recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)).toEqual([
+      'Central Vincis',
+    ])
     // Nenhum item exclusivo sobra para quem não é Gestor — é o que impede o
     // menu de oferecer uma porta que o servidor vai fechar.
-    expect(recursosPermitidos({ ehGestor: false })).toEqual(
-      RECURSOS_ADMIN.filter((r) => !r.exclusivoDoGestor),
-    )
+    expect(recursosPermitidos({ ehGestor: false })).toEqual([])
+    // A proteção continua valendo para os cinco, e não só para a porta.
+    expect(RECURSOS_ADMIN.every((r) => r.exclusivoDoGestor)).toBe(true)
+  })
+
+  it('a navegação da Central lista os módulos, na ordem', () => {
+    expect(modulosDaCentral().map((m) => [m.rotuloCurto, m.rota])).toEqual([
+      ['Visão geral', '/admin/central'],
+      ['Usuários', '/admin/usuarios'],
+      ['Comunicados', '/admin/comunicados'],
+      ['Consultorias', '/admin/consultorias'],
+      ['Precificação', '/admin/precificacao'],
+    ])
   })
 })
 
@@ -331,17 +344,15 @@ describe('o Gestor da Plataforma é um usuário completo', () => {
     }
   })
 
-  it('vê o menu do painel e, somado a ele, a Gestão da Plataforma', () => {
-    const doGestor = recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)
-    expect(doGestor).toEqual([
-      'Visão geral',
-      'Usuários',
-      'Comunicados',
-      'Consultorias',
-      'Precificação',
+  it('vê o menu do painel e, somado a ele, a Central Vincis', () => {
+    expect(recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)).toEqual([
+      'Central Vincis',
     ])
-    // Quem não administra a plataforma não recebe o grupo — nem um item dele.
+    // Quem não administra a plataforma não recebe a porta — nem os módulos.
     expect(recursosPermitidos({ ehGestor: false })).toEqual([])
+    for (const modulo of modulosDaCentral()) {
+      expect(rotaExigeGestor(modulo.rota), modulo.rota).toBe(true)
+    }
   })
 
   it('passa nas guardas exclusivas, tendo escritório ou não', async () => {

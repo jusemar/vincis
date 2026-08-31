@@ -397,27 +397,47 @@ describe('exceções pontuais', () => {
 
 describe('antecedência mínima e horizonte', () => {
   it('a antecedência corta os horários próximos demais', async () => {
-    const hoje = dataLocalDoInstante(new Date(), FUSO)
-    // Uma faixa que cobre o dia inteiro de hoje, para o corte ser observável.
+    /*
+      O dia observado é **amanhã**, e a escolha é o que torna este caso
+      determinístico a qualquer hora do relógio.
+
+      Antes ele olhava para hoje. Com uma faixa de 00:00 às 23:30 e duas horas
+      de antecedência, um dia que já está acabando não tem horário nenhum
+      sobrando — rodando às 21h40, os dois lados da comparação davam zero e o
+      teste falhava sozinho, sem nada ter mudado no produto.
+
+      Amanhã não tem essa borda, e a aritmética garante os dois extremos em
+      qualquer horário: o último horário de amanhã (23:00) está entre 23h e 47h
+      de distância, então duas horas de antecedência **sempre** deixam parte do
+      dia de pé e quarenta e oito horas **sempre** esvaziam o dia inteiro. É a
+      mesma regra de produto sendo provada; o que saiu foi a dependência do
+      relógio.
+    */
+    const amanha = somarDiasEmDataLocal(
+      dataLocalDoInstante(new Date(), FUSO),
+      1,
+    )
+    const faixaDoDiaInteiro = [
+      { diaSemana: diaDaSemanaDeDataLocal(amanha), horaInicio: '00:00', horaFim: '23:30' },
+    ]
+
     await reconfigurar(
       contas.brunoPro,
       { antecedenciaMinimaMinutos: 120, duracaoMinutos: 30, intervaloMinutos: 0 },
-      [
-        { diaSemana: diaDaSemanaDeDataLocal(hoje), horaInicio: '00:00', horaFim: '23:30' },
-      ],
+      faixaDoDiaInteiro,
     )
-    const comDuasHoras = await horariosDe(contas.brunoPro, hoje)
+    const comDuasHoras = await horariosDe(contas.brunoPro, amanha)
 
     await reconfigurar(
       contas.brunoPro,
       { antecedenciaMinimaMinutos: 2880, duracaoMinutos: 30, intervaloMinutos: 0 },
-      [
-        { diaSemana: diaDaSemanaDeDataLocal(hoje), horaInicio: '00:00', horaFim: '23:30' },
-      ],
+      faixaDoDiaInteiro,
     )
-    const comDoisDias = await horariosDe(contas.brunoPro, hoje)
+    const comDoisDias = await horariosDe(contas.brunoPro, amanha)
 
-    // Exigir 48h de antecedência esvazia o dia de hoje.
+    // Duas horas de antecedência deixam o dia utilizável…
+    expect(comDuasHoras.length).toBeGreaterThan(0)
+    // …e exigir 48h esvazia amanhã por inteiro.
     expect(comDoisDias.length).toBeLessThan(comDuasHoras.length)
     expect(comDoisDias).toHaveLength(0)
   })
