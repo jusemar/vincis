@@ -5,14 +5,25 @@ import { useRouter } from 'next/navigation'
 import {
   BadgeDollarSign,
   Building2,
+  Calculator,
   ChevronRight,
+  Eye,
   Headphones,
   LayoutList,
-  Percent,
+  Loader2,
+  RotateCcw,
+  Save,
+  Scale,
   Sparkles,
+  Table2,
+  Type,
   type LucideIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import {
   salvarAdicionais,
   salvarDescontos,
@@ -20,6 +31,7 @@ import {
   salvarFatores,
   salvarPrecosBase,
 } from '../../actions/precificacao'
+import { multiplicadorParaPercentual } from '../../lib/conversao'
 import { impressaoDaSecao } from '../../lib/impressao'
 import {
   aplicarRascunho,
@@ -29,6 +41,7 @@ import {
   paraNumero,
   rascunhoDaTabela,
   secaoAlterada,
+  SECOES_RASCUNHO,
   type RascunhoPrecificacao,
   type SecaoRascunho,
 } from '../../lib/rascunho'
@@ -37,69 +50,80 @@ import type {
   RespostasPrecificacao,
   TabelaPrecificacao,
 } from '../../types/precificacao'
-import { CabecalhoSecao } from './primitivas'
 import { PrevisaoLateral } from './PrevisaoLateral'
-import { SecaoVisaoGeral } from './SecaoVisaoGeral'
 import {
   SecaoAdicionais,
-  SecaoDescontos,
+  SecaoAtendimento,
+  SecaoComparativo,
+  SecaoFaixas,
   SecaoPerfil,
-  SecaoPorte,
-  SecaoPrecosBase,
+  SecaoPlanos,
+  SecaoServicos,
+  SecaoTextos,
 } from './secoes'
 
 /**
- * A mesa de trabalho da Precificação.
+ * A Precificação, com o layout do protótipo aprovado e o motor real do Vincis.
  *
- * ## Três colunas, e o motivo de cada uma
+ * ## O que veio do protótipo
  *
- * À esquerda o índice das seis áreas — só uma aparece por vez, porque
- * configurar preço é uma tarefa de cada vez e empilhar tudo numa página só
- * produzia metros de rolagem. No centro o assunto escolhido. À direita a
- * simulação, fixa: é a pergunta que antecede qualquer alteração de preço —
- * "quanto fica?" — respondida sem sair da tela.
+ * A moldura inteira: topbar compacta, coluna de navegação de 15rem fixa, oito
+ * seções na mesma ordem e com os mesmos títulos, conteúdo central de largura
+ * livre, trilha de simulação de 18rem à direita, cartões, tabelas densas e
+ * campos de 36px. Quem conhece o protótipo reconhece a tela.
  *
- * ## O rascunho mora aqui
+ * ## O que é do Vincis, e não podia ser copiado
  *
- * As seções não guardam estado próprio. Se guardassem, a prévia só saberia da
- * seção aberta, e mexer no acréscimo da Consultiva não mostraria efeito no
- * Pacote. Com um rascunho só, `aplicarRascunho` monta a tabela hipotética
- * inteira e o motor calcula sobre ela — o mesmo motor de `/precos`, sem cópia
- * nenhuma da fórmula.
+ * Os números. O protótipo mostrava valores escritos à mão e avisava que nada
+ * estava ligado; aqui cada campo vem de `precificacao_*`, cada preço da
+ * simulação sai do mesmo motor que atende `/precos`, e gravar passa pelas
+ * Server Actions com Zod, impressão de seção, transação e conferência de
+ * coerência. Onde o protótipo editava algo que no Vincis é conteúdo de código,
+ * o campo aparece em leitura com a origem declarada — inventar um campo que
+ * grava em lugar nenhum seria pior do que não mostrá-lo.
  *
- * Rascunho não é persistência: cada cartão continua salvando o próprio
- * conjunto pela Server Action de sempre, com Zod, impressão da seção,
- * transação e conferência de coerência.
+ * ## Salvar é um só, e continua por seção por dentro
+ *
+ * O protótipo tem um botão de publicar no topo, e é o que a tela oferece. Por
+ * baixo, cada conjunto alterado segue pela sua própria action — a transação, a
+ * impressão e a coerência continuam por seção, e um erro é relatado com o nome
+ * do bloco em vez de derrubar tudo em silêncio.
  */
-const AREAS = [
-  { id: 'visao', rotulo: 'Visão geral', icone: LayoutList },
-  { id: 'base', rotulo: 'Preços-base', icone: BadgeDollarSign },
-  { id: 'porte', rotulo: 'Porte da empresa', icone: Building2 },
-  { id: 'perfil', rotulo: 'Perfil do atendimento', icone: Headphones },
+const NAV = [
+  { id: 'servicos', rotulo: 'Tipos de serviço', icone: Scale },
+  { id: 'perfil', rotulo: 'Perfil da empresa', icone: Building2 },
+  { id: 'faixas', rotulo: 'Faixas e volumes', icone: LayoutList },
+  { id: 'atendimento', rotulo: 'Atendimento e rotina', icone: Headphones },
   { id: 'adicionais', rotulo: 'Adicionais', icone: Sparkles },
-  { id: 'descontos', rotulo: 'Descontos e pacote', icone: Percent },
+  { id: 'planos', rotulo: 'Planos e descontos', icone: Calculator },
+  { id: 'comparativo', rotulo: 'Tabela comparativa', icone: Table2 },
+  { id: 'textos', rotulo: 'Textos da página', icone: Type },
 ] as const
 
-type AreaId = (typeof AREAS)[number]['id']
+type NavId = (typeof NAV)[number]['id']
 
-/** Seções de rascunho que cada área da tela controla. */
-const SECOES_DA_AREA: Record<AreaId, SecaoRascunho[]> = {
-  visao: [],
-  base: ['precos_base'],
-  porte: ['funcionarios', 'notas_fiscais', 'faturamento'],
-  perfil: ['atividade', 'atendimento', 'rotina'],
+/** Seções de dados que cada área da navegação toca. */
+const SECOES_DA_AREA: Record<NavId, SecaoRascunho[]> = {
+  servicos: ['precos_base'],
+  perfil: ['precos_base', 'atividade'],
+  faixas: ['funcionarios', 'notas_fiscais', 'faturamento'],
+  atendimento: ['atendimento', 'rotina'],
   adicionais: ['adicionais'],
-  descontos: ['descontos'],
+  planos: ['precos_base', 'descontos'],
+  comparativo: [],
+  textos: [],
 }
 
-/** O serviço cuja composição a prévia detalha em cada área. */
-const FOCO_DA_AREA: Record<AreaId, string> = {
-  visao: 'consultiva',
-  base: 'consultiva',
-  porte: 'padrao',
-  perfil: 'consultiva',
+/** O serviço cuja composição a trilha detalha em cada área. */
+const FOCO_DA_AREA: Record<NavId, string> = {
+  servicos: 'consultiva',
+  perfil: 'padrao',
+  faixas: 'padrao',
+  atendimento: 'consultiva',
   adicionais: 'consultiva',
-  descontos: 'combo',
+  planos: 'combo',
+  comparativo: 'consultiva',
+  textos: 'consultiva',
 }
 
 export function PrecificacaoGestaoPage({
@@ -110,7 +134,7 @@ export function PrecificacaoGestaoPage({
   tabela: TabelaPrecificacao
 }) {
   const router = useRouter()
-  const [area, setArea] = useState<AreaId>('visao')
+  const [ativa, setAtiva] = useState<NavId>('servicos')
   const [salvando, iniciar] = useTransition()
 
   const salvo = useMemo(() => rascunhoDaTabela(tabela), [tabela])
@@ -119,58 +143,38 @@ export function PrecificacaoGestaoPage({
     respostasIniciais(tabela),
   )
 
-  // A tabela como ficaria se tudo fosse salvo agora. Só a prévia e os textos
-  // de apoio a consultam; o banco continua vendo apenas o que o botão manda.
+  // A tabela como ficaria se tudo fosse salvo agora. Só a trilha e os textos de
+  // apoio a consultam; o banco continua vendo apenas o que o botão manda.
   const simulada = useMemo(
     () => aplicarRascunho(tabela, rascunho),
     [tabela, rascunho],
   )
-  const alteradas = useMemo(
-    () =>
-      new Set(
-        (Object.keys(SECOES_DA_AREA) as AreaId[])
-          .flatMap((id) => SECOES_DA_AREA[id])
-          .filter((secao) => secaoAlterada(rascunho, salvo, secao)),
-      ),
+  const pendentes = useMemo(
+    () => SECOES_RASCUNHO.filter((secao) => secaoAlterada(rascunho, salvo, secao)),
     [rascunho, salvo],
   )
 
-  function concluir(promessa: Promise<{ sucesso: boolean; mensagem: string }>) {
-    iniciar(async () => {
-      const resultado = await promessa
-      if (!resultado.sucesso) {
-        toast.error(resultado.mensagem)
-        return
-      }
-      toast.success(resultado.mensagem)
-      router.refresh()
-    })
-  }
-
   function invalido(valores: number[]) {
-    if (valores.every((v) => Number.isFinite(v))) return false
-    toast.error('Confira os campos: há valores em branco ou inválidos.')
-    return true
+    return valores.some((v) => !Number.isFinite(v))
   }
 
-  /** Monta e envia o conjunto de uma seção, na unidade que a action espera. */
-  function salvarSecao(secao: SecaoRascunho) {
+  /** Monta o conjunto de uma seção na unidade que a action espera. */
+  function enviar(secao: SecaoRascunho): Promise<{ sucesso: boolean; mensagem: string }> {
     if (secao === 'precos_base') {
       const precos = tabela.precosBase.map((p) => ({
         grupo: p.grupo,
         regime: p.regime,
         valorReais: paraNumero(rascunho.precosBase[chaveDoPreco(p.grupo, p.regime)] ?? ''),
       }))
-      const acrescimoConsultiva = paraNumero(rascunho.acrescimoConsultiva)
-      if (invalido([...precos.map((p) => p.valorReais), acrescimoConsultiva])) return
-      concluir(
-        salvarPrecosBase({
-          impressao: impressaoDaSecao(tabela, 'precos_base'),
-          precos,
-          acrescimoConsultiva,
-        }),
-      )
-      return
+      const multiplicador = paraNumero(rascunho.acrescimoConsultiva)
+      if (invalido([...precos.map((p) => p.valorReais), multiplicador])) {
+        return Promise.resolve({ sucesso: false, mensagem: 'Preços-base: valor inválido.' })
+      }
+      return salvarPrecosBase({
+        impressao: impressaoDaSecao(tabela, 'precos_base'),
+        precos,
+        acrescimoConsultiva: multiplicadorParaPercentual(multiplicador),
+      })
     }
 
     if (secao === 'funcionarios' || secao === 'notas_fiscais' || secao === 'faturamento') {
@@ -183,34 +187,36 @@ export function PrecificacaoGestaoPage({
             rascunho.faixas[chaveDaFaixa(f.grupo, f.tipo, f.codigo)] ?? '',
           ),
         }))
-      if (invalido(faixas.map((f) => f.valorReais))) return
-      concluir(
-        salvarFaixas({
-          impressao: impressaoDaSecao(tabela, secao),
-          tipo: secao,
-          faixas,
-        }),
-      )
-      return
+      if (invalido(faixas.map((f) => f.valorReais))) {
+        return Promise.resolve({ sucesso: false, mensagem: 'Faixas: valor inválido.' })
+      }
+      return salvarFaixas({
+        impressao: impressaoDaSecao(tabela, secao),
+        tipo: secao,
+        faixas,
+      })
     }
 
     if (secao === 'atividade' || secao === 'atendimento' || secao === 'rotina') {
-      const dimensao = tabela.dimensoes.find((d) => d.codigo === secao)
-      const opcoes = (dimensao?.opcoes ?? [])
+      const opcoes = (tabela.dimensoes.find((d) => d.codigo === secao)?.opcoes ?? [])
         .filter((o) => o.multiplicadorMilesimos !== null)
         .map((o) => ({
           codigo: o.codigo,
-          acrescimoPercentual: paraNumero(rascunho.fatores[chaveDoFator(secao, o.codigo)] ?? ''),
+          acrescimoPercentual: multiplicadorParaPercentual(
+            paraNumero(rascunho.fatores[chaveDoFator(secao, o.codigo)] ?? ''),
+          ),
         }))
-      if (invalido(opcoes.map((o) => o.acrescimoPercentual))) return
-      concluir(
-        salvarFatores({
-          impressao: impressaoDaSecao(tabela, `fatores:${secao}`),
-          dimensao: secao,
-          opcoes,
-        }),
-      )
-      return
+      if (invalido(opcoes.map((o) => o.acrescimoPercentual))) {
+        return Promise.resolve({
+          sucesso: false,
+          mensagem: 'Multiplicadores: valor inválido.',
+        })
+      }
+      return salvarFatores({
+        impressao: impressaoDaSecao(tabela, `fatores:${secao}`),
+        dimensao: secao,
+        opcoes,
+      })
     }
 
     if (secao === 'adicionais') {
@@ -219,89 +225,163 @@ export function PrecificacaoGestaoPage({
         valorReais: paraNumero(rascunho.adicionais[a.codigo]?.valor ?? ''),
         ativo: rascunho.adicionais[a.codigo]?.ativo ?? a.ativo,
       }))
-      if (invalido(adicionais.map((a) => a.valorReais))) return
-      concluir(
-        salvarAdicionais({
-          impressao: impressaoDaSecao(tabela, 'adicionais'),
-          adicionais,
-        }),
-      )
-      return
+      if (invalido(adicionais.map((a) => a.valorReais))) {
+        return Promise.resolve({ sucesso: false, mensagem: 'Adicionais: valor inválido.' })
+      }
+      return salvarAdicionais({
+        impressao: impressaoDaSecao(tabela, 'adicionais'),
+        adicionais,
+      })
     }
 
     const descontos = tabela.descontos.map((d) => ({
       codigo: d.codigo,
       percentual: paraNumero(rascunho.descontos[d.codigo] ?? ''),
     }))
-    if (invalido(descontos.map((d) => d.percentual))) return
-    concluir(
-      salvarDescontos({
-        impressao: impressaoDaSecao(tabela, 'descontos'),
-        descontos,
-      }),
-    )
+    if (invalido(descontos.map((d) => d.percentual))) {
+      return Promise.resolve({ sucesso: false, mensagem: 'Descontos: valor inválido.' })
+    }
+    return salvarDescontos({
+      impressao: impressaoDaSecao(tabela, 'descontos'),
+      descontos,
+    })
   }
 
-  /** O que cada cartão precisa saber para desenhar o próprio rodapé. */
-  const estadoDaSecao = (secao: string) => ({
-    alterado: alteradas.has(secao as SecaoRascunho),
-    salvando,
-    onSalvar: () => salvarSecao(secao as SecaoRascunho),
-    onDescartar: () => setRascunho(salvo),
-  })
+  const ROTULO_DA_SECAO: Record<SecaoRascunho, string> = {
+    precos_base: 'Preços-base',
+    funcionarios: 'Funcionários',
+    notas_fiscais: 'Notas fiscais',
+    faturamento: 'Faturamento',
+    atividade: 'Ramo da empresa',
+    atendimento: 'Atendimento',
+    rotina: 'Rotina',
+    adicionais: 'Adicionais',
+    descontos: 'Descontos',
+  }
 
-  const comum = { tabela, simulada, rascunho, alterar: setRascunho, estadoDaSecao }
-  const areaAtual = AREAS.find((a) => a.id === area)!
-  const pendentesNaArea = SECOES_DA_AREA[area].filter((s) => alteradas.has(s)).length
+  function publicar() {
+    if (pendentes.length === 0) return
+    iniciar(async () => {
+      const falhas: string[] = []
+      for (const secao of pendentes) {
+        const resultado = await enviar(secao)
+        if (!resultado.sucesso) {
+          falhas.push(`${ROTULO_DA_SECAO[secao]}: ${resultado.mensagem}`)
+        }
+      }
+      if (falhas.length > 0) {
+        for (const falha of falhas) toast.error(falha)
+      } else {
+        toast.success('Alterações salvas.')
+      }
+      router.refresh()
+    })
+  }
+
+  const comum = { tabela, simulada, rascunho, alterar: setRascunho }
+  const focoAtual = FOCO_DA_AREA[ativa]
+  const regimeAtual = simulada.dimensoes
+    .find((d) => d.codigo === 'regime')
+    ?.opcoes.find((o) => o.codigo === respostas.regime)?.rotulo
+  const ramoAtual = simulada.dimensoes
+    .find((d) => d.codigo === 'atividade')
+    ?.opcoes.find((o) => o.codigo === respostas.atividades[0])?.rotulo
+  const notasAtual = simulada.faixas.find(
+    (f) => f.tipo === 'notas_fiscais' && f.codigo === respostas.notasFiscais,
+  )?.rotulo
+  const cenario = `Perfil: ${regimeAtual} · ${ramoAtual} · ${respostas.funcionarios} funcionários · ${notasAtual} notas/mês`
 
   return (
-    <div className="space-y-4">
-      <CabecalhoSecao
-        titulo="Precificação"
-        descricao={`Valores e regras da página pública de preços · ${gestorNome}`}
-      />
+    <div className="-mx-1">
+      <header className="sticky top-0 z-20 -mx-4 border-b border-border/70 bg-card/85 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <BadgeDollarSign className="size-5" />
+            </div>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-semibold text-foreground">
+                Precificação · {gestorNome}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                Configuração da página de preços
+              </p>
+            </div>
+            <Badge
+              variant="outline"
+              className={`ml-2 hidden text-[11px] sm:inline-flex ${
+                pendentes.length > 0 ? 'border-primary/50 text-primary' : 'border-border/80'
+              }`}
+            >
+              {pendentes.length > 0 ? 'Rascunho' : 'Publicado'}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              disabled={pendentes.length === 0 || salvando}
+              onClick={() => setRascunho(salvo)}
+            >
+              <RotateCcw /> Descartar
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/precos" target="_blank" rel="noreferrer">
+                <Eye /> Pré-visualizar
+              </Link>
+            </Button>
+            <Button size="sm" onClick={publicar} disabled={pendentes.length === 0 || salvando}>
+              {salvando ? <Loader2 className="animate-spin" /> : <Save />} Publicar
+            </Button>
+          </div>
+        </div>
+      </header>
 
-      <div className="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_19rem]">
-        <IndiceDeAreas
-          area={area}
-          onSelecionar={setArea}
-          alteradas={(id) => SECOES_DA_AREA[id].some((s) => alteradas.has(s))}
+      <div className="mx-auto flex max-w-7xl gap-6 py-6 xl:gap-8">
+        <IndiceDeSecoes
+          ativa={ativa}
+          onSelecionar={setAtiva}
+          pendenteEm={(id) => SECOES_DA_AREA[id].some((s) => pendentes.includes(s))}
+          pendentes={pendentes.length}
         />
 
-        <main className="min-w-0 space-y-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              {areaAtual.rotulo}
-            </h2>
-            {pendentesNaArea > 0 ? (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                não salvo
-              </span>
-            ) : null}
-          </div>
+        <main className="min-w-0 flex-1 space-y-6 pb-16">
+          <NavegacaoCompacta ativa={ativa} onSelecionar={setAtiva} />
+          {ativa === 'servicos' && <SecaoServicos {...comum} />}
+          {ativa === 'perfil' && <SecaoPerfil {...comum} />}
+          {ativa === 'faixas' && <SecaoFaixas {...comum} />}
+          {ativa === 'atendimento' && <SecaoAtendimento {...comum} />}
+          {ativa === 'adicionais' && <SecaoAdicionais {...comum} />}
+          {ativa === 'planos' && <SecaoPlanos {...comum} />}
+          {ativa === 'comparativo' && <SecaoComparativo />}
+          {ativa === 'textos' && <SecaoTextos />}
 
-          {area === 'visao' ? (
-            <SecaoVisaoGeral tabela={simulada} respostas={respostas} />
-          ) : null}
-          {area === 'base' ? <SecaoPrecosBase {...comum} /> : null}
-          {area === 'porte' ? <SecaoPorte {...comum} /> : null}
-          {area === 'perfil' ? <SecaoPerfil {...comum} /> : null}
-          {area === 'adicionais' ? <SecaoAdicionais {...comum} /> : null}
-          {area === 'descontos' ? <SecaoDescontos {...comum} /> : null}
+          {/* Abaixo de xl a trilha desce para o fim da coluna, que é onde cabe
+              sem espremer o formulário. */}
+          <div className="xl:hidden">
+            <PrevisaoLateral
+              prefixo="movel"
+              tabela={simulada}
+              respostas={respostas}
+              onRespostas={setRespostas}
+              servicoEmFoco={focoAtual}
+              cenario={cenario}
+            />
+          </div>
         </main>
 
-        {/* Fixa a partir de `xl`; abaixo disso vai para o fim da coluna, que é
-            onde ela cabe sem espremer o formulário. */}
         <aside
           aria-label="Simulação de preço"
-          className="min-w-0 xl:sticky xl:top-4 xl:self-start"
+          className="hidden w-72 shrink-0 xl:block"
         >
           <PrevisaoLateral
+            prefixo="lateral"
             tabela={simulada}
             respostas={respostas}
             onRespostas={setRespostas}
-            temRascunho={alteradas.size > 0}
-            servicoEmFoco={FOCO_DA_AREA[area]}
+            servicoEmFoco={focoAtual}
+            cenario={cenario}
           />
         </aside>
       </div>
@@ -309,54 +389,95 @@ export function PrecificacaoGestaoPage({
   )
 }
 
-/**
- * O índice das áreas.
- *
- * Vertical no desktop e rolando na horizontal no celular: seis itens não cabem
- * numa linha estreita, e quebrar em duas empurraria o formulário para baixo da
- * dobra.
- */
-function IndiceDeAreas({
-  area,
+/** A coluna de navegação do protótipo: 15rem, fixa, uma seção acesa por vez. */
+function IndiceDeSecoes({
+  ativa,
   onSelecionar,
-  alteradas,
+  pendenteEm,
+  pendentes,
 }: {
-  area: AreaId
-  onSelecionar: (id: AreaId) => void
-  alteradas: (id: AreaId) => boolean
+  ativa: NavId
+  onSelecionar: (id: NavId) => void
+  pendenteEm: (id: NavId) => boolean
+  pendentes: number
 }) {
   return (
-    <nav
-      aria-label="Áreas da precificação"
-      className="-mx-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0"
-    >
-      <div className="flex w-max gap-1 lg:sticky lg:top-4 lg:w-auto lg:flex-col">
-        {AREAS.map((item) => {
+    <aside className="hidden w-60 shrink-0 lg:block">
+      <nav aria-label="Seções da precificação" className="sticky top-20 space-y-1">
+        {NAV.map((item) => {
           const Icone: LucideIcon = item.icone
-          const ativa = item.id === area
+          const acesa = item.id === ativa
           return (
             <button
               key={item.id}
               type="button"
-              aria-current={ativa ? 'page' : undefined}
+              aria-current={acesa ? 'page' : undefined}
               onClick={() => onSelecionar(item.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors lg:w-full ${
-                ativa
+              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                acesa
                   ? 'bg-accent font-medium text-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
               }`}
             >
-              <Icone className={`size-4 shrink-0 ${ativa ? 'text-primary' : ''}`} />
+              <Icone className={`size-4 shrink-0 ${acesa ? 'text-primary' : ''}`} />
               <span className="truncate">{item.rotulo}</span>
-              {alteradas(item.id) ? (
+              {pendenteEm(item.id) ? (
                 <span
                   aria-label="alterações não salvas"
-                  className="size-1.5 shrink-0 rounded-full bg-primary lg:ml-auto"
+                  className="ml-auto size-1.5 shrink-0 rounded-full bg-primary"
                 />
+              ) : acesa ? (
+                <ChevronRight className="ml-auto size-4 text-primary" />
               ) : null}
-              {ativa && !alteradas(item.id) ? (
-                <ChevronRight className="ml-auto hidden size-4 text-primary lg:block" />
-              ) : null}
+            </button>
+          )
+        })}
+        <Separator className="my-4" />
+        <div className="rounded-lg border border-border/70 bg-card p-3">
+          <p className="text-xs font-semibold text-foreground">
+            Conectado ao motor real
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {pendentes > 0
+              ? `${pendentes} ${pendentes === 1 ? 'bloco alterado' : 'blocos alterados'} — a simulação já reflete o rascunho. Publique para valer na página de preços.`
+              : 'Os valores desta tela alimentam a página pública de preços pelo mesmo cálculo.'}
+          </p>
+        </div>
+      </nav>
+    </aside>
+  )
+}
+
+/** A mesma navegação, rolando na horizontal, para telas sem espaço à esquerda. */
+function NavegacaoCompacta({
+  ativa,
+  onSelecionar,
+}: {
+  ativa: NavId
+  onSelecionar: (id: NavId) => void
+}) {
+  return (
+    <nav
+      aria-label="Seções da precificação"
+      className="-mx-1 overflow-x-auto px-1 pb-1 lg:hidden"
+    >
+      <div className="flex w-max gap-1">
+        {NAV.map((item) => {
+          const Icone: LucideIcon = item.icone
+          const acesa = item.id === ativa
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelecionar(item.id)}
+              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors ${
+                acesa
+                  ? 'bg-accent font-medium text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent/60'
+              }`}
+            >
+              <Icone className={`size-4 ${acesa ? 'text-primary' : ''}`} />
+              {item.rotulo}
             </button>
           )
         })}

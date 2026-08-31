@@ -1,8 +1,13 @@
-import { percentualParaDesconto, percentualParaMultiplicador, reaisParaCentavos } from './conversao'
 import {
-  acrescimoPercentual,
+  percentualParaDesconto,
+  percentualParaMultiplicador,
+  reaisParaCentavos,
+} from './conversao'
+import {
   centavosParaReais,
   descontoPercentual,
+  multiplicadorDeMilesimos,
+  multiplicadorParaPercentual,
 } from './conversao'
 import type { TabelaPrecificacao } from '../types/precificacao'
 
@@ -72,8 +77,9 @@ export function rascunhoDaTabela(
         paraTexto(centavosParaReais(p.valorCentavos)),
       ]),
     ),
+    // Guardado como multiplicador ("1,35"), que é como a tela mostra.
     acrescimoConsultiva: paraTexto(
-      acrescimoPercentual(
+      multiplicadorDeMilesimos(
         tabela.servicos.find((s) => s.codigo === 'consultiva')
           ?.multiplicadorMilesimos ?? 1000,
       ),
@@ -90,7 +96,7 @@ export function rascunhoDaTabela(
           .filter((o) => o.multiplicadorMilesimos !== null)
           .map((o) => [
             chaveDoFator(d.codigo, o.codigo),
-            paraTexto(acrescimoPercentual(o.multiplicadorMilesimos ?? 1000)),
+            paraTexto(multiplicadorDeMilesimos(o.multiplicadorMilesimos ?? 1000)),
           ]),
       ),
     ),
@@ -126,8 +132,8 @@ export function aplicarRascunho(
   }
   const multiplicador = (texto: string | undefined, atual: number) => {
     const numero = paraNumero(texto ?? '')
-    return Number.isFinite(numero) && numero >= 0
-      ? percentualParaMultiplicador(numero)
+    return Number.isFinite(numero) && numero > 0
+      ? percentualParaMultiplicador(multiplicadorParaPercentual(numero))
       : atual
   }
   const desconto = (texto: string | undefined, atual: number) => {

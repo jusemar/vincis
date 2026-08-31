@@ -44,3 +44,20 @@ export function descontoPercentual(descontoMilesimos: number): number {
 export function percentualParaDesconto(percentual: number): number {
   return Math.round(percentual * 10)
 }
+
+/**
+ * O mesmo fator, dito como a tela do Gestor diz: 1080 → "1,080".
+ *
+ * Acréscimo e multiplicador são duas leituras do mesmo número — "8% a mais" e
+ * "1,08×". A tela de administração usa a segunda porque é assim que se compara
+ * um ramo com outro de relance; as Server Actions continuam recebendo a
+ * primeira, e a conversão entre elas mora aqui.
+ */
+export function multiplicadorDeMilesimos(milesimos: number): number {
+  return milesimos / 1000
+}
+
+/** "1,08" → 8 (por cento a mais), que é o que a Server Action espera. */
+export function multiplicadorParaPercentual(multiplicador: number): number {
+  return Math.round((multiplicador - 1) * 1000) / 10
+}

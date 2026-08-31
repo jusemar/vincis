@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -41,7 +42,20 @@ export const atendimentoEventos = pgTable(
      */
     visivelCliente: boolean('visivel_cliente').notNull().default(true),
     metadados: jsonb('metadados'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    /**
+     * O instante do evento — `clock_timestamp()`, e não `now()`.
+     *
+     * `now()` é o relógio da **transação**: ele não anda enquanto ela dura.
+     * Como um mesmo ato grava mais de um evento na mesma transação (aceitar um
+     * pedido de ajuste grava "aceito" e, logo em seguida, "reaberto"), todos
+     * recebiam o mesmo `created_at` — e o Histórico, que ordena por esta
+     * coluna, mostrava os dois em ordem arbitrária, decidida pelo plano de
+     * execução. `clock_timestamp()` anda dentro da transação e devolve a
+     * ordem real dos fatos, que é o que esta coluna sempre quis dizer.
+     */
+    createdAt: timestamp('created_at')
+      .default(sql`clock_timestamp()`)
+      .notNull(),
   },
   (t) => ({
     linhaDoTempoIdx: index('atendimento_eventos_linha_do_tempo_idx').on(

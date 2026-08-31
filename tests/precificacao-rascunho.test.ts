@@ -34,7 +34,11 @@ describe('rascunho da precificação', () => {
     // configuração, campo a campo.
     expect(aplicarRascunho(tabela, rascunho)).toEqual(tabela)
     expect(rascunho.precosBase[chaveDoPreco('contabil', 'simples')]).toBe('195')
-    expect(rascunho.acrescimoConsultiva).toBe('35')
+    // Fatores são mostrados como multiplicador ("1,35x"), que é como a tela de
+    // administração compara um ramo com outro. A Server Action continua
+    // recebendo porcentagem; a conversão acontece na borda.
+    expect(rascunho.acrescimoConsultiva).toBe('1,35')
+    expect(rascunho.fatores[chaveDoFator('atividade', 'comercio')]).toBe('1,08')
     expect(rascunho.descontos.doze_meses).toBe('15')
     expect(rascunho.adicionais.reuniao_mensal).toEqual({ valor: '59', ativo: true })
   })
@@ -105,7 +109,7 @@ describe('rascunho da precificação', () => {
     const base = rascunhoDaTabela(tabela)
     const comFator = {
       ...base,
-      fatores: { ...base.fatores, [chaveDoFator('atividade', 'industria')]: '25' },
+      fatores: { ...base.fatores, [chaveDoFator('atividade', 'industria')]: '1,25' },
     }
     const simulada = aplicarRascunho(tabela, comFator)
 

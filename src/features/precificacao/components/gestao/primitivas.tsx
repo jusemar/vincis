@@ -1,31 +1,20 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Check, Loader2, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 /**
- * As peças da Precificação administrativa.
+ * As primitivas da tela de Precificação.
  *
- * ## Densidade é requisito, não estética
- *
- * O Gestor não configura um valor por vez: ele percorre oito preços-base,
- * doze faixas e oito acréscimos numa sessão só. Um cartão por configuração
- * transformava isso em metros de rolagem. Aqui a unidade é a **linha de
- * tabela** — rótulo à esquerda, campo estreito à direita, altura de 36px — e o
- * cartão volta a ser o que deveria ser: o agrupamento de um assunto.
- *
- * ## O que continua sendo do Vincis
- *
- * Tudo o que se vê: `Input`, `Button`, `Label` e `Switch` são os componentes do
- * projeto, e cor, raio, sombra e foco vêm dos tokens. A referência que
- * inspirou o layout não trouxe nenhuma paleta junto.
+ * São a tradução direta de `components/admin/primitives.tsx` do protótipo que
+ * serviu de referência — mesmo nome, mesma anatomia, mesmas medidas — escritas
+ * sobre os componentes e os tokens do Vincis. O protótipo não trouxe paleta
+ * nenhuma junto: cor, raio, sombra e foco continuam sendo os do projeto, e é
+ * por isso que a tela se parece com ele sem deixar de pertencer a esta casa.
  */
 
-/** Título de uma seção, com espaço para uma ação à direita. */
 export function CabecalhoSecao({
   titulo,
   descricao,
@@ -38,7 +27,7 @@ export function CabecalhoSecao({
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">
           {titulo}
         </h2>
         {descricao ? (
@@ -50,202 +39,152 @@ export function CabecalhoSecao({
   )
 }
 
-/**
- * O agrupamento de um assunto, com o próprio botão de salvar.
- *
- * O botão só acorda quando algo mudou naquele bloco: um "Salvar" sempre
- * disponível convida a gravar sem querer, e cada gravação aqui muda o preço
- * que a vitrine pública exibe no instante seguinte.
- */
 export function Painel({
   titulo,
   descricao,
   children,
-  rodape,
-  alterado,
-  salvando,
-  onSalvar,
-  onDescartar,
   className,
+  aside,
 }: {
   titulo?: string
   descricao?: string
   children: ReactNode
-  rodape?: ReactNode
-  alterado?: boolean
-  salvando?: boolean
-  onSalvar?: () => void
-  onDescartar?: () => void
   className?: string
+  aside?: ReactNode
 }) {
   return (
     <section
       className={cn(
-        'rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-5',
+        'rounded-xl border border-border/70 bg-card p-5 shadow-sm sm:p-6',
         className,
       )}
     >
-      {titulo ? (
-        <div className="mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {titulo}
-          </h3>
-          {descricao ? (
-            <p className="mt-1 text-sm text-muted-foreground/90">{descricao}</p>
-          ) : null}
+      {titulo || aside ? (
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            {titulo ? (
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                {titulo}
+              </h3>
+            ) : null}
+            {descricao ? (
+              <p className="mt-1.5 text-sm text-muted-foreground/90">{descricao}</p>
+            ) : null}
+          </div>
+          {aside}
         </div>
       ) : null}
-
       {children}
-
-      {rodape ? (
-        <p className="mt-3 rounded-lg bg-muted/60 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-          {rodape}
-        </p>
-      ) : null}
-
-      {onSalvar ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
-          <Button size="sm" onClick={onSalvar} disabled={!alterado || salvando}>
-            {salvando ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
-            Salvar
-          </Button>
-          {alterado && !salvando && onDescartar ? (
-            <Button size="sm" variant="ghost" onClick={onDescartar}>
-              <RotateCcw className="size-3.5" />
-              Descartar
-            </Button>
-          ) : null}
-          <span className="text-[11px] text-muted-foreground">
-            {salvando
-              ? 'Salvando…'
-              : alterado
-                ? 'Alterações ainda não salvas'
-                : 'Tudo salvo'}
-          </span>
-        </div>
-      ) : null}
     </section>
   )
 }
 
-/** Campo com unidade dentro: R$ à esquerda, % à direita, como se escreve. */
-export function CampoValor({
+export function Campo({
+  label,
+  hint,
+  children,
+  className,
+}: {
+  label: string
+  hint?: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('space-y-1.5', className)}>
+      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {children}
+      {hint ? <p className="text-[11px] text-muted-foreground/80">{hint}</p> : null}
+    </div>
+  )
+}
+
+/**
+ * Campo numérico com a unidade colada nele.
+ *
+ * `prefixo` nulo tira o "R$" — é como o multiplicador e a ordem aparecem. O
+ * campo aceita a vírgula do teclado brasileiro; a conversão para centavos e
+ * milésimos acontece na hora de salvar, nunca aqui.
+ */
+export function CampoNumero({
   id,
-  unidade,
   valor,
   onChange,
+  prefixo = 'R$',
+  sufixo,
+  somenteLeitura,
   desabilitado,
   className,
 }: {
-  id: string
-  unidade: 'reais' | 'porcento'
+  id?: string
   valor: string
-  onChange: (v: string) => void
+  onChange?: (v: string) => void
+  prefixo?: string | null
+  sufixo?: string
+  somenteLeitura?: boolean
   desabilitado?: boolean
   className?: string
 }) {
   return (
     <div className={cn('relative', className)}>
-      {unidade === 'reais' ? (
-        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-          R$
+      {prefixo ? (
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+          {prefixo}
         </span>
-      ) : (
-        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          %
-        </span>
-      )}
+      ) : null}
       <Input
         id={id}
         value={valor}
-        inputMode="decimal"
+        readOnly={somenteLeitura}
         disabled={desabilitado}
-        onChange={(evento) => onChange(evento.target.value)}
+        inputMode="decimal"
+        onChange={(evento) => onChange?.(evento.target.value)}
         className={cn(
-          'h-9 bg-background text-right tabular-nums',
-          unidade === 'reais' ? 'pl-9' : 'pr-7',
+          'h-9 bg-background tabular-nums',
+          prefixo ? 'pl-10' : '',
+          sufixo ? 'pr-12' : '',
+          somenteLeitura ? 'text-muted-foreground' : '',
         )}
       />
+      {sufixo ? (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          {sufixo}
+        </span>
+      ) : null}
     </div>
+  )
+}
+
+/** Campo de texto que hoje só se lê. Ver `AvisoSemPersistencia`. */
+export function CampoTexto({
+  valor,
+  className,
+}: {
+  valor: string
+  className?: string
+}) {
+  return (
+    <Input
+      value={valor}
+      readOnly
+      className={cn('h-9 bg-background text-muted-foreground', className)}
+    />
   )
 }
 
 /**
- * Uma linha "pergunta → valor".
+ * O aviso de que um bloco é conteúdo, e não configuração.
  *
- * Em telas estreitas o rótulo e o campo empilham; a partir de `sm` o campo vai
- * para uma coluna fixa e estreita, o que alinha todos os valores da tabela na
- * vertical e deixa a comparação entre eles imediata.
+ * Algumas informações que o protótipo mostrava como editáveis — nome do
+ * serviço, textos da página, tabela comparativa — moram no código do Vincis, e
+ * não em `precificacao_*`. Elas aparecem aqui porque fazem parte da mesma
+ * conversa, mas com a origem declarada: inventar um campo que grava em lugar
+ * nenhum seria pior do que não mostrá-lo.
  */
-export function LinhaConfig({
-  id,
-  rotulo,
-  ajuda,
-  apoio,
-  children,
-  primeira,
-}: {
-  id?: string
-  rotulo: string
-  ajuda?: string
-  apoio?: ReactNode
-  children: ReactNode
-  primeira?: boolean
-}) {
+export function AvisoSemPersistencia({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        'grid items-center gap-2 py-2 sm:grid-cols-[minmax(0,1fr)_10rem]',
-        primeira ? '' : 'border-t border-border/60',
-      )}
-    >
-      <div className="min-w-0">
-        <Label htmlFor={id} className="text-sm font-medium text-foreground">
-          {rotulo}
-        </Label>
-        {ajuda ? (
-          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-            {ajuda}
-          </p>
-        ) : null}
-        {apoio ? <div className="mt-0.5 text-[11px] text-primary">{apoio}</div> : null}
-      </div>
+    <p className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
       {children}
-    </div>
-  )
-}
-
-/** Um número que o Gestor só lê. */
-export function ValorLido({
-  rotulo,
-  valor,
-  destaque,
-}: {
-  rotulo: string
-  valor: string
-  destaque?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-lg px-3 py-2',
-        destaque ? 'bg-primary/10' : 'bg-muted/60',
-      )}
-    >
-      <p className="text-[11px] text-muted-foreground">{rotulo}</p>
-      <p
-        className={cn(
-          'text-sm font-semibold tabular-nums',
-          destaque ? 'text-primary' : 'text-foreground',
-        )}
-      >
-        {valor}
-      </p>
-    </div>
+    </p>
   )
 }

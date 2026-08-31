@@ -24,10 +24,12 @@ import { modulosDaCentral } from '../../constants/recursos'
  *
  * ## Por que uma barra horizontal, e não outra coluna
  *
- * Porque a Precificação já tem a própria navegação vertical. Duas colunas de
+ * Porque a Precificação já tem a própria coluna de navegação. Duas colunas de
  * menu lado a lado disputariam a mesma leitura e empurrariam o conteúdo para
  * uma faixa estreita. Horizontal aqui, vertical lá: cada nível tem uma forma
- * diferente, e a pessoa sabe em qual está sem precisar ler.
+ * diferente, e a pessoa sabe em qual está sem precisar ler. A barra é rasa de
+ * propósito — uma linha de itens sobre um filete —, para não competir com a
+ * moldura da tela que ela abre.
  *
  * No celular a mesma barra rola na horizontal — os cinco módulos não cabem em
  * uma linha, e quebrar em duas empurraria o conteúdo para baixo da dobra.
@@ -45,12 +47,12 @@ export function CentralVincisShell({ children }: { children: React.ReactNode }) 
   const modulos = modulosDaCentral()
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
       <nav
         aria-label="Módulos da Central Vincis"
-        className="-mx-1 overflow-x-auto px-1 pb-1"
+        className="-mx-1 overflow-x-auto border-b border-border/70 px-1 pb-2"
       >
-        <div className="flex w-max items-center gap-1 rounded-xl border border-border/70 bg-card p-1">
+        <div className="flex w-max items-center gap-1">
           {modulos.map((modulo) => {
             const Icone = ICONE_DO_MODULO[modulo.id] ?? LayoutDashboard
             // A Visão geral é a raiz da Central: só fica ativa na própria rota,
@@ -65,7 +67,7 @@ export function CentralVincisShell({ children }: { children: React.ReactNode }) 
                 aria-current={ativo ? 'page' : undefined}
                 className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors ${
                   ativo
-                    ? 'bg-accent font-medium text-foreground shadow-sm'
+                    ? 'bg-accent font-medium text-foreground'
                     : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
                 }`}
               >
