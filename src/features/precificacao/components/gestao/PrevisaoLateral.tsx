@@ -5,8 +5,10 @@ import { Eye, Settings2, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { AlertTriangle } from 'lucide-react'
 import { rotuloDaLinha } from '../../lib/descricao'
 import { formatarCentavos } from '../../lib/formato'
+import { violacoesComerciais } from '../../lib/invariantes'
 import { calcularPrecos } from '../../lib/motor'
 import type {
   RespostasPrecificacao,
@@ -45,7 +47,51 @@ export function PrevisaoLateral({
   /** Uma linha descrevendo o perfil usado, como no protótipo. */
   cenario: string
 }) {
-  const precos = calcularPrecos(tabela, respostas)
+  /*
+    A simulação é a primeira barreira, e por isso ela precisa saber falhar.
+
+    Um rascunho pode chegar a um estado que o motor não sabe precificar — uma
+    opção que deixou de existir, um valor que zera o plano. Deixar o componente
+    quebrar levaria a tela inteira embora e, com ela, tudo o que o Gestor
+    digitou. Aqui a falha vira um aviso: os campos continuam onde estão e ele
+    corrige com a explicação à vista.
+  */
+  const calculo = (() => {
+    try {
+      return { precos: calcularPrecos(tabela, respostas), erro: null as string | null }
+    } catch (erro) {
+      return {
+        precos: null,
+        erro:
+          erro instanceof Error
+            ? erro.message
+            : 'Não foi possível calcular este cenário.',
+      }
+    }
+  })()
+
+  const alertas = calculo.precos ? violacoesComerciais(tabela) : []
+
+  if (!calculo.precos) {
+    return (
+      <div className="sticky top-4 space-y-4">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-destructive">
+            <AlertTriangle className="size-4" /> Simulação indisponível
+          </div>
+          <p className="mt-3 text-sm text-foreground">
+            Não foi possível calcular este cenário com o rascunho atual.
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            {calculo.erro} Corrija o campo e a simulação volta sozinha — nada do
+            que você digitou foi perdido.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const precos = calculo.precos
   const foco = precos.find((p) => p.servico === servicoEmFoco) ?? precos[0]
   const servicoFoco = tabela.servicos.find((s) => s.codigo === foco?.servico)
   const combo = precos.find((p) => p.combo)
@@ -114,6 +160,26 @@ export function PrevisaoLateral({
 
   return (
     <div className="sticky top-4 space-y-4">
+      {/* O impedimento vem antes de tudo: um aviso abaixo da dobra é um aviso
+          que ninguém lê, e este é o que decide se a publicação vai passar. */}
+      {alertas.length > 0 ? (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold text-destructive">
+            <AlertTriangle className="size-3.5" />
+            {alertas.length === 1
+              ? 'Este rascunho não pode ser publicado'
+              : `${alertas.length} pontos impedem a publicação`}
+          </p>
+          <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+            {alertas.slice(0, 3).map((alerta) => (
+              <li key={`${alerta.secao}-${alerta.campo ?? ''}-${alerta.mensagem}`}>
+                {alerta.mensagem}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {/* O protótipo descrevia um perfil fixo em texto. Aqui ele é escolhível,
           porque a pergunta do Gestor muda com a empresa que ele tem em mente. */}
       <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm">

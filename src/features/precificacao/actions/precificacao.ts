@@ -17,7 +17,14 @@ import {
 } from '@/features/auditoria/lib/registrar-evento'
 import { validarGestorVincis } from '@/features/usuarios/lib/validar-gestor-vincis'
 import { problemasDaTabela } from '../lib/coerencia'
+import { violacoesComerciais } from '../lib/invariantes'
 import { impressaoDaSecao, type SecaoPrecificacao } from '../lib/impressao'
+import {
+  EVENTOS_PRECIFICACAO,
+  registrarAviso,
+  registrarFalha,
+  registrarInfo,
+} from '../lib/registro'
 import {
   percentualParaDesconto,
   percentualParaMultiplicador,
@@ -53,7 +60,22 @@ import { obterTabelaPrecificacao } from '../queries/obter-tabela-precificacao'
  * reescrever, a cada salvamento, linhas que ninguém tocou.
  */
 
-type Resultado = { sucesso: boolean; mensagem: string }
+/**
+ * O que a tela recebe de volta.
+ *
+ * `secao` e `campo` existem para que o formulário consiga apontar onde está o
+ * problema em vez de mostrar um aviso solto. `conflito` distingue "os valores
+ * mudaram debaixo de você" de "estes valores não podem ser gravados": a
+ * primeira pede recarregar, a segunda pede corrigir — e nenhuma das duas
+ * apaga o rascunho.
+ */
+type Resultado = {
+  sucesso: boolean
+  mensagem: string
+  secao?: string
+  campo?: string
+  conflito?: boolean
+}
 
 const NAO_AUTORIZADO: Resultado = {
   sucesso: false,
@@ -62,8 +84,18 @@ const NAO_AUTORIZADO: Resultado = {
 
 const CONFLITO: Resultado = {
   sucesso: false,
+  conflito: true,
   mensagem:
-    'Estes valores foram alterados em outra sessão. Recarregue a página para ver a configuração atual antes de salvar.',
+    'Estes valores foram alterados em outra sessão. Recarregue a página para ver a configuração atual antes de salvar — o que você digitou continua aqui.',
+}
+
+/** Só números e nomes de seção viram log — nunca o conteúdo dos campos. */
+function contarResumo(resumo: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(resumo).filter(
+      ([, valor]) => typeof valor === 'number' || typeof valor === 'string',
+    ),
+  ) as Record<string, string | number>
 }
 
 /** Rotas que precisam refletir o novo preço na próxima visita. */
@@ -73,6 +105,49 @@ function propagar() {
 }
 
 type Transacao = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * A gravação apontou para uma linha que não existe.
+ *
+ * `UPDATE ... WHERE codigo = 'inventado'` não falha: ele simplesmente não
+ * atinge ninguém, e a action responderia "salvo" sem ter salvo nada. Pior,
+ * seria o jeito de descobrir por tentativa quais identificadores existem. Cada
+ * gravação confere quantas linhas atingiu e levanta isto quando o alvo não
+ * está na grade.
+ */
+class ConfiguracaoDesconhecida extends Error {
+  readonly alvo: string
+
+  constructor(alvo: string) {
+    super(`Configuração desconhecida: ${alvo}`)
+    this.name = 'ConfiguracaoDesconhecida'
+    this.alvo = alvo
+  }
+}
+
+/** Confere que a gravação atingiu a linha pretendida. */
+function exigirLinha(atingidas: unknown[], alvo: string) {
+  if (atingidas.length === 0) throw new ConfiguracaoDesconhecida(alvo)
+}
+
+/**
+ * A recusa de uma gravação, levantada de dentro da transação.
+ *
+ * Aqui está a diferença entre recusar e desfazer: **devolver** um resultado de
+ * dentro do callback encerra a transação normalmente, e o Postgres confirma
+ * tudo o que já foi escrito. A conferência diria "não salvo" enquanto o preço
+ * zerado já estava no banco. Só uma exceção faz o driver desfazer — então a
+ * recusa viaja como exceção e volta a ser um resultado do lado de fora.
+ */
+class RecusaDaGravacao extends Error {
+  readonly resultado: Resultado
+
+  constructor(resultado: Resultado) {
+    super(resultado.mensagem)
+    this.name = 'RecusaDaGravacao'
+    this.resultado = resultado
+  }
+}
 
 /**
  * Quem está pedindo — conferido **antes** de olhar o que veio no corpo.
@@ -105,42 +180,104 @@ async function salvarSecao({
   try {
     const resultado = await db.transaction(async (tx) => {
       const antes = await obterTabelaPrecificacao(tx)
-      if (impressaoDaSecao(antes, secao) !== impressaoRecebida) return CONFLITO
+      if (impressaoDaSecao(antes, secao) !== impressaoRecebida) {
+        registrarAviso(EVENTOS_PRECIFICACAO.conflito, { secao })
+        throw new RecusaDaGravacao(CONFLITO)
+      }
 
       await gravar(tx)
 
       const depois = await obterTabelaPrecificacao(tx)
+
+      // Duas conferências, e as duas antes do commit: a estrutura (falta um
+      // preço-base, uma família de faixas com buraco) e o comércio (preço
+      // zerado, desconto que anula a mensalidade, pacote acima da soma).
+      // Qualquer uma delas reprovando desfaz a transação inteira — nunca
+      // metade da alteração gravada.
       const problemas = problemasDaTabela(depois)
       if (problemas.length > 0) {
-        return {
+        registrarAviso(EVENTOS_PRECIFICACAO.validar, {
+          secao,
+          etapa: 'coerencia',
+          problema: problemas[0],
+        })
+        throw new RecusaDaGravacao({
           sucesso: false,
-          mensagem: `A configuração ficaria inconsistente: ${problemas[0]}`,
-        }
+          secao,
+          mensagem: `Não foi possível salvar: a configuração ficaria inconsistente. ${problemas[0]}`,
+        })
       }
 
+      const violacoes = violacoesComerciais(depois)
+      if (violacoes.length > 0) {
+        const primeira = violacoes[0]
+        registrarAviso(EVENTOS_PRECIFICACAO.validar, {
+          secao,
+          etapa: 'invariantes',
+          violacao: primeira.mensagem,
+          total: violacoes.length,
+        })
+        throw new RecusaDaGravacao({
+          sucesso: false,
+          secao: primeira.secao,
+          campo: primeira.campo,
+          mensagem: `Não foi possível salvar. ${primeira.mensagem}`,
+        })
+      }
+
+      // A trilha guarda o antes e o depois da própria seção, e não só o que
+      // foi mexido: preço é a coisa que mais precisa poder ser reconstituída
+      // depois. São duas strings curtas — a mesma impressão que já servia
+      // para detectar conflito.
       await registrarEventoAuditoria(
         {
           acao: ACOES_AUDITORIA.precificacaoAlterada,
           entidade: 'precificacao',
           autorId: gestor.id,
           origem: 'gestao_vincis',
-          metadados: { secao, ...resumo },
+          metadados: {
+            secao,
+            ...resumo,
+            antes: impressaoDaSecao(antes, secao),
+            depois: impressaoDaSecao(depois, secao),
+          },
         },
         tx,
       )
 
+      registrarInfo(EVENTOS_PRECIFICACAO.salvar, { secao, ...contarResumo(resumo) })
       return { sucesso: true, mensagem: 'Alterações salvas.' }
     })
 
     if (resultado.sucesso) propagar()
     return resultado
   } catch (erro) {
-    // Um `check` do banco recusando um valor impossível cai aqui. A transação
-    // já desfez tudo; o que falta é não devolver a mensagem crua do Postgres.
-    console.error('Falha ao salvar precificação', { secao, erro })
+    // Uma recusa nossa, um `check` do banco ou o banco fora do ar caem todos
+    // aqui — e em qualquer um dos casos a transação já foi desfeita, porque foi
+    // a exceção que a desfez. O que falta é traduzir cada um para uma frase que
+    // o Gestor entenda, sem devolver a mensagem crua do Postgres para a tela.
+    if (erro instanceof RecusaDaGravacao) return erro.resultado
+
+    if (erro instanceof ConfiguracaoDesconhecida) {
+      registrarAviso(EVENTOS_PRECIFICACAO.validar, {
+        secao,
+        etapa: 'alvo_inexistente',
+        alvo: erro.alvo,
+      })
+      return {
+        sucesso: false,
+        secao,
+        mensagem:
+          'Não foi possível salvar: um dos campos enviados não existe mais nesta configuração. Recarregue a página e tente de novo.',
+      }
+    }
+
+    registrarFalha(EVENTOS_PRECIFICACAO.salvar, { secao }, erro)
     return {
       sucesso: false,
-      mensagem: 'Não foi possível salvar. Confira os valores e tente novamente.',
+      secao,
+      mensagem:
+        'Não foi possível salvar agora. Confira os valores e tente novamente em instantes.',
     }
   }
 }
@@ -163,7 +300,7 @@ export async function salvarPrecosBase(entrada: unknown): Promise<Resultado> {
     resumo: { precos: precos.length, acrescimoConsultiva },
     gravar: async (tx) => {
       for (const preco of precos) {
-        await tx
+        const atingidas = await tx
           .update(precificacaoPrecosBase)
           .set({
             valorCentavos: reaisParaCentavos(preco.valorReais),
@@ -175,9 +312,11 @@ export async function salvarPrecosBase(entrada: unknown): Promise<Resultado> {
               eq(precificacaoPrecosBase.regime, preco.regime),
             ),
           )
+          .returning({ regime: precificacaoPrecosBase.regime })
+        exigirLinha(atingidas, `preço ${preco.grupo}/${preco.regime}`)
       }
 
-      await tx
+      const servico = await tx
         .update(precificacaoServicos)
         .set({
           multiplicadorMilesimos:
@@ -185,6 +324,8 @@ export async function salvarPrecosBase(entrada: unknown): Promise<Resultado> {
           updatedAt: new Date(),
         })
         .where(eq(precificacaoServicos.codigo, 'consultiva'))
+        .returning({ codigo: precificacaoServicos.codigo })
+      exigirLinha(servico, 'serviço consultiva')
     },
   })
 }
@@ -207,7 +348,7 @@ export async function salvarFaixas(entrada: unknown): Promise<Resultado> {
     resumo: { tipo, faixas: faixas.length },
     gravar: async (tx) => {
       for (const faixa of faixas) {
-        await tx
+        const atingidas = await tx
           .update(precificacaoFaixas)
           .set({
             valorCentavos: reaisParaCentavos(faixa.valorReais),
@@ -220,6 +361,8 @@ export async function salvarFaixas(entrada: unknown): Promise<Resultado> {
               eq(precificacaoFaixas.codigo, faixa.codigo),
             ),
           )
+          .returning({ codigo: precificacaoFaixas.codigo })
+        exigirLinha(atingidas, `faixa ${tipo}/${faixa.grupo}/${faixa.codigo}`)
       }
     },
   })
@@ -243,7 +386,7 @@ export async function salvarFatores(entrada: unknown): Promise<Resultado> {
     resumo: { dimensao, opcoes: opcoes.length },
     gravar: async (tx) => {
       for (const opcao of opcoes) {
-        await tx
+        const atingidas = await tx
           .update(precificacaoOpcoes)
           .set({
             multiplicadorMilesimos: percentualParaMultiplicador(
@@ -257,6 +400,8 @@ export async function salvarFatores(entrada: unknown): Promise<Resultado> {
               eq(precificacaoOpcoes.codigo, opcao.codigo),
             ),
           )
+          .returning({ codigo: precificacaoOpcoes.codigo })
+        exigirLinha(atingidas, `opção ${dimensao}/${opcao.codigo}`)
       }
     },
   })
@@ -280,7 +425,7 @@ export async function salvarAdicionais(entrada: unknown): Promise<Resultado> {
     resumo: { adicionais: adicionais.length },
     gravar: async (tx) => {
       for (const adicional of adicionais) {
-        await tx
+        const atingidas = await tx
           .update(precificacaoAdicionais)
           .set({
             valorMensalCentavos: reaisParaCentavos(adicional.valorReais),
@@ -288,6 +433,8 @@ export async function salvarAdicionais(entrada: unknown): Promise<Resultado> {
             updatedAt: new Date(),
           })
           .where(eq(precificacaoAdicionais.codigo, adicional.codigo))
+          .returning({ codigo: precificacaoAdicionais.codigo })
+        exigirLinha(atingidas, `adicional ${adicional.codigo}`)
       }
     },
   })
@@ -311,13 +458,15 @@ export async function salvarDescontos(entrada: unknown): Promise<Resultado> {
     resumo: { descontos: descontos.length },
     gravar: async (tx) => {
       for (const desconto of descontos) {
-        await tx
+        const atingidas = await tx
           .update(precificacaoDescontos)
           .set({
             descontoMilesimos: percentualParaDesconto(desconto.percentual),
             updatedAt: new Date(),
           })
           .where(eq(precificacaoDescontos.codigo, desconto.codigo))
+          .returning({ codigo: precificacaoDescontos.codigo })
+        exigirLinha(atingidas, `desconto ${desconto.codigo}`)
       }
     },
   })

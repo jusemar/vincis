@@ -21,6 +21,16 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -32,6 +42,8 @@ import {
   salvarPrecosBase,
 } from '../../actions/precificacao'
 import { multiplicadorParaPercentual } from '../../lib/conversao'
+import { formatarCentavos } from '../../lib/formato'
+import { impactoDaAlteracao } from '../../lib/impacto'
 import { impressaoDaSecao } from '../../lib/impressao'
 import {
   aplicarRascunho,
@@ -102,6 +114,15 @@ const NAV = [
 
 type NavId = (typeof NAV)[number]['id']
 
+/** O que as Server Actions da Precificação devolvem. */
+type ResultadoDaGravacao = {
+  sucesso: boolean
+  mensagem: string
+  secao?: string
+  campo?: string
+  conflito?: boolean
+}
+
 /** Seções de dados que cada área da navegação toca. */
 const SECOES_DA_AREA: Record<NavId, SecaoRascunho[]> = {
   servicos: ['precos_base'],
@@ -136,6 +157,14 @@ export function PrecificacaoGestaoPage({
   const router = useRouter()
   const [ativa, setAtiva] = useState<NavId>('servicos')
   const [salvando, iniciar] = useTransition()
+  const [confirmandoQueda, setConfirmandoQueda] = useState(false)
+  /** Onde o último erro de gravação aconteceu, para a tela apontar. */
+  const [erroDaSecao, setErroDaSecao] = useState<{
+    secao: string
+    campo?: string
+    mensagem: string
+    conflito?: boolean
+  } | null>(null)
 
   const salvo = useMemo(() => rascunhoDaTabela(tabela), [tabela])
   const [rascunho, setRascunho] = useState<RascunhoPrecificacao>(salvo)
@@ -159,7 +188,7 @@ export function PrecificacaoGestaoPage({
   }
 
   /** Monta o conjunto de uma seção na unidade que a action espera. */
-  function enviar(secao: SecaoRascunho): Promise<{ sucesso: boolean; mensagem: string }> {
+  function enviar(secao: SecaoRascunho): Promise<ResultadoDaGravacao> {
     if (secao === 'precos_base') {
       const precos = tabela.precosBase.map((p) => ({
         grupo: p.grupo,
@@ -259,23 +288,54 @@ export function PrecificacaoGestaoPage({
     descontos: 'Descontos',
   }
 
+  // O tamanho comercial do que está prestes a ir ao ar. Serve só para decidir
+  // se a publicação pede uma segunda confirmação.
+  const impacto = useMemo(
+    () => impactoDaAlteracao(tabela, simulada),
+    [tabela, simulada],
+  )
+
+  /**
+   * Publica os conjuntos alterados, um por seção.
+   *
+   * O rascunho **não** é descartado quando algo falha: o Gestor precisa do que
+   * digitou para corrigir. Só depois de tudo passar a página é recarregada,
+   * e aí o rascunho volta a espelhar o que ficou gravado.
+   */
   function publicar() {
     if (pendentes.length === 0) return
+    setConfirmandoQueda(false)
+    setErroDaSecao(null)
+
     iniciar(async () => {
-      const falhas: string[] = []
       for (const secao of pendentes) {
         const resultado = await enviar(secao)
         if (!resultado.sucesso) {
-          falhas.push(`${ROTULO_DA_SECAO[secao]}: ${resultado.mensagem}`)
+          setErroDaSecao({
+            secao: resultado.secao ?? secao,
+            campo: resultado.campo,
+            mensagem: resultado.mensagem,
+            conflito: resultado.conflito,
+          })
+          toast.error(`${ROTULO_DA_SECAO[secao]}: ${resultado.mensagem}`)
+          // Para na primeira recusa: seguir gravando as outras deixaria a
+          // configuração meio nova e meio velha, que é o oposto do que a
+          // transação por seção existe para evitar.
+          return
         }
       }
-      if (falhas.length > 0) {
-        for (const falha of falhas) toast.error(falha)
-      } else {
-        toast.success('Alterações salvas.')
-      }
+      toast.success('Alterações salvas.')
       router.refresh()
     })
+  }
+
+  function pedirPublicacao() {
+    if (pendentes.length === 0) return
+    if (impacto.exigeConfirmacao) {
+      setConfirmandoQueda(true)
+      return
+    }
+    publicar()
   }
 
   const comum = { tabela, simulada, rascunho, alterar: setRascunho }
@@ -331,7 +391,11 @@ export function PrecificacaoGestaoPage({
                 <Eye /> Pré-visualizar
               </Link>
             </Button>
-            <Button size="sm" onClick={publicar} disabled={pendentes.length === 0 || salvando}>
+            <Button
+              size="sm"
+              onClick={pedirPublicacao}
+              disabled={pendentes.length === 0 || salvando}
+            >
               {salvando ? <Loader2 className="animate-spin" /> : <Save />} Publicar
             </Button>
           </div>
@@ -348,6 +412,33 @@ export function PrecificacaoGestaoPage({
 
         <main className="min-w-0 flex-1 space-y-6 pb-16">
           <NavegacaoCompacta ativa={ativa} onSelecionar={setAtiva} />
+
+          {erroDaSecao ? (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+              <p className="text-sm font-semibold text-destructive">
+                {erroDaSecao.conflito
+                  ? 'Estes valores mudaram em outra sessão'
+                  : `Não foi possível salvar ${
+                      ROTULO_DA_SECAO[erroDaSecao.secao as SecaoRascunho] ??
+                      'esta seção'
+                    }`}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {erroDaSecao.mensagem}
+                {erroDaSecao.campo ? ` (campo: ${erroDaSecao.campo})` : ''}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {erroDaSecao.conflito ? (
+                  <Button size="sm" variant="outline" onClick={() => router.refresh()}>
+                    Recarregar a configuração atual
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" onClick={() => setErroDaSecao(null)}>
+                  Entendi
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {ativa === 'servicos' && <SecaoServicos {...comum} />}
           {ativa === 'perfil' && <SecaoPerfil {...comum} />}
           {ativa === 'faixas' && <SecaoFaixas {...comum} />}
@@ -385,6 +476,44 @@ export function PrecificacaoGestaoPage({
           />
         </aside>
       </div>
+
+      <AlertDialog open={confirmandoQueda} onOpenChange={setConfirmandoQueda}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Esta alteração reduz bastante os preços da vitrine
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  No perfil de referência da página de preços, a queda chega a{' '}
+                  <strong className="text-foreground">
+                    {impacto.maiorQuedaPercentual}%
+                  </strong>
+                  . Confira antes de publicar:
+                </p>
+                <ul className="space-y-1">
+                  {impacto.quedas.slice(0, 4).map((queda) => (
+                    <li key={queda.servico} className="flex justify-between gap-3">
+                      <span className="truncate">{queda.nome}</span>
+                      <span className="shrink-0 tabular-nums text-foreground">
+                        {formatarCentavos(queda.de)} → {formatarCentavos(queda.para)}{' '}
+                        <span className="text-destructive">−{queda.queda}%</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={publicar}>
+              Publicar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

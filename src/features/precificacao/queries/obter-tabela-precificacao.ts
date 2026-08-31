@@ -16,6 +16,11 @@ import {
   lerNumero,
 } from '@/features/configuracoes/lib/configuracoes'
 import { problemasDaTabela } from '../lib/coerencia'
+import { violacoesComerciais } from '../lib/invariantes'
+import {
+  EVENTOS_PRECIFICACAO,
+  registrarFalha,
+} from '../lib/registro'
 import { TabelaPrecificacaoSchema } from '../schemas/precificacao'
 import type { TabelaPrecificacao } from '../types/precificacao'
 
@@ -54,12 +59,44 @@ export async function obterTabelaPrecificacao(
     funcionariosPadrao,
   ] = await Promise.all([
     executor.select().from(precificacaoServicos).orderBy(asc(precificacaoServicos.ordem)),
-    executor.select().from(precificacaoPrecosBase),
+    // A ordenação de cada leitura termina numa chave única.
+    //
+    // `ordem` se repete entre famílias — a primeira faixa de notas e a primeira
+    // de faturamento são as duas "1", e a primeira opção de regime e a de
+    // atividade também. Com empate, o Postgres devolve a ordem que o plano
+    // quiser, e ela muda entre execuções. Nada no produto depende disso hoje
+    // (todo consumidor reordena), mas uma leitura que responde diferente para
+    // a mesma pergunta é uma armadilha esperando o primeiro consumidor que
+    // confie na ordem — e já tinha feito um teste piscar.
+    executor.select().from(precificacaoPrecosBase).orderBy(
+      asc(precificacaoPrecosBase.grupo),
+      asc(precificacaoPrecosBase.regime),
+    ),
     executor.select().from(precificacaoDimensoes).orderBy(asc(precificacaoDimensoes.ordem)),
-    executor.select().from(precificacaoOpcoes).orderBy(asc(precificacaoOpcoes.ordem)),
-    executor.select().from(precificacaoFaixas).orderBy(asc(precificacaoFaixas.ordem)),
-    executor.select().from(precificacaoAdicionais).orderBy(asc(precificacaoAdicionais.ordem)),
-    executor.select().from(precificacaoDescontos).orderBy(asc(precificacaoDescontos.ordem)),
+    executor
+      .select()
+      .from(precificacaoOpcoes)
+      .orderBy(
+        asc(precificacaoOpcoes.dimensaoCodigo),
+        asc(precificacaoOpcoes.ordem),
+        asc(precificacaoOpcoes.codigo),
+      ),
+    executor
+      .select()
+      .from(precificacaoFaixas)
+      .orderBy(
+        asc(precificacaoFaixas.grupo),
+        asc(precificacaoFaixas.tipo),
+        asc(precificacaoFaixas.limiteMin),
+      ),
+    executor
+      .select()
+      .from(precificacaoAdicionais)
+      .orderBy(asc(precificacaoAdicionais.ordem), asc(precificacaoAdicionais.codigo)),
+    executor
+      .select()
+      .from(precificacaoDescontos)
+      .orderBy(asc(precificacaoDescontos.ordem), asc(precificacaoDescontos.codigo)),
     lerParametro(executor, CHAVE_PRECIFICACAO_ARREDONDAMENTO),
     lerParametro(executor, CHAVE_PRECIFICACAO_FUNCIONARIOS_PADRAO),
   ])
@@ -88,8 +125,41 @@ export async function obterTabelaPrecificacao(
 
   const problemas = problemasDaTabela(tabela)
   if (problemas.length > 0) {
+    registrarFalha(EVENTOS_PRECIFICACAO.carregar, {
+      etapa: 'coerencia',
+      problemas: problemas.slice(0, 5),
+    })
     throw new Error(
       `Configuração de precificação incoerente: ${problemas.join(' ')}`,
+    )
+  }
+
+  return tabela
+}
+
+/**
+ * A tabela como a vitrine pública exige que ela esteja.
+ *
+ * Além da estrutura, confere as garantias comerciais: preço maior que zero em
+ * qualquer perfil, desconto que não zera mensalidade, prazo maior nunca mais
+ * caro, pacote abaixo da soma e economia que corresponde à diferença real.
+ *
+ * Lança quando alguma delas cai. É a decisão que dá nome a esta etapa: entre
+ * exibir um preço possivelmente errado e não exibir preço nenhum, `/precos`
+ * escolhe não exibir — e mostra um caminho comercial para a pessoa, em vez de
+ * um número em que ninguém pode confiar.
+ */
+export async function obterTabelaDaVitrine(): Promise<TabelaPrecificacao> {
+  const tabela = await obterTabelaPrecificacao()
+
+  const violacoes = violacoesComerciais(tabela)
+  if (violacoes.length > 0) {
+    registrarFalha(EVENTOS_PRECIFICACAO.carregar, {
+      etapa: 'invariantes',
+      violacoes: violacoes.slice(0, 5).map((v) => `${v.secao}: ${v.mensagem}`),
+    })
+    throw new Error(
+      `Configuração de precificação inválida para exibição: ${violacoes[0].mensagem}`,
     )
   }
 
