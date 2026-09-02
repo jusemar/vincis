@@ -27,6 +27,7 @@ import {
   recursosPermitidos,
   ROTA_ADMIN,
 } from "../constants/recursos";
+import { ROTA_MEUS_PRECOS } from "@/features/precificacao-profissional/constants/precificacao-profissional";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -81,6 +82,11 @@ const navItems = [
   { id: "oportunidades", label: "Oportunidades", icon: Target },
   { id: "financial", label: "Financeiro", icon: DollarSign },
   { id: "reviews", label: "Avaliações", icon: Star },
+  // Rota própria, e não uma seção de `?pagina=`: a tela lê a grade de
+  // referência e a configuração no servidor, e transformá-la numa seção do
+  // painel faria `/admin` carregar as duas em toda visita — inclusive para
+  // quem foi ver a Agenda.
+  { id: "meus-precos", label: "Meus preços", icon: BadgeDollarSign, rota: ROTA_MEUS_PRECOS },
   { id: "profile", label: "Meu Perfil", icon: User },
   { id: "achievements", label: "Conquistas", icon: Award },
 ];
@@ -156,12 +162,20 @@ export default function AdminSidebar({
         ) : null}
 
         {ehPrestador && navItems.map((item) => {
-          const isActive = currentPage === item.id;
+          // Um item pode ser uma seção do painel (`?pagina=`) ou uma rota
+          // própria. Quem tem `rota` acende pelo caminho aberto; os demais
+          // continuam acendendo pela seção, exatamente como antes.
+          const rota = "rota" in item ? item.rota : undefined;
+          const isActive = rota
+            ? pathname === rota || pathname.startsWith(`${rota}/`)
+            : currentPage === item.id;
           const Icon = item.icon;
           return (
             <Link
               key={item.id}
-              href={item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`}
+              href={
+                rota ?? (item.id === "dashboard" ? "/admin" : `/admin?pagina=${item.id}`)
+              }
               style={{ textDecoration: "none" }}
             >
               <motion.button

@@ -12,6 +12,8 @@ import {
   listarPerguntasFrequentesPublicas,
 } from "@/features/perfis/queries/conteudo-vitrine";
 import { obterIdentidadePublica } from "@/features/servicos/queries/identidade-publica";
+import { rotaDosPrecosDoProfissional } from "@/features/precificacao-profissional/constants/precificacao-profissional";
+import { temPrecosPublicados } from "@/features/precificacao-profissional/queries/obter-configuracao";
 import { obterSessaoServidor } from "@/features/usuarios/lib/sessao-servidor";
 import { listarServicosPublicos } from "@/features/servicos/queries/vitrine-publica";
 
@@ -136,6 +138,19 @@ export default async function PerfilProfissionalRoute({
     ? await listarPerguntasFrequentesPublicas(prestadorId)
     : undefined;
 
+  /**
+   * Este profissional publicou uma tabela de preços própria?
+   *
+   * Uma consulta de uma linha, e é ela que decide se a chamada "Ver planos e
+   * preços" aparece. Sem `?prestador=` não há dono e não há tabela — a vitrine
+   * de demonstração não oferece a chamada, do mesmo jeito que não oferece
+   * agenda nem pedido de orçamento.
+   */
+  const planosEPrecos =
+    prestadorId && identidade && (await temPrecosPublicados(prestadorId))
+      ? rotaDosPrecosDoProfissional(prestadorId)
+      : undefined;
+
   const servicos = prestadorId
     ? (await listarServicosPublicos(prestadorId)).map((servico) => ({
         id: servico.id,
@@ -159,6 +174,7 @@ export default async function PerfilProfissionalRoute({
       casosSucesso={casosSucesso}
       experiencias={experiencias}
       faq={faq}
+      planosEPrecos={planosEPrecos}
       solicitacaoDireta={
         destinatario
           ? {

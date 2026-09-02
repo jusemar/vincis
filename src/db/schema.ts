@@ -161,3 +161,9 @@ export { precificacaoAdicionais } from './tables/precificacao_adicionais/tabela'
 
 export { precificacaoDescontos } from './tables/precificacao_descontos/tabela'
 export { precificacaoDescontosRelations } from './tables/precificacao_descontos/relacoes'
+
+export { precificacaoProfissional } from './tables/precificacao_profissional/tabela'
+export { precificacaoProfissionalRelations } from './tables/precificacao_profissional/relacoes'
+
+export { precificacaoProfissionalValores } from './tables/precificacao_profissional_valores/tabela'
+export { precificacaoProfissionalValoresRelations } from './tables/precificacao_profissional_valores/relacoes'

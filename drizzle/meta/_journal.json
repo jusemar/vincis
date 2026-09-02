@@ -330,6 +330,13 @@
       "when": 1788142724512,
       "tag": "0046_ordem_real_dos_eventos",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788310755566,
+      "tag": "0047_precificacao_do_profissional",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import {
   CheckCircle2, Lock, Users, Send,
   ChevronRight, ShieldCheck, Shield, FileText,
   Pencil, X, Check, Plus, ChevronUp, ChevronDown, Trash2, Camera,
+  Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Footer from '../../../components/shared/Footer';
@@ -356,6 +357,14 @@ type PerfilProfissionalV2Props = {
   casosSucesso?: CasoSucessoPublico[];
   experiencias?: ExperienciaPublica[];
   faq?: FaqPublico[];
+  /**
+   * Link para a tabela de preços publicada por este Profissional.
+   *
+   * Resolvido no servidor: só existe quando ele publicou uma. Ausente — vitrine
+   * de demonstração, ou perfil que nunca publicou — a chamada simplesmente não
+   * aparece, em vez de levar a uma página que diria "sem preços".
+   */
+  planosEPrecos?: string;
 };
 
 export default function PerfilProfissionalV2({
@@ -368,6 +377,7 @@ export default function PerfilProfissionalV2({
   casosSucesso,
   experiencias,
   faq,
+  planosEPrecos,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
@@ -1132,6 +1142,51 @@ export default function PerfilProfissionalV2({
           </section>
           )}
           </motion.div>
+
+          {/*
+            Planos e preços deste profissional.
+
+            Aparece só quando ele publicou uma tabela — a decisão é do servidor,
+            que devolve o link ou não devolve nada. Um botão permanente levaria
+            metade dos perfis a uma página dizendo "sem preços", e a chamada
+            "Ver planos e preços" promete um número.
+
+            Fica antes do pedido de orçamento de propósito: quem consegue ver o
+            valor na hora não precisa pedir orçamento para descobri-lo — e quem
+            precisa de algo fora da tabela encontra o pedido logo abaixo.
+          */}
+          {planosEPrecos ? (
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+            >
+              <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-[0.3em]">
+                  Contabilidade mensal
+                </span>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">
+                      Veja quanto custa para a sua empresa
+                    </h2>
+                    <p className="mt-2 max-w-xl text-base text-muted-foreground leading-relaxed">
+                      {primeiroNome} definiu os próprios valores mensais.
+                      Responda sobre a empresa e o preço aparece na hora.
+                    </p>
+                  </div>
+                  <Link
+                    href={planosEPrecos}
+                    className="alvo-toque-h bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-all shadow-sm hover:bg-primary/90"
+                  >
+                    <Calculator className="h-4 w-4" />
+                    Ver planos e preços
+                  </Link>
+                </div>
+              </section>
+            </motion.div>
+          ) : null}
 
           {/* Consult Section */}
           <motion.div

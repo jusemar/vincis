@@ -31,6 +31,10 @@ export const ACOES_AUDITORIA = {
   agendaConsultoriaAlterada: 'agenda_consultoria_alterada',
   /** O Gestor alterou a precificação dos planos da plataforma. */
   precificacaoAlterada: 'precificacao_alterada',
+  /** O Profissional gravou o rascunho da própria tabela de preços. */
+  precificacaoProfissionalSalva: 'precificacao_profissional_salva',
+  /** O Profissional publicou (ou tirou do ar) a própria tabela de preços. */
+  precificacaoProfissionalPublicada: 'precificacao_profissional_publicada',
 } as const
 
 export type AcaoAuditoria =

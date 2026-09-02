@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { recursosPermitidos } from '../constants/recursos'
+import { ROTA_MEUS_PRECOS } from '@/features/precificacao-profissional/constants/precificacao-profissional'
 import {
   Drawer,
   DrawerContent,
@@ -47,6 +48,13 @@ const DEMAIS = [
   { id: 'oportunidades', label: 'Oportunidades', icon: Target },
   { id: 'financial', label: 'Financeiro', icon: DollarSign },
   { id: 'reviews', label: 'Avaliações', icon: Star },
+  // Rota própria — ver o comentário em `AdminSidebar`.
+  {
+    id: 'meus-precos',
+    label: 'Meus preços',
+    icon: BadgeDollarSign,
+    rota: ROTA_MEUS_PRECOS,
+  },
   { id: 'achievements', label: 'Conquistas', icon: Award },
 ] as const
 
@@ -64,8 +72,9 @@ const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
   precificacao: BadgeDollarSign,
 }
 
-function destino(id: string) {
-  return id === 'dashboard' ? '/admin' : `/admin?pagina=${id}`
+function destino(item: { id: string; rota?: string }) {
+  if (item.rota) return item.rota
+  return item.id === 'dashboard' ? '/admin' : `/admin?pagina=${item.id}`
 }
 
 export function MobileAdminNavigation({
@@ -84,7 +93,11 @@ export function MobileAdminNavigation({
   const pathname = usePathname()
   const paginaAtual = searchParams.get('pagina') || 'dashboard'
   const [maisAberto, setMaisAberto] = useState(false)
-  const paginaNoMais = DEMAIS.some(({ id }) => id === paginaAtual)
+  // Um item de rota própria acende pelo caminho aberto; os de seção, pela
+  // seção — a gaveta "Mais" precisa refletir os dois.
+  const paginaNoMais = DEMAIS.some((item) =>
+    'rota' in item ? pathname.startsWith(item.rota) : item.id === paginaAtual,
+  )
 
   // Os recursos da plataforma entram no mesmo lugar em que as demais áreas do
   // painel já moram: a gaveta "Mais". A barra inferior tem cinco colunas e é
@@ -154,7 +167,7 @@ export function MobileAdminNavigation({
             return (
               <Link
                 key={item.id}
-                href={destino(item.id)}
+                href={destino(item)}
                 className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors ${
                   ativo
                     ? 'bg-primary/10 text-primary'
@@ -195,7 +208,7 @@ export function MobileAdminNavigation({
               return (
                 <Link
                   key={item.id}
-                  href={destino(item.id)}
+                  href={destino(item)}
                   onClick={() => setMaisAberto(false)}
                   className="flex items-center gap-3 rounded-xl border bg-card p-4 text-sm font-medium transition-colors hover:bg-accent"
                 >
