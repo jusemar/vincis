@@ -344,6 +344,13 @@
       "when": 1788403154216,
       "tag": "0048_precificacao_profissional_acrescimo_fixo",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1788427794934,
+      "tag": "0049_oportunidade_origem_simulacao",
+      "breakpoints": true
     }
   ]
 }

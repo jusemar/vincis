@@ -17,12 +17,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { enviarProposta } from '../../actions/propostas'
 import {
   LIMITE_MENSAGEM_PROPOSTA,
+  ehDeSimulacao,
   rotuloDaCategoria,
 } from '../../constants/oportunidade'
 import { VALIDADES_PROPOSTA, VALIDADE_PADRAO_HORAS } from '../../lib/vigencia'
 import type { OportunidadeParaPrestadorDTO } from '../../types/oportunidade'
 import { ListaDeAnexos } from '../compartilhado/ListaDeAnexos'
+import { RetratoDaSimulacao } from '../compartilhado/RetratoDaSimulacao'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
+
+/** Centavos como o campo de texto os mostra. Nulo vira campo vazio. */
+function centavosNoCampo(centavos: number | null) {
+  return centavos == null
+    ? ''
+    : (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+}
 
 /**
  * Envio da proposta do prestador.
@@ -48,13 +57,21 @@ export function ModalEnviarProposta({
   onEnviada: () => void
 }) {
   const jaEnviada = oportunidade.minhaProposta
+  const daSimulacao = ehDeSimulacao(oportunidade.origem)
   const [mensagem, setMensagem] = useState(jaEnviada?.mensagem ?? '')
+  /*
+    Numa solicitação vinda da simulação, o campo abre com o valor que o cliente
+    **viu** — que é o preço do próprio profissional, calculado pela tabela dele.
+    Não é preenchimento automático de proposta: é a sugestão óbvia, editável, e
+    ela some no instante em que ele digita outra coisa. Deixar em branco faria o
+    profissional redigitar o preço que a plataforma acabou de mostrar por ele.
+  */
   const [valor, setValor] = useState(
-    jaEnviada?.valorCentavos == null
-      ? ''
-      : (jaEnviada.valorCentavos / 100).toLocaleString('pt-BR', {
-          minimumFractionDigits: 2,
-        }),
+    centavosNoCampo(
+      jaEnviada?.valorCentavos ??
+        (daSimulacao ? oportunidade.simulacao?.precoMensalCentavos : null) ??
+        null,
+    ),
   )
   const [prazo, setPrazo] = useState(
     jaEnviada?.prazoEstimadoDias ? String(jaEnviada.prazoEstimadoDias) : '',
@@ -90,7 +107,11 @@ export function ModalEnviarProposta({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
-            {jaEnviada ? 'Revisar proposta' : 'Enviar proposta'}
+            {jaEnviada
+              ? 'Revisar proposta'
+              : daSimulacao
+                ? 'Responder ao interesse'
+                : 'Enviar proposta'}
           </DialogTitle>
           <DialogDescription>
             {rotuloDaCategoria(oportunidade.categoria)} ·{' '}
@@ -100,11 +121,18 @@ export function ModalEnviarProposta({
 
         <div className="rounded-xl border bg-muted/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Necessidade do cliente
+            {daSimulacao ? 'O que o cliente simulou' : 'Necessidade do cliente'}
           </p>
-          <p className="mt-2 whitespace-pre-line text-sm">
-            {oportunidade.descricao}
-          </p>
+          {oportunidade.simulacao ? (
+            <RetratoDaSimulacao
+              simulacao={oportunidade.simulacao}
+              titulo="Cenário simulado"
+            />
+          ) : (
+            <p className="mt-2 whitespace-pre-line text-sm">
+              {oportunidade.descricao}
+            </p>
+          )}
           {oportunidade.especialidades.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {oportunidade.especialidades.map((item) => (
@@ -117,12 +145,14 @@ export function ModalEnviarProposta({
               ))}
             </div>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Quanto o Cliente pretende investir:{' '}
-            <b className="text-foreground">
-              {formatarValor(oportunidade.valorPretendidoCentavos)}
-            </b>
-          </p>
+          {oportunidade.simulacao ? null : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Quanto o Cliente pretende investir:{' '}
+              <b className="text-foreground">
+                {formatarValor(oportunidade.valorPretendidoCentavos)}
+              </b>
+            </p>
+          )}
           <ListaDeAnexos anexos={oportunidade.anexos} />
         </div>
 
@@ -141,13 +171,18 @@ export function ModalEnviarProposta({
               value={mensagem}
               onChange={(e) => setMensagem(e.target.value)}
               maxLength={LIMITE_MENSAGEM_PROPOSTA}
-              placeholder="Explique como pretende atender a esta necessidade."
+              placeholder={
+                daSimulacao
+                  ? 'Diga que tem interesse e o que você precisa saber para seguir.'
+                  : 'Explique como pretende atender a esta necessidade.'
+              }
               rows={4}
               required
             />
             <p className="text-[11px] text-muted-foreground">
-              Explique como pretende atender a esta necessidade e o que está
-              incluído. O Cliente compara as propostas por esta mensagem.
+              {daSimulacao
+                ? 'É por aqui que a conversa começa: responder confirma seu interesse e leva sua mensagem ao cliente. Não é contratação.'
+                : 'Explique como pretende atender a esta necessidade e o que está incluído. O Cliente compara as propostas por esta mensagem.'}
             </p>
           </div>
 
@@ -215,7 +250,9 @@ export function ModalEnviarProposta({
                 ? 'Enviando...'
                 : jaEnviada
                   ? 'Salvar proposta'
-                  : 'Enviar proposta'}
+                  : daSimulacao
+                    ? 'Tenho interesse'
+                    : 'Enviar proposta'}
             </Button>
           </DialogFooter>
         </form>

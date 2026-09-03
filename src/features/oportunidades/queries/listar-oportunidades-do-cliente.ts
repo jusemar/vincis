@@ -13,9 +13,11 @@ import { obterReputacaoDosPrestadores } from '@/features/avaliacoes/queries/repu
 import { etapaComercial } from '@/features/pagamentos/lib/etapa-comercial'
 import { LIMITE_OPORTUNIDADES_CARREGADAS } from '../constants/oportunidade'
 import { propostaVigente, statusVisivel } from '../lib/vigencia-sql'
+import { visualizacoesDosDestinatarios } from '../lib/visualizacao'
 import type {
   OportunidadeDoClienteDTO,
   PropostaRecebidaDTO,
+  SimulacaoDaOportunidade,
 } from '../types/oportunidade'
 import { obterNegociacoes } from './contrapropostas-da-proposta'
 import { anexosDasOportunidades } from './listar-oportunidades-do-prestador'
@@ -51,6 +53,8 @@ export async function listarOportunidadesDoCliente(
       criadoEm: oportunidades.createdAt,
       visibilidade: oportunidades.visibilidade,
       destinatarioId: oportunidades.destinatarioId,
+      origem: oportunidades.origem,
+      simulacao: oportunidades.simulacao,
     })
     .from(oportunidades)
     .where(eq(oportunidades.clienteUsuarioId, clienteUsuarioId))
@@ -117,6 +121,23 @@ export async function listarOportunidadesDoCliente(
     })
     .from(oportunidadeDispensas)
     .where(inArray(oportunidadeDispensas.oportunidadeId, ids))
+
+  /**
+   * Quando o destinatário abriu a solicitação dele.
+   *
+   * Vem de `atendimento_leituras`, a mesma tabela que já responde "até onde
+   * fulano leu" no Atendimento e no convite — nenhuma segunda contabilidade de
+   * leitura nasceu para isto. Só as privadas entram na pergunta: numa pública
+   * não existe um destinatário de quem falar.
+   */
+  const visualizacoes = await visualizacoesDosDestinatarios(
+    linhas
+      .filter((linha) => linha.destinatarioId !== null)
+      .map((linha) => ({
+        oportunidadeId: linha.id,
+        destinatarioId: linha.destinatarioId as string,
+      })),
+  )
 
   const semInteressePorOportunidade = new Map<string, number>()
   const dispensaPorPar = new Map<string, Date>()
@@ -305,6 +326,15 @@ export async function listarOportunidadesDoCliente(
       abrangencia: linha.abrangencia,
       valorPretendidoCentavos: linha.valorPretendidoCentavos,
       visibilidade: linha.visibilidade,
+      origem: linha.origem,
+      // Asserção num lugar só: o `jsonb` volta como `unknown`, e o formato é
+      // desta plataforma — quem gravou foi ela.
+      simulacao: (linha.simulacao as SimulacaoDaOportunidade | null) ?? null,
+      // Só a marca **do destinatário** conta: numa pública não há de quem
+      // falar, e contar quem abriu exporia a fila de terceiros a quem pediu.
+      visualizadaEm: linha.destinatarioId
+        ? (visualizacoes.get(linha.id)?.toISOString() ?? null)
+        : null,
       destinatario: linha.destinatarioId
         ? (destinatarioPorId.get(linha.destinatarioId) ?? null)
         : null,

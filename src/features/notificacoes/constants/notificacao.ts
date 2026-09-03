@@ -41,6 +41,16 @@ export const TIPOS_NOTIFICACAO = {
   /** O destinatário de uma solicitação direta dispensou o convite ao orçamento. */
   oportunidadeSemInteresse: 'oportunidade_sem_interesse',
   /**
+   * O Profissional escolhido respondeu à solicitação dirigida a ele.
+   *
+   * Só existe no fluxo **privado**, pela mesma assimetria de
+   * `oportunidade_sem_interesse`: na pública o Cliente espera várias respostas e
+   * o sino viraria um contador de propostas; na privada existe **uma** pessoa, e
+   * a resposta dela é exatamente o que ele está esperando para seguir. Nada muda
+   * na oportunidade pública, que continua avisando só em tempo real.
+   */
+  oportunidadeRespondida: 'oportunidade_respondida',
+  /**
    * O prazo da solicitação acabou sem acordo.
    *
    * Emitida pelo agendador, e por mais ninguém: é o único aviso da plataforma
@@ -114,6 +124,7 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.ajusteSolicitado]: '🔧',
   [TIPOS_NOTIFICACAO.ajusteAnalisado]: '🔧',
   [TIPOS_NOTIFICACAO.prazoProximo]: '⏰',
+  [TIPOS_NOTIFICACAO.oportunidadeRespondida]: '🤝',
   [TIPOS_NOTIFICACAO.consultoriaCancelada]: '🚫',
   [TIPOS_NOTIFICACAO.consultoriaRemarcada]: '📅',
   [TIPOS_NOTIFICACAO.consultoriaLembrete]: '⏰',

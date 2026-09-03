@@ -160,6 +160,50 @@ export async function avisarClienteSemInteresse(
 }
 
 /**
+ * Avisa o Cliente de que o Profissional escolhido respondeu.
+ *
+ * Contrapartida exata de `avisarClienteSemInteresse`, e existe pela mesma
+ * assimetria: quando o Cliente escolheu **uma** pessoa, as duas respostas
+ * possíveis dela — "não vou propor" e "vamos conversar" — são o desfecho que ele
+ * está esperando, e nenhuma das duas pode chegar só como um evento que se perde
+ * se ele estiver com a aba fechada. Na oportunidade pública nada muda: lá o
+ * Cliente espera várias respostas e o sino viraria um contador de propostas.
+ *
+ * O conteúdo da proposta não viaja no aviso. A tela dele refaz a consulta, que
+ * aplica a autorização.
+ */
+export async function avisarClienteQueRespondeu(
+  executor: ExecutorDb,
+  {
+    oportunidadeId,
+    titulo,
+    clienteUsuarioId,
+    prestadorId,
+  }: {
+    oportunidadeId: string
+    titulo: string
+    clienteUsuarioId: string
+    prestadorId: string
+  },
+) {
+  return emitirNotificacoes(executor, {
+    destinatarios: [clienteUsuarioId],
+    autorId: prestadorId,
+    tipo: TIPOS_NOTIFICACAO.oportunidadeRespondida,
+    titulo: 'O profissional respondeu à sua solicitação',
+    resumo: resumirTexto(
+      `${titulo} — abra para ler a resposta e continuar a conversa.`,
+      200,
+    ),
+    recursoTipo: 'oportunidade',
+    recursoId: oportunidadeId,
+    atendimentoId: null,
+    protocolo: null,
+    destino: { pagina: 'oportunidades', oportunidadeId },
+  })
+}
+
+/**
  * Publica o aviso em tempo real, **depois** do commit.
  *
  * A ordem é a mesma do Atendimento e não é detalhe: grava, confirma, e só

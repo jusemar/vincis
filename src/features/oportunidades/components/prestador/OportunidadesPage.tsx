@@ -14,16 +14,20 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { responderContraproposta } from '../../actions/negociacao'
+import { registrarVisualizacaoDaOportunidade } from '../../actions/oportunidades'
 import {
   carregarOportunidadesDisponiveis,
   marcarSemInteresse,
 } from '../../actions/propostas'
 import {
+  ROTULO_ORIGEM_OPORTUNIDADE,
   ROTULO_VISIBILIDADE_OPORTUNIDADE,
+  ehDeSimulacao,
   rotuloDaCategoria,
 } from '../../constants/oportunidade'
 import type { OportunidadeParaPrestadorDTO } from '../../types/oportunidade'
 import { ListaDeAnexos } from '../compartilhado/ListaDeAnexos'
+import { RetratoDaSimulacao } from '../compartilhado/RetratoDaSimulacao'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
 import { ModalEnviarProposta } from './ModalEnviarProposta'
 
@@ -79,6 +83,35 @@ export default function OportunidadesPage() {
       await buscar()
     })
   }, [buscar])
+
+  /*
+    Abrir a área **é** abrir a solicitação.
+
+    O cartão do prestador não esconde nada atrás de um clique: descrição,
+    simulação e valor aparecem inteiros na lista. Então o instante em que ele
+    pode ler é o instante em que a lista renderiza — e é esse que o Cliente lê
+    como "visualizada". Marcar só no clique de "Enviar proposta" diria que ele
+    não viu o pedido que já estava lendo.
+
+    Só as dirigidas a ele entram: numa pública não há destinatário, e a marca de
+    um prestador entre dezenas não é informação de ninguém. O servidor confere
+    isso de novo — aqui a filtragem existe para não gastar requisição.
+
+    Falhar é aceitável e silencioso: a marca é conveniência do Cliente, não pode
+    derrubar a fila de trabalho de quem está lendo.
+  */
+  useEffect(() => {
+    const dirigidas = lista
+      .filter((item) => item.direcionadaAMim)
+      .map((item) => item.id)
+    if (!dirigidas.length) return
+
+    startTransition(async () => {
+      for (const id of dirigidas) {
+        await registrarVisualizacaoDaOportunidade({ oportunidadeId: id })
+      }
+    })
+  }, [lista])
 
   async function responder(
     contrapropostaId: string,
@@ -160,6 +193,14 @@ export default function OportunidadesPage() {
                       {ROTULO_VISIBILIDADE_OPORTUNIDADE.privada}
                     </span>
                   ) : null}
+                  {/* A origem é a segunda pergunta, e por isso a segunda
+                      pílula: "quem me mandou" e "de onde veio" são coisas
+                      diferentes, e quem trabalha a fila usa as duas. */}
+                  {ehDeSimulacao(oportunidade.origem) ? (
+                    <span className="badge-info rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
+                      {ROTULO_ORIGEM_OPORTUNIDADE.simulacao_preco}
+                    </span>
+                  ) : null}
                 </div>
                 {oportunidade.minhaProposta ? (
                   <span className="badge-success flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
@@ -192,14 +233,21 @@ export default function OportunidadesPage() {
                   perfil dela, e ninguém mais recebeu o pedido. */}
               {oportunidade.direcionadaAMim ? (
                 <p className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-foreground">
-                  Solicitação enviada diretamente para você. Nenhum outro
-                  profissional a recebeu.
+                  {ehDeSimulacao(oportunidade.origem)
+                    ? 'Este cliente simulou o preço na sua página e quer conversar. Ainda não é contratação.'
+                    : 'Solicitação enviada diretamente para você. Nenhum outro profissional a recebeu.'}
                 </p>
               ) : null}
 
-              <p className="mt-3 line-clamp-3 text-sm">
-                {oportunidade.descricao}
-              </p>
+              {/* Na simulação a descrição é gerada a partir do retrato — repetir
+                  as duas coisas seria ler o mesmo cenário duas vezes. */}
+              {oportunidade.simulacao ? (
+                <RetratoDaSimulacao simulacao={oportunidade.simulacao} />
+              ) : (
+                <p className="mt-3 line-clamp-3 text-sm">
+                  {oportunidade.descricao}
+                </p>
+              )}
 
               <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
@@ -216,13 +264,18 @@ export default function OportunidadesPage() {
                 </span>
               </div>
 
-              {/* Referência informada pelo Cliente — não é teto nem preço. */}
-              <p className="mt-3 text-xs text-muted-foreground">
-                Quanto o Cliente pretende investir:{' '}
-                <b className="text-foreground">
-                  {formatarValor(oportunidade.valorPretendidoCentavos)}
-                </b>
-              </p>
+              {/* Referência informada pelo Cliente — não é teto nem preço.
+                  Na simulação ele não informou nada: o número que existe é o que
+                  a página **exibiu**, e ele já está no retrato acima com o nome
+                  certo. Repeti-lo aqui o transformaria em orçamento declarado. */}
+              {oportunidade.simulacao ? null : (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Quanto o Cliente pretende investir:{' '}
+                  <b className="text-foreground">
+                    {formatarValor(oportunidade.valorPretendidoCentavos)}
+                  </b>
+                </p>
+              )}
 
               <ListaDeAnexos anexos={oportunidade.anexos} />
 
@@ -387,9 +440,15 @@ export default function OportunidadesPage() {
                     onClick={() => setSelecionada(oportunidade)}
                     className="px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
                   >
+                    {/* Na simulação o cliente não pediu orçamento: ele levantou
+                        a mão depois de ver um preço. "Tenho interesse em
+                        atender" é o que o profissional está de fato dizendo —
+                        e não uma segunda ação, é a mesma proposta. */}
                     {oportunidade.minhaProposta
                       ? 'Revisar proposta'
-                      : 'Enviar proposta'}
+                      : ehDeSimulacao(oportunidade.origem)
+                        ? 'Tenho interesse em atender'
+                        : 'Enviar proposta'}
                   </motion.button>
                 )}
               </div>

@@ -3,9 +3,11 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
@@ -48,6 +50,22 @@ import { usuarios } from '../usuarios/tabela'
  * e não da tela: privada sem destinatário seria uma solicitação que ninguém
  * pode responder, e pública com destinatário seria uma regra de acesso
  * silenciosamente diferente da que a vitrine aplica.
+ *
+ * ## Origem: por onde a pessoa entrou
+ *
+ * `origem` responde a uma pergunta que `visibilidade` não responde: *o que a
+ * pessoa estava fazendo quando pediu isto?*. As duas são independentes — a
+ * solicitação nascida na simulação de preços é privada **e** vem da simulação,
+ * e uma futura origem qualquer poderá ser pública. Separar as perguntas é o que
+ * permite medir conversão por origem sem reinterpretar a regra de acesso.
+ *
+ * `simulacao` é o retrato do que o cliente viu no configurador do Profissional
+ * no instante do clique — respostas, rótulos, preço e hora. Fica **aqui**, e
+ * congelado, porque a tabela de preços que o gerou pertence ao Profissional e
+ * ele pode republicá-la cinco minutos depois: recalcular na leitura mostraria a
+ * ele e ao cliente números que ninguém chegou a ver. É `jsonb` e não colunas
+ * porque a grade que produz o retrato é configurável no banco — uma coluna por
+ * pergunta obrigaria uma migração a cada dimensão nova da precificação.
  */
 export const oportunidades = pgTable(
   'oportunidades',
@@ -126,6 +144,33 @@ export const oportunidades = pgTable(
      */
     expiraEm: timestamp('expira_em'),
     encerradaEm: timestamp('encerrada_em'),
+    /**
+     * De onde veio o pedido. Ver `ORIGENS_OPORTUNIDADE`.
+     *
+     * O padrão `solicitacao` preserva tudo que já existia: toda solicitação
+     * gravada até aqui nasceu de um formulário, e nenhuma linha precisou ser
+     * reescrita para continuar significando o mesmo.
+     */
+    origem: varchar('origem', { length: 24 }).notNull().default('solicitacao'),
+    /**
+     * O retrato da simulação de preços. Nulo em toda origem que não a produz.
+     *
+     * O preço guardado aqui é o que **foi exibido**, e nada além disso: não é
+     * proposta vinculante, cobrança, pedido nem obrigação de pagamento. Quem
+     * quiser propor um valor usa `oportunidade_propostas`, que é onde valor
+     * comercial mora.
+     */
+    simulacao: jsonb('simulacao'),
+    /**
+     * Impressão digital da intenção: profissional + respostas + preço exibido.
+     *
+     * Existe para que o clique repetido não vire uma segunda solicitação
+     * idêntica — e é o índice único parcial abaixo, e não uma consulta antes do
+     * insert, que garante isso: duas requisições simultâneas passariam pelas
+     * duas consultas antes de qualquer uma gravar. Nulo quando a origem não
+     * tem o que repetir.
+     */
+    chaveIntencao: varchar('chave_intencao', { length: 64 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -156,6 +201,31 @@ export const oportunidades = pgTable(
      * que gravasse destinatário numa pública abriria uma regra de acesso que a
      * vitrine não conhece.
      */
+    /**
+     * Uma intenção viva por cliente, por profissional, por simulação.
+     *
+     * Parcial de propósito, e a condição é o que separa "clicou duas vezes" de
+     * "voltou meses depois": enquanto a solicitação está **aberta**, repetir a
+     * mesma simulação não cria nada; assim que ela é encerrada, recusada ou
+     * expirada, a mesma pessoa pode demonstrar interesse de novo — e uma
+     * simulação diferente tem outra chave, então nunca esbarra aqui.
+     */
+    intencaoUnica: uniqueIndex('oportunidades_intencao_unica')
+      .on(t.clienteUsuarioId, t.destinatarioId, t.chaveIntencao)
+      .where(sql`chave_intencao is not null and status = 'aberta'`),
+    /**
+     * Origem e retrato andam juntos — garantia do banco.
+     *
+     * Uma solicitação de simulação sem o retrato seria um lead sem o que o
+     * cliente viu, que é a única coisa que ela tem a mais que as outras. E ela
+     * é sempre privada: a simulação acontece na página de **uma** pessoa, e
+     * distribuí-la para a categoria inteira trocaria a escolha do cliente por
+     * outra.
+     */
+    origemSimulacaoCoerente: check(
+      'oportunidades_origem_simulacao',
+      sql`origem <> 'simulacao_preco' or (simulacao is not null and visibilidade = 'privada')`,
+    ),
     visibilidadeCoerente: check(
       'oportunidades_visibilidade_destinatario',
       sql`(visibilidade = 'publica' and destinatario_id is null) or (visibilidade = 'privada' and destinatario_id is not null)`,

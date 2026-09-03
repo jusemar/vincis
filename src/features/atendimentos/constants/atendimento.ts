@@ -160,18 +160,39 @@ export const TAMANHO_MAXIMO_MENSAGEM_NEGOCIACAO = 2000
 export const VALOR_MAXIMO_NEGOCIACAO_CENTAVOS = 1_000_000_000
 
 /**
- * Conversas que têm controle de leitura.
+ * Recursos que têm controle de leitura.
  *
  * `atendimento` cobre os dois canais da Conversa; `convite` cobre a negociação
  * privada. São escopos diferentes porque as regras de acesso são diferentes: a
  * Conversa é da equipe do Atendimento, a negociação é só das duas pontas do
  * convite.
+ *
+ * `oportunidade` entrou por essa mesma porta, e não por uma coluna
+ * `visualizada_em`: a pergunta "quem já abriu isto?" é por pessoa, e uma coluna
+ * na oportunidade só conseguiria contar a história de uma delas. A tabela foi
+ * desenhada com `escopo` + `recurso_id` exatamente para receber um terceiro
+ * recurso sem migração — e nenhuma chegou a ser necessária.
  */
-export const ESCOPOS_LEITURA = ['atendimento', 'convite'] as const
+export const ESCOPOS_LEITURA = [
+  'atendimento',
+  'convite',
+  'oportunidade',
+] as const
 export type EscopoLeitura = (typeof ESCOPOS_LEITURA)[number]
 
-/** Canais dentro de cada escopo. `negociacao` é o único do escopo `convite`. */
-export const CANAIS_LEITURA = ['cliente', 'interno', 'negociacao'] as const
+/**
+ * Canais dentro de cada escopo.
+ *
+ * `negociacao` é o único do escopo `convite`, e `solicitacao` o único do escopo
+ * `oportunidade` — ali não há dois canais para separar, mas a coluna faz parte
+ * do índice único da marca e precisa de um valor que diga o que ela é.
+ */
+export const CANAIS_LEITURA = [
+  'cliente',
+  'interno',
+  'negociacao',
+  'solicitacao',
+] as const
 export type CanalLeitura = (typeof CANAIS_LEITURA)[number]
 
 export const ORIGENS_ARQUIVO = ['cliente', 'prestador', 'sistema'] as const

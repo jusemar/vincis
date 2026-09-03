@@ -29,6 +29,7 @@ import {
   listarOportunidadesDoPrestador,
 } from '../queries/listar-oportunidades-do-prestador'
 import {
+  avisarClienteQueRespondeu,
   avisarClienteSemInteresse,
   avisarEmTempoReal,
 } from '../lib/difundir-oportunidade'
@@ -119,6 +120,7 @@ export async function enviarProposta(entrada: unknown) {
     .select({
       id: oportunidades.id,
       categoria: oportunidades.categoria,
+      titulo: oportunidades.titulo,
       status: oportunidades.status,
       expiraEm: oportunidades.expiraEm,
       clienteUsuarioId: oportunidades.clienteUsuarioId,
@@ -228,6 +230,23 @@ export async function enviarProposta(entrada: unknown) {
           eq(oportunidadeDispensas.prestadorId, sessao.id),
         ),
       )
+
+    /*
+      Na solicitação **privada**, a resposta também vai para o sino.
+
+      Simétrico ao "não tenho interesse", que já avisava: quem escolheu uma
+      pessoa está esperando a resposta *dela*, e um evento em tempo real se
+      perde para quem está com a aba fechada. A pública continua exatamente como
+      era — lá o Cliente espera várias respostas, e o sino viraria um contador.
+    */
+    if (ehPrivada(oportunidade.visibilidade)) {
+      await avisarClienteQueRespondeu(db, {
+        oportunidadeId: oportunidade.id,
+        titulo: oportunidade.titulo,
+        clienteUsuarioId: oportunidade.clienteUsuarioId,
+        prestadorId: sessao.id,
+      })
+    }
 
     // O Cliente é avisado de que há novidade; o conteúdo da proposta não viaja
     // no evento — a tela dele refaz a consulta, que aplica a autorização.

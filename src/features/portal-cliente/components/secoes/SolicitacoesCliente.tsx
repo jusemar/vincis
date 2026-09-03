@@ -2,6 +2,7 @@ import Link from 'next/link'
 import {
   ChevronDown,
   CreditCard,
+  Eye,
   ExternalLink,
   Headphones,
   Paperclip,
@@ -9,10 +10,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
+  ROTULO_ORIGEM_OPORTUNIDADE,
   ROTULO_VISIBILIDADE_OPORTUNIDADE,
+  ehDeSimulacao,
   ehPrivada,
   rotuloDaCategoria,
 } from '@/features/oportunidades/constants/oportunidade'
+import { RetratoDaSimulacao } from '@/features/oportunidades/components/compartilhado/RetratoDaSimulacao'
 import { CartaoPrestadorPublico } from '@/features/oportunidades/components/compartilhado/CartaoPrestadorPublico'
 import {
   ROTULO_ETAPA_COMERCIAL,
@@ -199,6 +203,15 @@ export function SolicitacoesCliente({
                         tom="destaque"
                       />
                     ) : null}
+                    {/* A origem responde outra pergunta que a visibilidade:
+                        "de onde isto saiu". O Cliente que simulou o preço
+                        precisa reconhecer a solicitação dele na lista. */}
+                    {ehDeSimulacao(oportunidade.origem) ? (
+                      <Pilula
+                        rotulo={ROTULO_ORIGEM_OPORTUNIDADE.simulacao_preco}
+                        tom="neutro"
+                      />
+                    ) : null}
                     {pendencia && !acordo ? (
                       <Pilula rotulo="Contraproposta enviada" tom="atencao" />
                     ) : null}
@@ -213,11 +226,22 @@ export function SolicitacoesCliente({
                   {/* O título é um resumo da própria descrição: quando a
                       descrição é curta, os dois textos são o mesmo e repeti-los
                       só rouba espaço. */}
-                  {oportunidade.descricao.trim() !==
-                  oportunidade.titulo.trim() ? (
+                  {/* Na simulação a descrição foi montada a partir do retrato,
+                      e o retrato inteiro aparece logo abaixo: repetir os dois
+                      faria o Cliente ler o mesmo cenário duas vezes. */}
+                  {!oportunidade.simulacao &&
+                  oportunidade.descricao.trim() !==
+                    oportunidade.titulo.trim() ? (
                     <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
                       {oportunidade.descricao}
                     </p>
+                  ) : null}
+
+                  {oportunidade.simulacao ? (
+                    <RetratoDaSimulacao
+                      simulacao={oportunidade.simulacao}
+                      titulo="O que você simulou"
+                    />
                   ) : null}
 
                   {oportunidade.especialidades.length > 0 ? (
@@ -239,13 +263,18 @@ export function SolicitacoesCliente({
                       valor={rotuloDaCategoria(oportunidade.categoria)}
                     />
                     <Dado rotulo="Abrangência" valor={oportunidade.abrangencia} />
-                    <Dado
-                      rotulo="Investimento"
-                      valor={
-                        valorEmReais(oportunidade.valorPretendidoCentavos) ??
-                        'Não informado'
-                      }
-                    />
+                    {/* Na simulação o Cliente não declarou investimento
+                        nenhum: o número que existe é o que a página exibiu, e
+                        ele já está no retrato acima, com o nome certo. */}
+                    {oportunidade.simulacao ? null : (
+                      <Dado
+                        rotulo="Investimento"
+                        valor={
+                          valorEmReais(oportunidade.valorPretendidoCentavos) ??
+                          'Não informado'
+                        }
+                      />
+                    )}
                     {/* Três leituras da mesma linha, na ordem em que deixam de
                         ser verdade: enquanto está aberta, o prazo é o teto;
                         recusada pelo destinatário, o que vale é o momento da
@@ -302,6 +331,24 @@ export function SolicitacoesCliente({
                         diz o que dá para fazer a seguir em vez de deixar o
                         Cliente sem saída.
                       */}
+                      {/*
+                        "Ele já abriu."
+
+                        Vem da mesma marca de leitura que o resto da plataforma
+                        usa, e só aparece enquanto é a informação mais recente:
+                        depois que o profissional respondeu ou recusou, dizer que
+                        ele "visualizou" seria voltar um passo na história.
+                      */}
+                      {oportunidade.visualizadaEm &&
+                      !oportunidade.semInteresseEm &&
+                      oportunidade.totalPropostas === 0 ? (
+                        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Eye className="size-3.5" />
+                          Visualizada em{' '}
+                          {formatarDataHora(oportunidade.visualizadaEm)}
+                        </p>
+                      ) : null}
+
                       {oportunidade.semInteresseEm ? (
                         <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
                           O profissional não demonstrou interesse nesta

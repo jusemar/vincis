@@ -19,6 +19,7 @@ import { obterNegociacoes } from './contrapropostas-da-proposta'
 import type {
   AnexoOportunidadeDTO,
   OportunidadeParaPrestadorDTO,
+  SimulacaoDaOportunidade,
 } from '../types/oportunidade'
 
 /** O cadastro do prestador, no recorte que decide o que ele alcança. */
@@ -155,6 +156,8 @@ export async function listarOportunidadesDoPrestador(
       propostaValorAcordado: minhaProposta.valorAcordadoCentavos,
       dispensadaEm: minhaDispensa.criadoEm,
       visibilidade: oportunidades.visibilidade,
+      origem: oportunidades.origem,
+      simulacao: oportunidades.simulacao,
       expiraEm: oportunidades.expiraEm,
       pagamentoEm: oportunidadePagamentos.aprovadoEm,
       pagamentoValor: oportunidadePagamentos.valorCentavos,
@@ -216,6 +219,11 @@ export async function listarOportunidadesDoPrestador(
       valorPretendidoCentavos: linha.valorPretendidoCentavos,
       status: linha.status,
       visibilidade: linha.visibilidade,
+      origem: linha.origem,
+      // O retrato foi gravado por esta plataforma, num formato que ela mesma
+      // define — mas ele volta do `jsonb` como `unknown`, e a asserção fica
+      // aqui, num lugar só, em vez de em cada tela que o lê.
+      simulacao: (linha.simulacao as SimulacaoDaOportunidade | null) ?? null,
       // Redundante com `visibilidade` só na aparência: a consulta já garantiu
       // que uma privada só chega ao destinatário, então a tela pode dizer
       // "enviada diretamente para você" sem comparar id nenhum no navegador.

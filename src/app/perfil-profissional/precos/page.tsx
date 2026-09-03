@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import {
   EVENTOS_PRECIFICACAO,
   registrarFalha,
@@ -60,11 +61,19 @@ export default async function PrecosDoProfissionalRoute({
 
   if (!precificacao) return <SemPrecos prestadorId={prestadorId} />
 
+  // Só se há sessão, e nada além disso: o nome, o papel e o que a pessoa pode
+  // fazer são decididos na Server Action, contra o banco. Aqui isto serve para
+  // uma coisa só — saber se o clique em "Tenho interesse" precisa abrir o login
+  // antes.
+  const sessao = await obterSessaoServidor()
+
   return (
     <PlanosDoProfissional
       tabela={precificacao.tabela}
       nome={precificacao.nome}
       primeiroNome={precificacao.primeiroNome}
+      prestadorId={precificacao.prestadorId}
+      autenticado={sessao !== null}
       voltarPara={`/perfil-profissional?prestador=${encodeURIComponent(precificacao.prestadorId)}`}
     />
   )

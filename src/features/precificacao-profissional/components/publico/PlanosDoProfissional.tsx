@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowLeft } from 'lucide-react'
 import { respostasIniciais } from '@/features/precificacao/lib/respostas'
 import type {
   RespostasPrecificacao,
   TabelaPrecificacao,
 } from '@/features/precificacao/types/precificacao'
+import { BotaoDeInteresse } from './BotaoDeInteresse'
 import { CartaoDoPreco } from './CartaoDoPreco'
 import { ConfiguradorDaEmpresa } from './ConfiguradorDaEmpresa'
 
@@ -28,12 +28,23 @@ export function PlanosDoProfissional({
   tabela,
   nome,
   primeiroNome,
+  prestadorId,
+  autenticado = false,
   voltarPara,
   demonstracao = false,
 }: {
   tabela: TabelaPrecificacao
   nome: string
   primeiroNome: string
+  /**
+   * De quem é esta tabela. Ausente na prévia do painel, que não cria nada.
+   *
+   * É chave de consulta, não autorização: quem decide se este Profissional
+   * existe, publicou e pode receber solicitação é o servidor, na action.
+   */
+  prestadorId?: string
+  /** Há sessão? Vem do servidor — o navegador não opina sobre isso. */
+  autenticado?: boolean
   /** Link de volta ao perfil. Ausente na prévia do painel. */
   voltarPara?: string
   /** Prévia do painel: sem ação de contratar e com aviso de demonstração. */
@@ -108,20 +119,29 @@ export function PlanosDoProfissional({
               respostas={respostas}
               primeiroNome={primeiroNome}
               rodape={
-                demonstracao ? null : (
-                  <Button className="w-full" asChild>
-                    <Link href="/perfil-profissional">
-                      Falar com {primeiroNome} <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
+                /*
+                  Demonstrar interesse é ato de quem está numa página pública
+                  olhando o preço de outra pessoa. Na prévia do painel o
+                  Profissional está vendo a **própria** tabela — não há a quem
+                  se dirigir, e o botão seria uma armadilha.
+                */
+                demonstracao || !prestadorId ? null : (
+                  <BotaoDeInteresse
+                    prestadorId={prestadorId}
+                    primeiroNome={primeiroNome}
+                    respostas={respostas}
+                    autenticado={autenticado}
+                    onRestaurar={setRespostas}
+                  />
                 )
               }
             />
 
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Valor calculado a partir do perfil informado. A proposta final é
-              confirmada por {primeiroNome} após a análise dos documentos da
-              empresa.
+              Preço calculado com base nas informações fornecidas.{' '}
+              {demonstracao || !prestadorId
+                ? `A proposta final é confirmada por ${primeiroNome} após a análise dos documentos da empresa.`
+                : 'Demonstrar interesse não é contratação: o contato e a negociação são realizados diretamente com o profissional.'}
             </p>
           </div>
         </div>

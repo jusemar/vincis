@@ -1,6 +1,7 @@
 'use server'
 
 import { randomUUID } from 'node:crypto'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
 import { oportunidadeArquivos, oportunidades } from '@/db/schema'
@@ -23,9 +24,12 @@ import {
   difundirOportunidade,
   difundirOportunidadeDireta,
 } from '../lib/difundir-oportunidade'
+import { obterVinculoComOportunidade } from '../lib/autorizacao'
+import { registrarVisualizacao } from '../lib/visualizacao'
 import { obterDestinatarioPrivado } from '../queries/obter-destinatario-privado'
 import { listarOportunidadesDoCliente } from '../queries/listar-oportunidades-do-cliente'
 import {
+  OportunidadeIdSchema,
   converterValorParaCentavos,
   lerAnexosDaOportunidade,
   lerNovaOportunidade,
@@ -317,4 +321,55 @@ export async function carregarMinhasOportunidades() {
     mensagem: 'Solicitações carregadas.',
     dados: await listarOportunidadesDoCliente(sessao.id),
   }
+}
+
+/**
+ * "Eu abri esta solicitação."
+ *
+ * Chamada pelo painel do prestador quando a solicitação dirigida a ele entra na
+ * tela. É o que permite ao Cliente ler "visualizada" na Área dele — a mesma
+ * informação que uma conversa dá quando alguém abre, e pelo mesmo mecanismo
+ * (`atendimento_leituras`).
+ *
+ * A autorização é a de sempre, e é o ponto: `obterVinculoComOportunidade`
+ * decide quem alcança a solicitação, e sobre ela se exige ainda ser o
+ * **destinatário**. Conhecer o id de uma solicitação alheia não permite marcá-la
+ * como vista — nem a de outro profissional, nem uma pública, onde a marca não
+ * significaria nada para ninguém.
+ *
+ * Ela é silenciosa por natureza: marcar leitura não muda o que a pessoa está
+ * fazendo, e uma falha aqui não pode derrubar a tela do prestador.
+ */
+export async function registrarVisualizacaoDaOportunidade(entrada: unknown) {
+  const sessao = await obterSessaoServidor()
+  if (!sessao) return { sucesso: false as const, mensagem: 'Sessão inválida.' }
+
+  const validacao = OportunidadeIdSchema.safeParse(entrada)
+  if (!validacao.success) {
+    return { sucesso: false as const, mensagem: 'Oportunidade inválida.' }
+  }
+  const { oportunidadeId } = validacao.data
+
+  const vinculo = await obterVinculoComOportunidade(oportunidadeId, sessao.id)
+  if (vinculo !== 'prestador') {
+    return { sucesso: false as const, mensagem: 'Oportunidade não encontrada.' }
+  }
+
+  const [oportunidade] = await db
+    .select({ destinatarioId: oportunidades.destinatarioId })
+    .from(oportunidades)
+    .where(eq(oportunidades.id, oportunidadeId))
+    .limit(1)
+
+  // Só o destinatário marca. Numa pública não há destinatário, e a marca de um
+  // prestador entre dezenas não é informação de ninguém.
+  if (!oportunidade || oportunidade.destinatarioId !== sessao.id) {
+    return { sucesso: false as const, mensagem: 'Oportunidade não encontrada.' }
+  }
+
+  await registrarVisualizacao(sessao.id, oportunidadeId)
+  // A Área do Cliente é renderizada no servidor: sem isto, ela só mostraria
+  // "visualizada" no próximo F5 dele.
+  revalidatePath('/cliente')
+  return { sucesso: true as const, mensagem: 'Visualização registrada.' }
 }

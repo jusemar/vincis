@@ -1,4 +1,5 @@
 import type { EtapaComercial } from '@/features/pagamentos/lib/etapa-comercial'
+import type { RespostasPrecificacao } from '@/features/precificacao/types/precificacao'
 
 /**
  * Formas de leitura das Oportunidades.
@@ -9,6 +10,45 @@ import type { EtapaComercial } from '@/features/pagamentos/lib/etapa-comercial'
  * Não há um tipo único com campos opcionais justamente para que nenhuma tela
  * possa, por descuido, receber a lista alheia.
  */
+
+/**
+ * Uma pergunta do configurador e o que o cliente respondeu.
+ *
+ * Rótulo e valor viajam já **escritos**, e não como códigos: o retrato precisa
+ * continuar legível depois que o Profissional renomear a opção, desativá-la ou
+ * republicar a tabela inteira. `codigo` fica ao lado para quem quiser cruzar
+ * com a grade atual — mas nenhuma tela depende disso para exibir a linha.
+ */
+export type ItemDaSimulacao = {
+  codigo: string
+  rotulo: string
+  valor: string
+}
+
+/**
+ * O retrato da simulação de preços que originou a solicitação.
+ *
+ * É o que o cliente **viu**, congelado: se o Profissional republicar a tabela
+ * cinco minutos depois, este bloco continua contando a mesma história para os
+ * dois lados. Guardar as `respostas` ao lado dos `itens` é o que permite
+ * recalcular o mesmo cenário no futuro sem depender de texto exibido.
+ *
+ * `precoMensalCentavos` é o valor que estava na tela naquele instante — e nada
+ * além disso. Não é proposta, cobrança, contrato, pedido nem obrigação de
+ * pagamento; valor comercial continua morando em `oportunidade_propostas`.
+ */
+export type SimulacaoDaOportunidade = {
+  /** Versão do formato. Existe para que um retrato antigo continue legível. */
+  versao: number
+  profissionalId: string
+  /** Código do serviço no motor — o único que a tabela individual tem. */
+  servico: string
+  respostas: RespostasPrecificacao
+  itens: ItemDaSimulacao[]
+  precoMensalCentavos: number
+  /** Instante da simulação, ISO. */
+  simuladaEm: string
+}
 
 /** Um anexo, no formato que a tela precisa para oferecer o download. */
 export type AnexoOportunidadeDTO = {
@@ -63,6 +103,10 @@ export type OportunidadeParaPrestadorDTO = {
   status: string
   /** `publica` | `privada`. Ver `VISIBILIDADES_OPORTUNIDADE`. */
   visibilidade: string
+  /** `solicitacao` | `simulacao_preco`. Ver `ORIGENS_OPORTUNIDADE`. */
+  origem: string
+  /** O retrato do que o cliente simulou. Nulo nas demais origens. */
+  simulacao: SimulacaoDaOportunidade | null
   /**
    * O Cliente escolheu **este** prestador.
    *
@@ -174,6 +218,20 @@ export type OportunidadeDoClienteDTO = {
   valorPretendidoCentavos: number | null
   /** `publica` | `privada`. Ver `VISIBILIDADES_OPORTUNIDADE`. */
   visibilidade: string
+  /** `solicitacao` | `simulacao_preco`. Ver `ORIGENS_OPORTUNIDADE`. */
+  origem: string
+  /** O retrato do que ele mesmo simulou. Nulo nas demais origens. */
+  simulacao: SimulacaoDaOportunidade | null
+  /**
+   * Quando o destinatário **abriu** a solicitação. Nulo enquanto não abriu.
+   *
+   * Só existe no privado, pela mesma assimetria de `semInteresseEm`: numa
+   * pública não há um destinatário de quem falar. A marca vem de
+   * `atendimento_leituras`, a mesma tabela que já responde "até onde esta
+   * pessoa leu" no Atendimento e no convite — nenhuma segunda contabilidade de
+   * leitura foi criada para isto.
+   */
+  visualizadaEm: string | null
   /**
    * O Profissional a quem a solicitação foi dirigida. Nulo nas públicas.
    *

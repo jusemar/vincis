@@ -167,6 +167,38 @@ export function ehPrivada(visibilidade: string) {
 }
 
 /**
+ * De onde veio o pedido.
+ *
+ * Pergunta diferente da que `visibilidade` responde, e por isso uma coluna
+ * diferente: visibilidade decide **quem alcança** a solicitação; origem conta
+ * **o que a pessoa estava fazendo** quando pediu. A solicitação nascida na
+ * simulação de preços é privada *e* vem da simulação — as duas respostas
+ * convivem, e é a origem que permitirá medir depois quantas simulações viram
+ * conversa.
+ *
+ * `solicitacao` é o formulário de orçamento de sempre, público ou dirigido. Foi
+ * escolhido como padrão da coluna justamente porque descreve, sem reinterpretar
+ * nada, tudo que já estava gravado.
+ */
+export const ORIGENS_OPORTUNIDADE = ['solicitacao', 'simulacao_preco'] as const
+export type OrigemOportunidade = (typeof ORIGENS_OPORTUNIDADE)[number]
+
+/**
+ * Como cada origem se apresenta na tela.
+ *
+ * O texto da simulação diz o que o profissional precisa saber em uma linha:
+ * esta pessoa já viu um preço — o dele — antes de levantar a mão.
+ */
+export const ROTULO_ORIGEM_OPORTUNIDADE: Record<string, string> = {
+  solicitacao: 'Solicitação de orçamento',
+  simulacao_preco: 'Simulação de preços',
+}
+
+export function ehDeSimulacao(origem: string) {
+  return origem === 'simulacao_preco'
+}
+
+/**
  * Por que a solicitação parou de receber propostas.
  *
  * Motivo, e não estado: `encerrada` continua respondendo "ainda recebe
