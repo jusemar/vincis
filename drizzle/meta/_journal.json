@@ -351,6 +351,13 @@
       "when": 1788427794934,
       "tag": "0049_oportunidade_origem_simulacao",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1788430131932,
+      "tag": "0050_oportunidade_conversa_direta",
+      "breakpoints": true
     }
   ]
 }

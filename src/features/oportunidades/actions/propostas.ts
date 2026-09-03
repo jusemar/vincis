@@ -23,6 +23,7 @@ import { prestadorHabilitado } from '@/features/usuarios/lib/prestador'
 import { tipoPrestadorDoPerfil } from '@/features/usuarios/lib/tipos-pessoa'
 import { ehPrivada, type CategoriaOportunidade } from '../constants/oportunidade'
 import { obterVinculoComOportunidade } from '../lib/autorizacao'
+import { ehFluxoDireto } from '../lib/fluxo-direto'
 import { categoriasCompativeisDoPrestador } from '../lib/compatibilidade'
 import {
   contarOportunidadesDisponiveis,
@@ -121,6 +122,7 @@ export async function enviarProposta(entrada: unknown) {
       id: oportunidades.id,
       categoria: oportunidades.categoria,
       titulo: oportunidades.titulo,
+      origem: oportunidades.origem,
       status: oportunidades.status,
       expiraEm: oportunidades.expiraEm,
       clienteUsuarioId: oportunidades.clienteUsuarioId,
@@ -133,6 +135,24 @@ export async function enviarProposta(entrada: unknown) {
 
   if (!oportunidade) {
     return { sucesso: false as const, mensagem: 'Oportunidade não encontrada.' }
+  }
+  /*
+    A única condição que o fluxo direto acrescentou ao motor comercial.
+
+    Não é uma regra a mais sobre proposta: é a recusa de criar a **única** coisa
+    que destranca acordo, contraproposta, pagamento e Atendimento. Barrando
+    aqui, todas as etapas seguintes ficam inalcançáveis para esta origem sem que
+    nenhuma delas precise aprender o que é uma simulação de preços.
+
+    Toda Oportunidade tradicional passa reto — inclusive as anteriores à coluna
+    `origem`, que respondem `solicitacao` pelo default.
+  */
+  if (ehFluxoDireto(oportunidade.origem)) {
+    return {
+      sucesso: false as const,
+      mensagem:
+        'Esta solicitação é uma conversa direta com o cliente: use "Tenho interesse" e converse por aqui, sem proposta comercial.',
+    }
   }
   // Vencida pelo relógio conta como fechada, mesmo que a coluna ainda diga
   // `aberta`: sem agendador, é a leitura que sustenta a regra.

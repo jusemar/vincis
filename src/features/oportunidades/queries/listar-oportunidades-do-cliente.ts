@@ -13,6 +13,8 @@ import { obterReputacaoDosPrestadores } from '@/features/avaliacoes/queries/repu
 import { etapaComercial } from '@/features/pagamentos/lib/etapa-comercial'
 import { LIMITE_OPORTUNIDADES_CARREGADAS } from '../constants/oportunidade'
 import { propostaVigente, statusVisivel } from '../lib/vigencia-sql'
+import { naoLidasPorOportunidade } from '../lib/conversa'
+import { ehFluxoDireto } from '../lib/fluxo-direto'
 import { visualizacoesDosDestinatarios } from '../lib/visualizacao'
 import type {
   OportunidadeDoClienteDTO,
@@ -55,6 +57,7 @@ export async function listarOportunidadesDoCliente(
       destinatarioId: oportunidades.destinatarioId,
       origem: oportunidades.origem,
       simulacao: oportunidades.simulacao,
+      interesseEm: oportunidades.interesseEm,
     })
     .from(oportunidades)
     .where(eq(oportunidades.clienteUsuarioId, clienteUsuarioId))
@@ -130,6 +133,11 @@ export async function listarOportunidadesDoCliente(
    * leitura nasceu para isto. Só as privadas entram na pergunta: numa pública
    * não existe um destinatário de quem falar.
    */
+  const naoLidas = await naoLidasPorOportunidade(
+    clienteUsuarioId,
+    linhas.filter((linha) => ehFluxoDireto(linha.origem)).map(({ id }) => id),
+  )
+
   const visualizacoes = await visualizacoesDosDestinatarios(
     linhas
       .filter((linha) => linha.destinatarioId !== null)
@@ -330,6 +338,8 @@ export async function listarOportunidadesDoCliente(
       // Asserção num lugar só: o `jsonb` volta como `unknown`, e o formato é
       // desta plataforma — quem gravou foi ela.
       simulacao: (linha.simulacao as SimulacaoDaOportunidade | null) ?? null,
+      interesseEm: linha.interesseEm?.toISOString() ?? null,
+      mensagensNaoLidas: naoLidas.get(linha.id) ?? 0,
       // Só a marca **do destinatário** conta: numa pública não há de quem
       // falar, e contar quem abriu exporia a fila de terceiros a quem pediu.
       visualizadaEm: linha.destinatarioId

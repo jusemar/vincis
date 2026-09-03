@@ -21,6 +21,8 @@ export const ACOES_AUDITORIA = {
   contrapropostaCriada: 'contraproposta_oportunidade_criada',
   contrapropostaAceita: 'contraproposta_oportunidade_aceita',
   contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
+  /** O Profissional disse "quero conversar" — o aceite do fluxo direto. */
+  interesseOportunidadeConfirmado: 'interesse_oportunidade_confirmado',
   /** Pagamento **simulado** aprovado. O nome diz o que é, no próprio registro. */
   pagamentoSimuladoAprovado: 'pagamento_simulado_aprovado',
   /** Ciclo pós-agendamento da Consultoria: desfeita, ou movida de horário. */

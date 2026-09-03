@@ -16,6 +16,7 @@ import {
   ehPrivada,
   rotuloDaCategoria,
 } from '@/features/oportunidades/constants/oportunidade'
+import { ConversaDaOportunidade } from '@/features/oportunidades/components/compartilhado/ConversaDaOportunidade'
 import { RetratoDaSimulacao } from '@/features/oportunidades/components/compartilhado/RetratoDaSimulacao'
 import { CartaoPrestadorPublico } from '@/features/oportunidades/components/compartilhado/CartaoPrestadorPublico'
 import {
@@ -349,6 +350,21 @@ export function SolicitacoesCliente({
                         </p>
                       ) : null}
 
+                      {/*
+                        O aceite do fluxo direto: uma frase, e nada para
+                        aceitar de volta. Não há proposta, valor, botão de
+                        pagamento nem checkout nesta origem — o combinado
+                        acontece entre as duas pessoas, na conversa abaixo.
+                      */}
+                      {oportunidade.interesseEm ? (
+                        <p className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-foreground">
+                          O profissional tem interesse em conversar com você
+                          desde {formatarDataHora(oportunidade.interesseEm)}.
+                          Combine os detalhes direto com ele pela conversa
+                          abaixo.
+                        </p>
+                      ) : null}
+
                       {oportunidade.semInteresseEm ? (
                         <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
                           O profissional não demonstrou interesse nesta
@@ -359,6 +375,16 @@ export function SolicitacoesCliente({
                         </p>
                       ) : null}
                     </div>
+                  ) : null}
+
+                  {/* A conversa mora dentro da própria solicitação, e só no
+                      fluxo direto: na tradicional a troca é por proposta e
+                      contraproposta, exatamente como sempre foi. */}
+                  {oportunidade.simulacao ? (
+                    <ConversaDaOportunidade
+                      oportunidadeId={oportunidade.id}
+                      naoLidas={oportunidade.mensagensNaoLidas}
+                    />
                   ) : null}
 
                   {oportunidade.anexos.length > 0 ? (
@@ -379,6 +405,18 @@ export function SolicitacoesCliente({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
+                  {/* Contar propostas só faz sentido onde há propostas. No
+                      fluxo direto o que existe é o interesse de uma pessoa, e
+                      um "0 propostas" seco leria como abandono. */}
+                  {oportunidade.simulacao ? (
+                    <p className="text-sm text-muted-foreground">
+                      {oportunidade.semInteresseEm
+                        ? 'O profissional não seguiu com esta solicitação.'
+                        : oportunidade.interesseEm
+                          ? 'Conversa em andamento com o profissional.'
+                          : 'Aguardando o profissional responder.'}
+                    </p>
+                  ) : (
                   <p className="text-sm">
                     <span className="font-semibold">
                       {oportunidade.totalPropostas}
@@ -399,6 +437,7 @@ export function SolicitacoesCliente({
                       </span>
                     ) : null}
                   </p>
+                  )}
 
                   {/* A ação que falta, no lugar onde a decisão termina. */}
                   {acordo && !oportunidade.pagamento ? (

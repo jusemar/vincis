@@ -183,15 +183,18 @@ export type EscopoLeitura = (typeof ESCOPOS_LEITURA)[number]
 /**
  * Canais dentro de cada escopo.
  *
- * `negociacao` é o único do escopo `convite`, e `solicitacao` o único do escopo
- * `oportunidade` — ali não há dois canais para separar, mas a coluna faz parte
- * do índice único da marca e precisa de um valor que diga o que ela é.
+ * `negociacao` é o único do escopo `convite`. O escopo `oportunidade` tem dois,
+ * e a separação importa: `solicitacao` marca "abri este pedido" — é o que o
+ * Cliente lê como *visualizada* — e `conversa` marca "li as mensagens até
+ * aqui". Um canal só faria abrir a lista zerar o contador de mensagens que
+ * ninguém leu.
  */
 export const CANAIS_LEITURA = [
   'cliente',
   'interno',
   'negociacao',
   'solicitacao',
+  'conversa',
 ] as const
 export type CanalLeitura = (typeof CANAIS_LEITURA)[number]
 

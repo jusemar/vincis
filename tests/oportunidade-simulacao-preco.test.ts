@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { and, eq, inArray, like } from 'drizzle-orm'
 import { db } from '@/db/connection'
@@ -9,6 +10,7 @@ import {
   notificacoes,
   oportunidadeContrapropostas,
   oportunidadeDispensas,
+  oportunidadeMensagens,
   oportunidadePagamentos,
   oportunidadePropostas,
   oportunidades,
@@ -22,7 +24,15 @@ import {
 } from '@/db/schema'
 import { ACOES_AUDITORIA } from '@/features/auditoria/lib/registrar-evento'
 import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
-import { criarContraproposta } from '@/features/oportunidades/actions/negociacao'
+import {
+  aceitarProposta,
+  criarContraproposta,
+} from '@/features/oportunidades/actions/negociacao'
+import {
+  carregarConversaDaOportunidade,
+  confirmarInteresseNaOportunidade,
+  enviarMensagemDaOportunidade,
+} from '@/features/oportunidades/actions/conversa-direta'
 import { registrarVisualizacaoDaOportunidade } from '@/features/oportunidades/actions/oportunidades'
 import {
   enviarProposta,
@@ -192,6 +202,9 @@ async function limpar() {
       .delete(oportunidadePropostas)
       .where(inArray(oportunidadePropostas.oportunidadeId, solicitacaoIds))
     await db
+      .delete(oportunidadeMensagens)
+      .where(inArray(oportunidadeMensagens.oportunidadeId, solicitacaoIds))
+    await db
       .delete(atendimentoLeituras)
       .where(inArray(atendimentoLeituras.recursoId, solicitacaoIds))
     await db.delete(oportunidades).where(inArray(oportunidades.id, solicitacaoIds))
@@ -318,14 +331,26 @@ async function demonstrarInteresse(
   cliente: Chave,
   prestador: Chave,
   respostas: RespostasPrecificacao = EMPRESA_PEQUENA,
+  mensagem?: string,
 ) {
   entrarComo(contas[cliente].token)
   const resultado = await demonstrarInteresseNaSimulacao({
     prestadorId: contas[prestador].id,
     respostas,
+    ...(mensagem === undefined ? {} : { mensagem }),
   })
   sairDaSessao()
   return resultado
+}
+
+/** Executa uma ação como alguém, sempre devolvendo a sessão ao fim. */
+async function como<T>(chave: Chave, acao: () => Promise<T>) {
+  entrarComo(contas[chave].token)
+  try {
+    return await acao()
+  } finally {
+    sairDaSessao()
+  }
 }
 
 async function lerOportunidade(id: string) {
@@ -380,6 +405,9 @@ beforeEach(async () => {
   await db
     .delete(oportunidadeDispensas)
     .where(inArray(oportunidadeDispensas.oportunidadeId, solicitacaoIds))
+  await db
+    .delete(oportunidadeMensagens)
+    .where(inArray(oportunidadeMensagens.oportunidadeId, solicitacaoIds))
   await db
     .delete(atendimentoLeituras)
     .where(inArray(atendimentoLeituras.recursoId, solicitacaoIds))
@@ -717,18 +745,29 @@ describe('o profissional recebe, abre, aceita ou recusa', () => {
     ).toBeNull()
   })
 
-  it('aceitar é responder — e o cliente é avisado', async () => {
+  it('o profissional confirma interesse sem informar preço nenhum', async () => {
     const { dados } = await demonstrarInteresse('cliente', 'ricardo')
 
-    entrarComo(contas.ricardo.token)
-    const resposta = await enviarProposta({
-      oportunidadeId: dados!.oportunidadeId,
-      mensagem:
-        'Tenho interesse em atender sua empresa. Podemos conversar sobre os documentos?',
-      valor: '',
-    })
-    sairDaSessao()
-    expect(resposta.sucesso).toBe(true)
+    const confirmou = await como('ricardo', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(confirmou.sucesso).toBe(true)
+
+    const oportunidade = await lerOportunidade(dados!.oportunidadeId)
+    expect(oportunidade.interesseEm).not.toBeNull()
+    // Aceitar aqui não é acordo: a solicitação segue aberta e sem motivo de
+    // encerramento.
+    expect(oportunidade.status).toBe('aberta')
+    expect(oportunidade.motivoEncerramento).toBeNull()
+
+    // E, sobretudo, não nasceu objeto comercial nenhum.
+    const propostas = await db
+      .select({ id: oportunidadePropostas.id })
+      .from(oportunidadePropostas)
+      .where(eq(oportunidadePropostas.oportunidadeId, dados!.oportunidadeId))
+    expect(propostas).toHaveLength(0)
 
     const avisos = await db
       .select({ tipo: notificacoes.tipo })
@@ -740,17 +779,68 @@ describe('o profissional recebe, abre, aceita ou recusa', () => {
         ),
       )
     expect(avisos.map((a) => a.tipo)).toContain(
-      TIPOS_NOTIFICACAO.oportunidadeRespondida,
+      TIPOS_NOTIFICACAO.oportunidadeInteresse,
     )
 
     const lista = await listarOportunidadesDoCliente(contas.cliente.id)
     const minha = lista.find((item) => item.id === dados!.oportunidadeId)!
-    expect(minha.totalPropostas).toBe(1)
-    expect(minha.status).toBe('aberta')
-    // Aceitar interesse não fecha acordo nem cria protocolo nenhum.
-    expect(minha.propostas[0].status).toBe('enviada')
+    expect(minha.interesseEm).not.toBeNull()
+    expect(minha.totalPropostas).toBe(0)
     expect(minha.pagamento).toBeNull()
     expect(minha.atendimento).toBeNull()
+  })
+
+  it('confirmar duas vezes não move a data nem duplica o aviso', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+
+    await como('ricardo', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    const primeira = (await lerOportunidade(dados!.oportunidadeId)).interesseEm
+
+    const repetida = await como('ricardo', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(repetida.sucesso).toBe(true)
+    expect((await lerOportunidade(dados!.oportunidadeId)).interesseEm).toEqual(
+      primeira,
+    )
+
+    const avisos = await db
+      .select({ id: notificacoes.id })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, contas.cliente.id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.oportunidadeInteresse),
+          eq(notificacoes.recursoId, dados!.oportunidadeId),
+        ),
+      )
+    expect(avisos).toHaveLength(1)
+  })
+
+  it('só o profissional destinatário confirma interesse', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+
+    // O próprio cliente não confirma o interesse do outro lado.
+    const doCliente = await como('cliente', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(doCliente.sucesso).toBe(false)
+
+    const daAna = await como('ana', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(daAna.sucesso).toBe(false)
+    expect((await lerOportunidade(dados!.oportunidadeId)).interesseEm).toBeNull()
   })
 
   it('recusar encerra a solicitação e avisa o cliente', async () => {
@@ -786,45 +876,344 @@ describe('o profissional recebe, abre, aceita ou recusa', () => {
     ).not.toBeNull()
   })
 
-  it('a conversa continua dentro da própria oportunidade', async () => {
+  it('recusada, a solicitação não recebe mais mensagem — e o histórico fica', async () => {
+    const { dados } = await demonstrarInteresse(
+      'cliente',
+      'ricardo',
+      EMPRESA_PEQUENA,
+      'Bom dia! Consegue atender uma empresa de serviços?',
+    )
+
+    await como('ricardo', () =>
+      marcarSemInteresse({ oportunidadeId: dados!.oportunidadeId }),
+    )
+
+    const tentativa = await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+        conteudo: 'Mas e se eu mudar o regime?',
+      }),
+    )
+    expect(tentativa.sucesso).toBe(false)
+
+    // O que já foi dito continua legível para quem participou.
+    const conversa = await como('cliente', () =>
+      carregarConversaDaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(conversa.sucesso).toBe(true)
+    expect(conversa.dados!.mensagens).toHaveLength(1)
+    expect(conversa.dados!.podeEscrever).toBe(false)
+  })
+})
+
+describe('a conversa vive dentro da oportunidade', () => {
+  it('o cliente pode mandar a primeira mensagem junto com o interesse', async () => {
+    const { dados } = await demonstrarInteresse(
+      'cliente',
+      'ricardo',
+      EMPRESA_PEQUENA,
+      'Bom dia! A empresa é nova, consegue me atender?',
+    )
+
+    const conversa = await como('ricardo', () =>
+      carregarConversaDaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+    expect(conversa.sucesso).toBe(true)
+    expect(conversa.dados!.mensagens).toHaveLength(1)
+    expect(conversa.dados!.mensagens[0].conteudo).toContain('A empresa é nova')
+    expect(conversa.dados!.mensagens[0].autorId).toBe(contas.cliente.id)
+  })
+
+  it('as duas pontas conversam, e o histórico fica na oportunidade', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    const id = dados!.oportunidadeId
+
+    expect(
+      (
+        await como('cliente', () =>
+          enviarMensagemDaOportunidade({
+            oportunidadeId: id,
+            conteudo: 'Consigo fechar ainda este mês?',
+          }),
+        )
+      ).sucesso,
+    ).toBe(true)
+
+    expect(
+      (
+        await como('ricardo', () =>
+          enviarMensagemDaOportunidade({
+            oportunidadeId: id,
+            conteudo: 'Consegue sim. Me manda o contrato social?',
+          }),
+        )
+      ).sucesso,
+    ).toBe(true)
+
+    const conversa = await como('cliente', () =>
+      carregarConversaDaOportunidade({ oportunidadeId: id }),
+    )
+    const textos = conversa.dados!.mensagens.map((m) => m.conteudo)
+    expect(textos).toEqual([
+      'Consigo fechar ainda este mês?',
+      'Consegue sim. Me manda o contrato social?',
+    ])
+
+    // E ficaram nesta oportunidade, não em outra.
+    const outra = await demonstrarInteresse('cliente', 'ana')
+    const daOutra = await como('cliente', () =>
+      carregarConversaDaOportunidade({
+        oportunidadeId: outra.dados!.oportunidadeId,
+      }),
+    )
+    expect(daOutra.dados!.mensagens).toHaveLength(0)
+  })
+
+  it('cada mensagem avisa a outra parte, e nunca o próprio autor', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    const id = dados!.oportunidadeId
+
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: id,
+        conteudo: 'Tenho uma dúvida sobre as notas fiscais.',
+      }),
+    )
+
+    const paraRicardo = await db
+      .select({ id: notificacoes.id })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, contas.ricardo.id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.mensagemOportunidade),
+          eq(notificacoes.recursoId, id),
+        ),
+      )
+    expect(paraRicardo).toHaveLength(1)
+
+    const paraQuemEscreveu = await db
+      .select({ id: notificacoes.id })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, contas.cliente.id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.mensagemOportunidade),
+        ),
+      )
+    expect(paraQuemEscreveu).toHaveLength(0)
+  })
+
+  it('o contador de não lidas usa a leitura existente e zera ao abrir', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    const id = dados!.oportunidadeId
+
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: id,
+        conteudo: 'Primeira pergunta.',
+      }),
+    )
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: id,
+        conteudo: 'Segunda pergunta.',
+      }),
+    )
+
+    const antes = await listarOportunidadesDoPrestador(contas.ricardo.id)
+    expect(antes.find((item) => item.id === id)!.mensagensNaoLidas).toBe(2)
+
+    // Quem escreveu não acende o próprio contador.
+    const doCliente = await listarOportunidadesDoCliente(contas.cliente.id)
+    expect(doCliente.find((item) => item.id === id)!.mensagensNaoLidas).toBe(0)
+
+    await como('ricardo', () => carregarConversaDaOportunidade({ oportunidadeId: id }))
+
+    const depois = await listarOportunidadesDoPrestador(contas.ricardo.id)
+    expect(depois.find((item) => item.id === id)!.mensagensNaoLidas).toBe(0)
+
+    // A marca da conversa é outra que a de "abriu a solicitação": ler mensagens
+    // não pode ser a mesma coisa que abrir o pedido.
+    const marcas = await db
+      .select({ canal: atendimentoLeituras.canal })
+      .from(atendimentoLeituras)
+      .where(
+        and(
+          eq(atendimentoLeituras.usuarioId, contas.ricardo.id),
+          eq(atendimentoLeituras.recursoId, id),
+        ),
+      )
+    expect(marcas.map((m) => m.canal).sort()).toEqual(['conversa'])
+  })
+
+  it('abrir a conversa apaga o sino daquela oportunidade, e só dele', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    const id = dados!.oportunidadeId
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({ oportunidadeId: id, conteudo: 'Olá!' }),
+    )
+
+    await como('ricardo', () => carregarConversaDaOportunidade({ oportunidadeId: id }))
+
+    const [aviso] = await db
+      .select({ lidaEm: notificacoes.lidaEm })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, contas.ricardo.id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.mensagemOportunidade),
+          eq(notificacoes.recursoId, id),
+        ),
+      )
+    expect(aviso.lidaEm).not.toBeNull()
+
+    // O aviso da solicitação nova continua onde estava: abrir a conversa não é
+    // dar por resolvido tudo o que chegou daquela oportunidade.
+    const [direta] = await db
+      .select({ lidaEm: notificacoes.lidaEm })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.destinatarioId, contas.ricardo.id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.oportunidadeDireta),
+          eq(notificacoes.recursoId, id),
+        ),
+      )
+    expect(direta.lidaEm).toBeNull()
+  })
+
+  it('a conversa não existe nas oportunidades tradicionais', async () => {
+    const [tradicional] = await db
+      .insert(oportunidades)
+      .values({
+        clienteUsuarioId: contas.cliente.id,
+        categoria: 'contabilidade',
+        titulo: 'Solicitação tradicional',
+        descricao: 'Preciso de ajuda com a contabilidade da minha empresa.',
+        abrangencia: 'BR',
+        visibilidade: 'privada',
+        destinatarioId: contas.ricardo.id,
+        expiraEm: new Date(Date.now() + 3600_000),
+      })
+      .returning({ id: oportunidades.id })
+
+    const conversa = await como('cliente', () =>
+      carregarConversaDaOportunidade({ oportunidadeId: tradicional.id }),
+    )
+    expect(conversa.sucesso).toBe(false)
+
+    const tentativa = await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: tradicional.id,
+        conteudo: 'Consigo conversar por aqui?',
+      }),
+    )
+    expect(tentativa.sucesso).toBe(false)
+  })
+})
+
+describe('o caminho comercial não existe nesta origem', () => {
+  it('o profissional não consegue enviar proposta', async () => {
     const { dados } = await demonstrarInteresse('cliente', 'ricardo')
 
-    entrarComo(contas.ricardo.token)
-    await enviarProposta({
-      oportunidadeId: dados!.oportunidadeId,
-      mensagem: 'Tenho interesse. Me conta há quanto tempo a empresa existe?',
-      valor: '300,00',
-    })
-    sairDaSessao()
+    const tentativa = await como('ricardo', () =>
+      enviarProposta({
+        oportunidadeId: dados!.oportunidadeId,
+        mensagem: 'Faço por trezentos reais e assumo a rotina a partir do mês que vem.',
+        valor: '300,00',
+      }),
+    )
+    expect(tentativa.sucesso).toBe(false)
+
+    const propostas = await db
+      .select({ id: oportunidadePropostas.id })
+      .from(oportunidadePropostas)
+      .where(eq(oportunidadePropostas.oportunidadeId, dados!.oportunidadeId))
+    expect(propostas).toHaveLength(0)
+  })
+
+  it('sem proposta, não há o que aceitar, contrapropor nem pagar', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    await como('ricardo', () =>
+      confirmarInteresseNaOportunidade({
+        oportunidadeId: dados!.oportunidadeId,
+      }),
+    )
+
+    // Um id de proposta que não existe é o mais longe que se chega: a linha
+    // nunca foi criada, então aceite e contraproposta não têm objeto.
+    const aceite = await como('cliente', () =>
+      aceitarProposta({ propostaId: randomUUID() }),
+    )
+    expect(aceite.sucesso).toBe(false)
+
+    const contra = await como('cliente', () =>
+      criarContraproposta({
+        propostaId: randomUUID(),
+        valor: '250,00',
+        mensagem: 'Consigo pagar isto.',
+      }),
+    )
+    expect(contra.sucesso).toBe(false)
+
+    const pagamentos = await db
+      .select({ id: oportunidadePagamentos.id })
+      .from(oportunidadePagamentos)
+      .where(eq(oportunidadePagamentos.oportunidadeId, dados!.oportunidadeId))
+    expect(pagamentos).toHaveLength(0)
 
     const doCliente = await listarOportunidadesDoCliente(contas.cliente.id)
-    const proposta = doCliente.find(
-      (item) => item.id === dados!.oportunidadeId,
-    )!.propostas[0]
-    expect(proposta.mensagem).toContain('Tenho interesse')
+    const minha = doCliente.find((item) => item.id === dados!.oportunidadeId)!
+    // A etapa comercial nunca sai de "aberta": não há acordo a pagar e não há
+    // botão de pagamento para a tela desenhar.
+    expect(minha.etapa).toBe('aberta')
+    expect(minha.propostas).toHaveLength(0)
+    expect(minha.pagamento).toBeNull()
+    expect(minha.atendimento).toBeNull()
+  })
 
-    entrarComo(contas.cliente.token)
-    const resposta = await criarContraproposta({
-      propostaId: proposta.id,
-      valor: '280,00',
-      mensagem: 'Existe há dois anos. Consegue esse valor?',
-    })
-    sairDaSessao()
-    expect(resposta.sucesso).toBe(true)
-
-    // A mensagem ficou pendurada nesta oportunidade, e não em outra.
-    const doPrestador = await listarOportunidadesDoPrestador(contas.ricardo.id)
-    const minha = doPrestador.find((item) => item.id === dados!.oportunidadeId)!
-    expect(minha.minhaProposta!.contrapropostaPendente!.mensagem).toBe(
-      'Existe há dois anos. Consegue esse valor?',
+  it('a oportunidade recusada também não leva a pagamento', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    await como('ricardo', () =>
+      marcarSemInteresse({ oportunidadeId: dados!.oportunidadeId }),
     )
 
-    const outras = doPrestador.filter(
-      (item) => item.id !== dados!.oportunidadeId,
+    const tentativa = await como('ricardo', () =>
+      enviarProposta({
+        oportunidadeId: dados!.oportunidadeId,
+        mensagem: 'Mudei de ideia e quero propor um valor para este cliente.',
+        valor: '300,00',
+      }),
     )
+    expect(tentativa.sucesso).toBe(false)
+
+    const doCliente = await listarOportunidadesDoCliente(contas.cliente.id)
+    const minha = doCliente.find((item) => item.id === dados!.oportunidadeId)!
+    expect(minha.pagamento).toBeNull()
+    expect(minha.atendimento).toBeNull()
+  })
+
+  it('o preço do retrato não vira valor a aceitar em lugar nenhum', async () => {
+    const { dados } = await demonstrarInteresse('cliente', 'ricardo')
+    const oportunidade = await lerOportunidade(dados!.oportunidadeId)
+
+    // Ele fica no retrato, e só ali. Nem em `valor_pretendido_centavos`, que a
+    // tela lê como "quanto o cliente pretende investir", nem numa proposta.
     expect(
-      outras.every((item) => item.minhaProposta?.contrapropostaPendente == null),
-    ).toBe(true)
+      (oportunidade.simulacao as SimulacaoDaOportunidade).precoMensalCentavos,
+    ).toBeGreaterThan(0)
+    expect(oportunidade.valorPretendidoCentavos).toBeNull()
+
+    const propostas = await db
+      .select({ valorCentavos: oportunidadePropostas.valorCentavos })
+      .from(oportunidadePropostas)
+      .where(eq(oportunidadePropostas.oportunidadeId, dados!.oportunidadeId))
+    expect(propostas).toHaveLength(0)
   })
 })
 
@@ -892,35 +1281,223 @@ describe('o isolamento continua valendo', () => {
       ),
     ).toBeNull()
   })
-})
 
-describe('nada comercial nasce daqui', () => {
-  it('demonstrar interesse e ser aceito não cria pedido, pagamento nem cobrança', async () => {
+  it('nenhum profissional lê nem escreve na conversa do outro', async () => {
+    const doRicardo = await demonstrarInteresse('cliente', 'ricardo')
+    const daAna = await demonstrarInteresse('cliente', 'ana')
+
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: doRicardo.dados!.oportunidadeId,
+        conteudo: 'Mensagem que só o Ricardo pode ler.',
+      }),
+    )
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: daAna.dados!.oportunidadeId,
+        conteudo: 'Mensagem que só a Ana pode ler.',
+      }),
+    )
+
+    // A Ana tenta ler e escrever na conversa do Ricardo.
+    expect(
+      (
+        await como('ana', () =>
+          carregarConversaDaOportunidade({
+            oportunidadeId: doRicardo.dados!.oportunidadeId,
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+    expect(
+      (
+        await como('ana', () =>
+          enviarMensagemDaOportunidade({
+            oportunidadeId: doRicardo.dados!.oportunidadeId,
+            conteudo: 'Oi, eu também atendo essa demanda.',
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+
+    // E o Ricardo, na da Ana.
+    expect(
+      (
+        await como('ricardo', () =>
+          carregarConversaDaOportunidade({
+            oportunidadeId: daAna.dados!.oportunidadeId,
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+    expect(
+      (
+        await como('ricardo', () =>
+          enviarMensagemDaOportunidade({
+            oportunidadeId: daAna.dados!.oportunidadeId,
+            conteudo: 'Posso atender melhor.',
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+
+    // Nada foi gravado por quem não é parte.
+    const autores = await db
+      .select({ autorId: oportunidadeMensagens.autorId })
+      .from(oportunidadeMensagens)
+      .where(
+        inArray(oportunidadeMensagens.oportunidadeId, [
+          doRicardo.dados!.oportunidadeId,
+          daAna.dados!.oportunidadeId,
+        ]),
+      )
+    expect(new Set(autores.map((a) => a.autorId))).toEqual(
+      new Set([contas.cliente.id]),
+    )
+  })
+
+  it('um cliente não lê nem escreve na conversa do outro', async () => {
+    const doA = await demonstrarInteresse('cliente', 'ricardo')
+    await como('cliente', () =>
+      enviarMensagemDaOportunidade({
+        oportunidadeId: doA.dados!.oportunidadeId,
+        conteudo: 'Assunto particular da minha empresa.',
+      }),
+    )
+
+    expect(
+      (
+        await como('outroCliente', () =>
+          carregarConversaDaOportunidade({
+            oportunidadeId: doA.dados!.oportunidadeId,
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+    expect(
+      (
+        await como('outroCliente', () =>
+          enviarMensagemDaOportunidade({
+            oportunidadeId: doA.dados!.oportunidadeId,
+            conteudo: 'Também quero falar aqui.',
+          }),
+        )
+      ).sucesso,
+    ).toBe(false)
+
+    const mensagens = await db
+      .select({ autorId: oportunidadeMensagens.autorId })
+      .from(oportunidadeMensagens)
+      .where(
+        eq(oportunidadeMensagens.oportunidadeId, doA.dados!.oportunidadeId),
+      )
+    expect(mensagens).toHaveLength(1)
+    expect(mensagens[0].autorId).toBe(contas.cliente.id)
+  })
+
+  it('sem sessão nenhuma, a conversa não existe', async () => {
     const { dados } = await demonstrarInteresse('cliente', 'ricardo')
-
-    entrarComo(contas.ricardo.token)
-    await enviarProposta({
-      oportunidadeId: dados!.oportunidadeId,
-      mensagem: 'Tenho interesse em atender e podemos combinar os detalhes.',
-      valor: '300,00',
-    })
     sairDaSessao()
 
-    const pagamentos = await db
-      .select({ id: oportunidadePagamentos.id })
-      .from(oportunidadePagamentos)
-      .where(eq(oportunidadePagamentos.oportunidadeId, dados!.oportunidadeId))
-    expect(pagamentos).toHaveLength(0)
+    expect(
+      (
+        await carregarConversaDaOportunidade({
+          oportunidadeId: dados!.oportunidadeId,
+        })
+      ).sucesso,
+    ).toBe(false)
+    expect(
+      (
+        await enviarMensagemDaOportunidade({
+          oportunidadeId: dados!.oportunidadeId,
+          conteudo: 'Alguém me responde?',
+        })
+      ).sucesso,
+    ).toBe(false)
+  })
+})
 
-    const contratacoes = await db
-      .select({ id: contratacoesServico.id })
-      .from(contratacoesServico)
-      .where(eq(contratacoesServico.clienteUsuarioId, contas.cliente.id))
-    expect(contratacoes).toHaveLength(0)
+describe('a oportunidade tradicional continua exatamente como era', () => {
+  it('proposta, aceite e pagamento seguem funcionando na solicitação normal', async () => {
+    const [tradicional] = await db
+      .insert(oportunidades)
+      .values({
+        clienteUsuarioId: contas.cliente.id,
+        categoria: 'contabilidade',
+        titulo: 'Solicitação tradicional com proposta',
+        descricao: 'Preciso de ajuda com a contabilidade da minha empresa.',
+        abrangencia: 'BR',
+        visibilidade: 'privada',
+        destinatarioId: contas.ricardo.id,
+        expiraEm: new Date(Date.now() + 24 * 3600_000),
+      })
+      .returning({ id: oportunidades.id })
 
-    const oportunidade = await lerOportunidade(dados!.oportunidadeId)
-    expect(oportunidade.status).toBe('aberta')
-    expect(oportunidade.motivoEncerramento).toBeNull()
+    // 1. o prestador propõe — com valor, como sempre
+    const proposta = await como('ricardo', () =>
+      enviarProposta({
+        oportunidadeId: tradicional.id,
+        mensagem: 'Assumo a rotina contábil da empresa a partir do mês que vem.',
+        valor: '900,00',
+      }),
+    )
+    expect(proposta.sucesso).toBe(true)
+
+    // 2. o Cliente contrapropõe e o prestador responde
+    const doCliente = await listarOportunidadesDoCliente(contas.cliente.id)
+    const recebida = doCliente.find((item) => item.id === tradicional.id)!
+      .propostas[0]
+    expect(recebida.valorCentavos).toBe(90_000)
+
+    const contra = await como('cliente', () =>
+      criarContraproposta({
+        propostaId: recebida.id,
+        valor: '800,00',
+        mensagem: 'Consigo fechar por este valor.',
+      }),
+    )
+    expect(contra.sucesso).toBe(true)
+
+    // 3. o Cliente aceita, e o acordo fecha como sempre fechou
+    const aceite = await como('cliente', () =>
+      aceitarProposta({ propostaId: recebida.id }),
+    )
+    expect(aceite.sucesso).toBe(true)
+
+    const depois = await listarOportunidadesDoCliente(contas.cliente.id)
+    const fechada = depois.find((item) => item.id === tradicional.id)!
+    expect(fechada.propostas[0].status).toBe('aceita')
+    expect(fechada.etapa).toBe('aguardando_pagamento')
+  })
+
+  it('a solicitação tradicional não ganhou conversa nem botão de interesse', async () => {
+    const [tradicional] = await db
+      .insert(oportunidades)
+      .values({
+        clienteUsuarioId: contas.cliente.id,
+        categoria: 'contabilidade',
+        titulo: 'Solicitação tradicional sem conversa',
+        descricao: 'Preciso de ajuda com a contabilidade da minha empresa.',
+        abrangencia: 'BR',
+        visibilidade: 'privada',
+        destinatarioId: contas.ricardo.id,
+        expiraEm: new Date(Date.now() + 24 * 3600_000),
+      })
+      .returning({ id: oportunidades.id })
+
+    expect(
+      (
+        await como('ricardo', () =>
+          confirmarInteresseNaOportunidade({ oportunidadeId: tradicional.id }),
+        )
+      ).sucesso,
+    ).toBe(false)
+
+    const doPrestador = await listarOportunidadesDoPrestador(contas.ricardo.id)
+    const dele = doPrestador.find((item) => item.id === tradicional.id)!
+    expect(dele.origem).toBe('solicitacao')
+    expect(dele.interesseEm).toBeNull()
+    expect(dele.mensagensNaoLidas).toBe(0)
   })
 })
 

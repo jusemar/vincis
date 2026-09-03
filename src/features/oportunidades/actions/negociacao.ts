@@ -20,6 +20,7 @@ import {
 } from '@/features/usuarios/constants/autorizacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { avisarEmTempoReal } from '../lib/difundir-oportunidade'
+import { ehFluxoDireto } from '../lib/fluxo-direto'
 import { oportunidadeExpirada, propostaVigente } from '../lib/vigencia-sql'
 import {
   ContrapropostaSchema,
@@ -48,6 +49,7 @@ async function contextoDaProposta(propostaId: string) {
       validaAte: oportunidadePropostas.validaAte,
       valorCentavos: oportunidadePropostas.valorCentavos,
       oportunidadeId: oportunidades.id,
+      origem: oportunidades.origem,
       oportunidadeStatus: oportunidades.status,
       expiraEm: oportunidades.expiraEm,
       clienteUsuarioId: oportunidades.clienteUsuarioId,
@@ -65,11 +67,29 @@ async function contextoDaProposta(propostaId: string) {
 }
 
 function negociacaoViva(contexto: {
+  origem: string
   oportunidadeStatus: string
   expiraEm: Date | null
   propostaStatus: string
   validaAte: Date | null
 }) {
+  /*
+    Cinto e suspensório.
+
+    Uma Oportunidade do fluxo direto nunca chega a ter proposta — `enviarProposta`
+    recusa a origem antes de gravar —, então contraproposta, resposta e aceite já
+    são inalcançáveis por falta de objeto. A condição fica aqui mesmo assim
+    porque é o ponto por onde as três passam: no dia em que uma proposta antiga
+    conviver com uma origem direta, nenhuma delas vai depender de alguém ter
+    lembrado de conferir.
+  */
+  if (ehFluxoDireto(contexto.origem)) {
+    return {
+      ok: false as const,
+      mensagem:
+        'Esta solicitação é uma conversa direta com o profissional, sem etapa de proposta e pagamento.',
+    }
+  }
   if (
     contexto.oportunidadeStatus !== 'aberta' ||
     oportunidadeExpirada({

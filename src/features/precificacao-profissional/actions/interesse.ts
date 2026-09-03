@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
-import { oportunidades } from '@/db/schema'
+import { oportunidadeMensagens, oportunidades } from '@/db/schema'
 import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
@@ -105,7 +105,7 @@ export async function demonstrarInteresseNaSimulacao(entrada: unknown) {
       validacao.error.issues[0]?.message ?? 'Simulação inválida.',
     )
   }
-  const { prestadorId, respostas } = validacao.data
+  const { prestadorId, respostas, mensagem } = validacao.data
 
   if (prestadorId === sessao.id) {
     return recusa('Você não pode demonstrar interesse em você mesmo.')
@@ -218,6 +218,20 @@ export async function demonstrarInteresseNaSimulacao(entrada: unknown) {
         simulacao,
         chaveIntencao,
       })
+
+      /*
+        A primeira mensagem, quando o cliente escreveu uma.
+
+        Vai na mesma transação da solicitação: ou as duas existem, ou nenhuma.
+        Uma mensagem órfã apontaria para uma conversa que a transação desfez.
+      */
+      if (mensagem) {
+        await tx.insert(oportunidadeMensagens).values({
+          oportunidadeId,
+          autorId: sessao.id,
+          conteudo: mensagem,
+        })
+      }
 
       await difundirOportunidadeDireta(
         tx,

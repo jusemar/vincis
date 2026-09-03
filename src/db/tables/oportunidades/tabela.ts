@@ -59,6 +59,12 @@ import { usuarios } from '../usuarios/tabela'
  * e uma futura origem qualquer poderá ser pública. Separar as perguntas é o que
  * permite medir conversão por origem sem reinterpretar a regra de acesso.
  *
+ * `interesse_em` é o aceite **do fluxo direto**, e é uma data solta de
+ * propósito: ali o Profissional só diz que quer conversar, sem valor, prazo nem
+ * validade. Gravar isso como proposta seria criar um objeto comercial onde não
+ * há nenhum — e é a existência de uma proposta que destranca acordo, pagamento
+ * e Atendimento no resto do módulo.
+ *
  * `simulacao` é o retrato do que o cliente viu no configurador do Profissional
  * no instante do clique — respostas, rótulos, preço e hora. Fica **aqui**, e
  * congelado, porque a tabela de preços que o gerou pertence ao Profissional e
@@ -171,6 +177,19 @@ export const oportunidades = pgTable(
      * tem o que repetir.
      */
     chaveIntencao: varchar('chave_intencao', { length: 64 }),
+    /**
+     * Quando o Profissional disse "tenho interesse em conversar".
+     *
+     * Existe **só** no fluxo direto (`origem = 'simulacao_preco'`), e existe
+     * porque ali o aceite não é comercial: não há valor, prazo nem validade a
+     * guardar, então `oportunidade_propostas` seria a estrutura errada — ela
+     * carrega justamente o que este aceite não tem, e é a presença dela que
+     * abre o caminho do acordo e do pagamento no resto do módulo.
+     *
+     * Uma data, e nada mais. Não é contratação, não é acordo e não encerra a
+     * solicitação: o que ela diz é que a conversa tem as duas pontas.
+     */
+    interesseEm: timestamp('interesse_em'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

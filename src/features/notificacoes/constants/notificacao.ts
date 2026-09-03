@@ -51,6 +51,16 @@ export const TIPOS_NOTIFICACAO = {
    */
   oportunidadeRespondida: 'oportunidade_respondida',
   /**
+   * O Profissional confirmou interesse em conversar — o aceite do fluxo direto.
+   *
+   * Tipo próprio, e não `oportunidade_respondida`, porque o que a pessoa
+   * precisa entender ao ler o sino é diferente: não chegou uma proposta com
+   * valor para comparar, chegou um "vamos conversar".
+   */
+  oportunidadeInteresse: 'oportunidade_interesse',
+  /** Mensagem nova na conversa de uma Oportunidade. */
+  mensagemOportunidade: 'mensagem_oportunidade',
+  /**
    * O prazo da solicitação acabou sem acordo.
    *
    * Emitida pelo agendador, e por mais ninguém: é o único aviso da plataforma
@@ -125,6 +135,8 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.ajusteAnalisado]: '🔧',
   [TIPOS_NOTIFICACAO.prazoProximo]: '⏰',
   [TIPOS_NOTIFICACAO.oportunidadeRespondida]: '🤝',
+  [TIPOS_NOTIFICACAO.oportunidadeInteresse]: '🤝',
+  [TIPOS_NOTIFICACAO.mensagemOportunidade]: '💬',
   [TIPOS_NOTIFICACAO.consultoriaCancelada]: '🚫',
   [TIPOS_NOTIFICACAO.consultoriaRemarcada]: '📅',
   [TIPOS_NOTIFICACAO.consultoriaLembrete]: '⏰',

@@ -13,6 +13,8 @@ import {
 import { prestadorHabilitado } from '@/features/usuarios/lib/prestador'
 import { LIMITE_OPORTUNIDADES_CARREGADAS } from '../constants/oportunidade'
 import { montarAnexo } from '../lib/anexos-dto'
+import { naoLidasPorOportunidade } from '../lib/conversa'
+import { ehFluxoDireto } from '../lib/fluxo-direto'
 import { categoriasCompativeisDoPrestador } from '../lib/compatibilidade'
 import { condicaoOportunidadeAtiva, propostaVigente } from '../lib/vigencia-sql'
 import { obterNegociacoes } from './contrapropostas-da-proposta'
@@ -158,6 +160,7 @@ export async function listarOportunidadesDoPrestador(
       visibilidade: oportunidades.visibilidade,
       origem: oportunidades.origem,
       simulacao: oportunidades.simulacao,
+      interesseEm: oportunidades.interesseEm,
       expiraEm: oportunidades.expiraEm,
       pagamentoEm: oportunidadePagamentos.aprovadoEm,
       pagamentoValor: oportunidadePagamentos.valorCentavos,
@@ -203,6 +206,12 @@ export async function listarOportunidadesDoPrestador(
     .limit(limite)
 
   const anexos = await anexosDasOportunidades(linhas.map(({ id }) => id))
+  // Só as do fluxo direto têm conversa: nas tradicionais a troca é por proposta
+  // e contraproposta, e perguntar por mensagens delas seria consulta à toa.
+  const naoLidas = await naoLidasPorOportunidade(
+    prestadorId,
+    linhas.filter((linha) => ehFluxoDireto(linha.origem)).map(({ id }) => id),
+  )
   const negociacoes = await obterNegociacoes(
     linhas.map((linha) => linha.propostaId).filter((id): id is string => !!id),
   )
@@ -224,6 +233,8 @@ export async function listarOportunidadesDoPrestador(
       // define — mas ele volta do `jsonb` como `unknown`, e a asserção fica
       // aqui, num lugar só, em vez de em cada tela que o lê.
       simulacao: (linha.simulacao as SimulacaoDaOportunidade | null) ?? null,
+      interesseEm: linha.interesseEm?.toISOString() ?? null,
+      mensagensNaoLidas: naoLidas.get(linha.id) ?? 0,
       // Redundante com `visibilidade` só na aparência: a consulta já garantiu
       // que uma privada só chega ao destinatário, então a tela pode dizer
       // "enviada diretamente para você" sem comparar id nenhum no navegador.

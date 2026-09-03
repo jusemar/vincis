@@ -50,6 +50,21 @@ export type SimulacaoDaOportunidade = {
   simuladaEm: string
 }
 
+/**
+ * Uma mensagem da conversa da Oportunidade.
+ *
+ * `autorId` viaja para que a tela saiba de que lado desenhar o balão, sem
+ * precisar de um campo "ehCliente" que duplicaria o papel que o vínculo já
+ * define. Nome e conteúdo, e nada mais: não há valor, anexo nem status.
+ */
+export type MensagemDaOportunidadeDTO = {
+  id: string
+  autorId: string
+  autorNome: string
+  conteudo: string
+  criadoEm: string
+}
+
 /** Um anexo, no formato que a tela precisa para oferecer o download. */
 export type AnexoOportunidadeDTO = {
   id: string
@@ -107,6 +122,16 @@ export type OportunidadeParaPrestadorDTO = {
   origem: string
   /** O retrato do que o cliente simulou. Nulo nas demais origens. */
   simulacao: SimulacaoDaOportunidade | null
+  /**
+   * Quando este prestador confirmou "tenho interesse em conversar".
+   *
+   * Só o fluxo direto o preenche. Não é acordo, não tem valor e não abre
+   * caminho comercial nenhum — é a data em que a conversa ganhou as duas
+   * pontas.
+   */
+  interesseEm: string | null
+  /** Mensagens da conversa que ele ainda não leu. Zero nas demais origens. */
+  mensagensNaoLidas: number
   /**
    * O Cliente escolheu **este** prestador.
    *
@@ -222,6 +247,10 @@ export type OportunidadeDoClienteDTO = {
   origem: string
   /** O retrato do que ele mesmo simulou. Nulo nas demais origens. */
   simulacao: SimulacaoDaOportunidade | null
+  /** Quando o Profissional disse que tem interesse em conversar. */
+  interesseEm: string | null
+  /** Mensagens da conversa que o Cliente ainda não leu. */
+  mensagensNaoLidas: number
   /**
    * Quando o destinatário **abriu** a solicitação. Nulo enquanto não abriu.
    *

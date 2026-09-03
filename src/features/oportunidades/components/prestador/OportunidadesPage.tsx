@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { confirmarInteresseNaOportunidade } from '../../actions/conversa-direta'
 import { responderContraproposta } from '../../actions/negociacao'
 import { registrarVisualizacaoDaOportunidade } from '../../actions/oportunidades'
 import {
@@ -26,6 +27,7 @@ import {
   rotuloDaCategoria,
 } from '../../constants/oportunidade'
 import type { OportunidadeParaPrestadorDTO } from '../../types/oportunidade'
+import { ConversaDaOportunidade } from '../compartilhado/ConversaDaOportunidade'
 import { ListaDeAnexos } from '../compartilhado/ListaDeAnexos'
 import { RetratoDaSimulacao } from '../compartilhado/RetratoDaSimulacao'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
@@ -68,6 +70,7 @@ export default function OportunidadesPage() {
     useState<OportunidadeParaPrestadorDTO | null>(null)
   const [dispensando, setDispensando] = useState<string | null>(null)
   const [respondendo, setRespondendo] = useState<string | null>(null)
+  const [confirmando, setConfirmando] = useState<string | null>(null)
 
   const buscar = useCallback(async () => {
     const resultado = await carregarOportunidadesDisponiveis()
@@ -123,6 +126,15 @@ export default function OportunidadesPage() {
     else toast.success(resultado.mensagem)
     await buscar()
     setRespondendo(null)
+  }
+
+  async function confirmarInteresse(oportunidadeId: string) {
+    setConfirmando(oportunidadeId)
+    const resultado = await confirmarInteresseNaOportunidade({ oportunidadeId })
+    if (!resultado.sucesso) toast.error(resultado.mensagem)
+    else toast.success(resultado.mensagem)
+    await buscar()
+    setConfirmando(null)
   }
 
   async function dispensar(oportunidadeId: string) {
@@ -419,10 +431,65 @@ export default function OportunidadesPage() {
                 </div>
               )}
 
+              {/*
+                A conversa fica dentro do cartão, e só no fluxo direto: na
+                solicitação tradicional a troca acontece por proposta e
+                contraproposta, e um segundo canal ao lado mudaria o módulo.
+              */}
+              {ehDeSimulacao(oportunidade.origem) ? (
+                <ConversaDaOportunidade
+                  oportunidadeId={oportunidade.id}
+                  naoLidas={oportunidade.mensagensNaoLidas}
+                  aoMudar={() => {
+                    startTransition(async () => {
+                      await buscar()
+                    })
+                  }}
+                />
+              ) : null}
+
               <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                {/*
+                  Fluxo direto: duas ações conceituais, sem preço.
+
+                  "Tenho interesse" é só isto — quero conversar com este
+                  potencial cliente. Não cria proposta, e é por não criar que
+                  aceite, contraproposta, pagamento e Atendimento continuam
+                  fora do alcance desta origem. O valor da simulação segue
+                  acima, no retrato, como referência do que o cliente viu.
+                */}
+                {ehDeSimulacao(oportunidade.origem) ? (
+                  <>
+                    {oportunidade.interesseEm ? (
+                      <span className="badge-success flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide">
+                        <CheckCircle2 className="size-3.5" />
+                        Interesse confirmado
+                      </span>
+                    ) : oportunidade.dispensada ? null : (
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        disabled={confirmando === oportunidade.id}
+                        onClick={() => void confirmarInteresse(oportunidade.id)}
+                        className="rounded-lg bg-gradient-gold px-5 py-2.5 font-semibold text-on-gradient shadow-glow transition-all hover:shadow-glow-lg disabled:opacity-60"
+                      >
+                        Tenho interesse
+                      </motion.button>
+                    )}
+                  </>
+                ) : null}
+
                 {/* Não é recusa comercial — não existe contratação para
-                    recusar. Some só da fila deste prestador. */}
-                {!oportunidade.minhaProposta && !oportunidade.dispensada && (
+                    recusar. Some só da fila deste prestador; no fluxo direto,
+                    encerra a solicitação e avisa o cliente, como já fazia em
+                    qualquer solicitação dirigida a uma pessoa só.
+
+                    Quem já confirmou interesse não vê mais o botão: as duas
+                    ações são a mesma decisão, e oferecê-las juntas depois de
+                    tomada seria pedir que ela fosse tomada de novo. */}
+                {!oportunidade.minhaProposta &&
+                  !oportunidade.dispensada &&
+                  !oportunidade.interesseEm && (
                   <button
                     type="button"
                     onClick={() => void dispensar(oportunidade.id)}
@@ -433,22 +500,21 @@ export default function OportunidadesPage() {
                     Não tenho interesse
                   </button>
                 )}
-                {oportunidade.minhaProposta?.status !== 'aceita' && (
+                {/* O caminho comercial não existe no fluxo direto: sem este
+                    botão não há proposta, e sem proposta não há acordo, nem
+                    pagamento, nem Atendimento. O servidor recusa do mesmo
+                    jeito — esconder nunca foi proteção. */}
+                {!ehDeSimulacao(oportunidade.origem) &&
+                  oportunidade.minhaProposta?.status !== 'aceita' && (
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setSelecionada(oportunidade)}
                     className="px-5 py-2.5 bg-gradient-gold text-on-gradient rounded-lg font-semibold shadow-glow hover:shadow-glow-lg transition-all"
                   >
-                    {/* Na simulação o cliente não pediu orçamento: ele levantou
-                        a mão depois de ver um preço. "Tenho interesse em
-                        atender" é o que o profissional está de fato dizendo —
-                        e não uma segunda ação, é a mesma proposta. */}
                     {oportunidade.minhaProposta
                       ? 'Revisar proposta'
-                      : ehDeSimulacao(oportunidade.origem)
-                        ? 'Tenho interesse em atender'
-                        : 'Enviar proposta'}
+                      : 'Enviar proposta'}
                   </motion.button>
                 )}
               </div>

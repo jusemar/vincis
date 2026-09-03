@@ -170,7 +170,7 @@ export async function marcarNotificacoesDoRecursoComoLidas(
     tipos,
   }: {
     destinatarioId: string
-    recursoTipo: 'atendimento' | 'convite'
+    recursoTipo: 'atendimento' | 'convite' | 'oportunidade'
     recursoId: string
     /** Restringe a certos tipos. Ausente, resolve todos os do recurso. */
     tipos?: string[]

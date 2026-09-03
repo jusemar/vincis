@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { LIMITE_MENSAGEM_OPORTUNIDADE } from '@/features/oportunidades/constants/oportunidade'
 import type { RespostasPrecificacao } from '@/features/precificacao/types/precificacao'
 import { demonstrarInteresseNaSimulacao } from '../../actions/interesse'
 
@@ -68,6 +70,13 @@ export function BotaoDeInteresse({
   const searchParams = useSearchParams()
 
   const [intencao, setIntencao] = useState<RespostasPrecificacao | null>(null)
+  /*
+    A primeira mensagem, opcional.
+
+    Ela viaja junto com a intenção guardada antes do login: quem escreveu a
+    pergunta e só então descobriu que precisava entrar não deveria reescrevê-la.
+  */
+  const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [enviada, setEnviada] = useState(false)
 
@@ -87,10 +96,12 @@ export function BotaoDeInteresse({
     try {
       const guardada = sessionStorage.getItem(chaveDaIntencao(prestadorId))
       if (!guardada) return
-      const { respostas: salvas } = JSON.parse(guardada) as {
+      const { respostas: salvas, mensagem: escrita } = JSON.parse(guardada) as {
         respostas: RespostasPrecificacao
+        mensagem?: string
       }
       onRestaurar(salvas)
+      setMensagem(escrita ?? '')
       setIntencao(salvas)
     } catch {
       // Rascunho ilegível não pode quebrar a página: some e a pessoa clica de
@@ -102,11 +113,12 @@ export function BotaoDeInteresse({
   }, [])
 
   const enviar = useCallback(
-    async (escolhidas: RespostasPrecificacao) => {
+    async (escolhidas: RespostasPrecificacao, texto: string) => {
       setEnviando(true)
       const resultado = await demonstrarInteresseNaSimulacao({
         prestadorId,
         respostas: escolhidas,
+        mensagem: texto,
       })
       setEnviando(false)
 
@@ -128,12 +140,12 @@ export function BotaoDeInteresse({
   // A sessão existe e havia uma intenção guardada: continua de onde parou.
   useEffect(() => {
     if (!intencao || !autenticado || enviando || enviada) return
-    void enviar(intencao)
-  }, [intencao, autenticado, enviando, enviada, enviar])
+    void enviar(intencao, mensagem)
+  }, [intencao, autenticado, enviando, enviada, mensagem, enviar])
 
   function clicar() {
     if (autenticado) {
-      void enviar(respostas)
+      void enviar(respostas, mensagem)
       return
     }
 
@@ -141,7 +153,7 @@ export function BotaoDeInteresse({
     try {
       sessionStorage.setItem(
         chaveDaIntencao(prestadorId),
-        JSON.stringify({ respostas }),
+        JSON.stringify({ respostas, mensagem }),
       )
     } catch {
       // Sem armazenamento, o estado em memória ainda cobre o caminho normal.
@@ -175,7 +187,21 @@ export function BotaoDeInteresse({
   }
 
   return (
-    <Button className="w-full" onClick={clicar} disabled={enviando}>
+    <div className="space-y-2">
+      {/*
+        Discreto, opcional e curto: a ação principal continua sendo o botão.
+        Quem não tem nada a dizer clica direto, e a conversa abre vazia na
+        solicitação.
+      */}
+      <Textarea
+        value={mensagem}
+        onChange={(evento) => setMensagem(evento.target.value)}
+        maxLength={LIMITE_MENSAGEM_OPORTUNIDADE}
+        rows={2}
+        placeholder={`Quer contar algo a ${primeiroNome}? (opcional)`}
+        aria-label={`Mensagem para ${primeiroNome}`}
+      />
+      <Button className="w-full" onClick={clicar} disabled={enviando}>
       {enviando ? (
         <>
           <Loader2 className="size-4 animate-spin" /> Enviando…
@@ -185,6 +211,7 @@ export function BotaoDeInteresse({
           Tenho interesse <ArrowRight className="size-4" />
         </>
       )}
-    </Button>
+      </Button>
+    </div>
   )
 }

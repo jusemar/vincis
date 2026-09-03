@@ -126,6 +126,9 @@ export { oportunidadePagamentosRelations } from './tables/oportunidade_pagamento
 export { oportunidadeDispensas } from './tables/oportunidade_dispensas/tabela'
 export { oportunidadeDispensasRelations } from './tables/oportunidade_dispensas/relacoes'
 
+export { oportunidadeMensagens } from './tables/oportunidade_mensagens/tabela'
+export { oportunidadeMensagensRelations } from './tables/oportunidade_mensagens/relacoes'
+
 export { consultoriaConfiguracoes } from './tables/consultoria_configuracoes/tabela'
 export { consultoriaConfiguracoesRelations } from './tables/consultoria_configuracoes/relacoes'
 

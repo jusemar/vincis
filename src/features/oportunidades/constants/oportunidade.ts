@@ -270,4 +270,15 @@ export const LIMITE_MENSAGEM_PROPOSTA = 500
 /** Teto da mensagem que acompanha a contraproposta. */
 export const LIMITE_MENSAGEM_CONTRAPROPOSTA = 500
 
+/**
+ * Teto de uma mensagem da conversa da Oportunidade.
+ *
+ * O mesmo número que a Conversa do Atendimento usa (`TAMANHO_MAXIMO_MENSAGEM`,
+ * 4.000): é o padrão da casa para "conversa entre duas pessoas", e é maior que
+ * o da proposta (500) porque ali se compara respostas lado a lado e aqui se
+ * explica uma situação. Inventar um terceiro número faria a mesma caixa de
+ * texto ter limites diferentes conforme a tela.
+ */
+export const LIMITE_MENSAGEM_OPORTUNIDADE = 4000
+
 export { ESPECIALIDADES_POR_CATEGORIA }
