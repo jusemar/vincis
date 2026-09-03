@@ -460,7 +460,15 @@ export function SolicitacoesCliente({
                   ) : null}
                 </div>
 
-                {oportunidade.totalPropostas > 0 ? (
+                {/*
+                  No fluxo direto não há propostas para comparar — e, se uma
+                  linha antiga sobreviver de uma versão anterior, ela também não
+                  se transforma num caminho de aceite e pagamento aqui. O
+                  servidor recusa esse aceite de qualquer forma; esconder é para
+                  que a tela não convide a uma ação que não existe mais nesta
+                  origem.
+                */}
+                {oportunidade.totalPropostas > 0 && !oportunidade.simulacao ? (
                   // `<details>` nativo: abre e fecha sem JavaScript, com foco e
                   // teclado corretos por padrão.
                   <details className="group border-t">
