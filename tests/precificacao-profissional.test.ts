@@ -27,8 +27,13 @@ import {
   chaveDaFaixa,
   chaveDoFator,
   impressaoDosValores,
+  linhasDosValores,
   valoresDeReferencia,
 } from '@/features/precificacao-profissional/lib/grade'
+import {
+  rascunhoDosValores,
+  valoresDoRascunho,
+} from '@/features/precificacao-profissional/lib/rascunho'
 import {
   primeiroNomeDe,
   tabelaDoProfissional,
@@ -94,6 +99,10 @@ function entradaDe(valores: ValoresDoProfissional) {
       fatores: Object.entries(valores.fatores).map(([chave, milesimos]) => ({
         chave,
         acrescimoPercentual: (milesimos - 1000) / 10,
+        acrescimoFixoReais:
+          chave in valores.acrescimosFixos
+            ? valores.acrescimosFixos[chave] / 100
+            : null,
       })),
     },
   }
@@ -105,6 +114,7 @@ function valoresCom(
     precosBase: Record<string, number>
     faixas: Record<string, number>
     fatores: Record<string, number>
+    acrescimosFixos: Record<string, number>
   }>,
 ): ValoresDoProfissional {
   const base = valoresDeReferencia(estrutura)
@@ -112,6 +122,7 @@ function valoresCom(
     precosBase: { ...base.precosBase, ...ajustes.precosBase },
     faixas: { ...base.faixas, ...ajustes.faixas },
     fatores: { ...base.fatores, ...ajustes.fatores },
+    acrescimosFixos: { ...base.acrescimosFixos, ...ajustes.acrescimosFixos },
   }
 }
 
@@ -573,10 +584,341 @@ describe('o que não pode ir ao ar', () => {
   })
 })
 
+/* ------------------------------------ acréscimo em porcentagem ou em reais */
+
+describe('a forma de atendimento cobra em % ou em R$', () => {
+  /*
+    Todo caso abaixo parte de um subtotal de exatamente R$ 300 antes da forma de
+    atendimento: preço-base de R$ 300 no Simples e nenhuma outra parcela no
+    perfil mínimo. É o cenário do enunciado, e é o que deixa a conta conferível
+    de cabeça — 12% são R$ 36, e R$ 20 são R$ 20.
+  */
+  const SUBTOTAL = 30_000
+
+  const precoCom = (
+    ajustes: Parameters<typeof valoresCom>[0],
+    respostas: Partial<RespostasPrecificacao> = {},
+  ) => {
+    const tabela = tabelaDoProfissional(
+      estrutura,
+      valoresCom({ ...ajustes, precosBase: { simples: SUBTOTAL } }),
+      { primeiroNome: 'João' },
+    )
+    return calcularPreco(tabela, SERVICO_DO_PROFISSIONAL, {
+      ...MINIMO,
+      ...respostas,
+    })
+  }
+
+  it('o subtotal antes da forma de atendimento é R$ 300', () => {
+    expect(precoCom({}).mensalCentavos).toBe(SUBTOTAL)
+  })
+
+  it('híbrido a 12% cobra R$ 36 a mais', () => {
+    const resultado = precoCom(
+      { fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 } },
+      { atendimento: 'hibrido' },
+    )
+
+    expect(resultado.mensalCentavos).toBe(33_600)
+    expect(resultado.fatores).toContainEqual(
+      expect.objectContaining({
+        dimensao: 'atendimento',
+        opcao: 'hibrido',
+        multiplicadorMilesimos: 1120,
+        acrescimoCentavos: null,
+      }),
+    )
+  })
+
+  it('híbrido a R$ 20,00 cobra R$ 20 a mais, e não 12%', () => {
+    const resultado = precoCom(
+      {
+        // O percentual continua gravado, e continua sem efeito.
+        fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 },
+        acrescimosFixos: { [chaveDoFator('atendimento', 'hibrido')]: 2_000 },
+      },
+      { atendimento: 'hibrido' },
+    )
+
+    expect(resultado.mensalCentavos).toBe(32_000)
+    expect(resultado.fatores).toContainEqual(
+      expect.objectContaining({
+        dimensao: 'atendimento',
+        opcao: 'hibrido',
+        multiplicadorMilesimos: null,
+        acrescimoCentavos: 2_000,
+      }),
+    )
+  })
+
+  it('prioritário a 35% cobra R$ 105 a mais', () => {
+    expect(
+      precoCom(
+        { fatores: { [chaveDoFator('atendimento', 'prioritario')]: 1350 } },
+        { atendimento: 'prioritario' },
+      ).mensalCentavos,
+    ).toBe(40_500)
+  })
+
+  it('prioritário a R$ 80,00 cobra R$ 80 a mais', () => {
+    expect(
+      precoCom(
+        {
+          acrescimosFixos: {
+            [chaveDoFator('atendimento', 'prioritario')]: 8_000,
+          },
+        },
+        { atendimento: 'prioritario' },
+      ).mensalCentavos,
+    ).toBe(38_000)
+  })
+
+  it('digital continua neutro dos dois jeitos: 0% e R$ 0,00', () => {
+    expect(
+      precoCom({ fatores: { [chaveDoFator('atendimento', 'digital')]: 1000 } })
+        .mensalCentavos,
+    ).toBe(SUBTOTAL)
+
+    expect(
+      precoCom({ acrescimosFixos: { [chaveDoFator('atendimento', 'digital')]: 0 } })
+        .mensalCentavos,
+    ).toBe(SUBTOTAL)
+  })
+
+  it('o valor fixo entra no lugar do multiplicador, e o que vem depois incide sobre ele', () => {
+    /*
+      A ordem é a das dimensões: ramo, atendimento, rotina. Somar R$ 20 no
+      atendimento e depois multiplicar por 1,25 na rotina dá (300 + 20) × 1,25.
+      Se o acréscimo fixo fosse aplicado no fim, daria 300 × 1,25 + 20 = 395.
+    */
+    const resultado = precoCom(
+      {
+        acrescimosFixos: { [chaveDoFator('atendimento', 'hibrido')]: 2_000 },
+        fatores: { [chaveDoFator('rotina', 'vincis')]: 1250 },
+      },
+      { atendimento: 'hibrido', rotina: 'vincis' },
+    )
+
+    expect(resultado.mensalCentavos).toBe(40_000)
+    expect(resultado.fatores.map((f) => f.dimensao)).toEqual([
+      'atividade',
+      'atendimento',
+      'rotina',
+    ])
+  })
+
+  it('trocar % por R$ move a prévia sem salvar nada', async () => {
+    const gravado = valoresCom({
+      precosBase: { simples: SUBTOTAL },
+      fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 },
+    })
+
+    const rascunho = rascunhoDosValores(gravado)
+    expect(rascunho.fatores[chaveDoFator('atendimento', 'hibrido')]).toEqual({
+      tipo: 'percentual',
+      percentual: '12',
+      fixoReais: '0',
+    })
+
+    const emReais = {
+      ...rascunho,
+      fatores: {
+        ...rascunho.fatores,
+        [chaveDoFator('atendimento', 'hibrido')]: {
+          tipo: 'fixo' as const,
+          percentual: '12',
+          fixoReais: '20',
+        },
+      },
+    }
+
+    const previa = (r: typeof rascunho) =>
+      calcularPreco(
+        tabelaDoProfissional(estrutura, valoresDoRascunho(r, gravado), {
+          primeiroNome: 'João',
+        }),
+        SERVICO_DO_PROFISSIONAL,
+        { ...MINIMO, atendimento: 'hibrido' },
+      ).mensalCentavos
+
+    expect(previa(rascunho)).toBe(33_600)
+    expect(previa(emReais)).toBe(32_000)
+
+    // Voltar o seletor devolve o percentual intacto: ele nunca saiu do rascunho.
+    expect(previa({ ...emReais, fatores: rascunho.fatores })).toBe(33_600)
+
+    // E nada disso encostou no banco.
+    const [linha] = await db
+      .select({ chave: precificacaoProfissionalValores.chave })
+      .from(precificacaoProfissionalValores)
+      .where(
+        eq(precificacaoProfissionalValores.tipo, 'acrescimo_fixo'),
+      )
+      .limit(1)
+    expect(linha).toBeUndefined()
+  })
+
+  it('salvar o rascunho grava a escolha e não move a página pública', async () => {
+    const valores = valoresCom({
+      precosBase: { simples: SUBTOTAL },
+      fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 },
+    })
+
+    entrarComo(cenario.tokens.profissionalSozinho)
+    expect((await publicarPrecos(entradaDe(valores))).sucesso).toBe(true)
+
+    const emReais = {
+      ...valores,
+      acrescimosFixos: { [chaveDoFator('atendimento', 'hibrido')]: 2_000 },
+    }
+    expect((await salvarRascunhoDePrecos(entradaDe(emReais))).sucesso).toBe(true)
+    sairDaSessao()
+
+    const publica = await obterPrecificacaoPublicaDoProfissional(
+      cenario.ids.profissionalSozinho,
+    )
+    expect(
+      calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, {
+        ...MINIMO,
+        atendimento: 'hibrido',
+      }).mensalCentavos,
+    ).toBe(33_600)
+
+    const configuracao = await obterConfiguracaoDoProfissional(
+      cenario.ids.profissionalSozinho,
+    )
+    expect(configuracao!.rascunho.acrescimosFixos).toEqual({
+      [chaveDoFator('atendimento', 'hibrido')]: 2_000,
+    })
+    expect(configuracao!.publicadoValores!.acrescimosFixos).toEqual({})
+  })
+
+  it('publicar leva a escolha para a página pública, exatamente como na prévia', async () => {
+    const emReais = valoresCom({
+      precosBase: { simples: SUBTOTAL },
+      fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 },
+      acrescimosFixos: { [chaveDoFator('atendimento', 'hibrido')]: 2_000 },
+    })
+
+    entrarComo(cenario.tokens.profissionalSozinho)
+    expect((await publicarPrecos(entradaDe(emReais))).sucesso).toBe(true)
+    sairDaSessao()
+
+    const respostas = { ...MINIMO, atendimento: 'hibrido' }
+    const publica = await obterPrecificacaoPublicaDoProfissional(
+      cenario.ids.profissionalSozinho,
+    )
+
+    // A prévia do painel monta a tabela pelo mesmo caminho; o preço tem de ser
+    // o mesmo número, e não um número parecido.
+    const naPrevia = calcularPreco(
+      tabelaDoProfissional(estrutura, emReais, {
+        primeiroNome: publica!.primeiroNome,
+      }),
+      SERVICO_DO_PROFISSIONAL,
+      respostas,
+    ).mensalCentavos
+
+    expect(
+      calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, respostas)
+        .mensalCentavos,
+    ).toBe(32_000)
+    expect(naPrevia).toBe(32_000)
+  })
+
+  it('configuração gravada antes desta escolha continua cobrando o percentual', async () => {
+    const antiga = valoresCom({
+      precosBase: { simples: SUBTOTAL },
+      fatores: { [chaveDoFator('atendimento', 'hibrido')]: 1120 },
+    })
+
+    /*
+      As linhas exatamente como a versão anterior as gravava: preço-base, faixa
+      e fator, e nenhuma linha de `acrescimo_fixo` — que era tudo o que existia.
+      Nenhuma migração de dado tocou nelas.
+    */
+    await db
+      .delete(precificacaoProfissionalValores)
+      .where(eq(precificacaoProfissionalValores.profissionalId, cenario.ids.estranho))
+    await db.insert(precificacaoProfissionalValores).values(
+      linhasDosValores({ ...antiga, acrescimosFixos: {} }).map((linha) => ({
+        profissionalId: cenario.ids.estranho,
+        estado: 'publicado' as const,
+        tipo: linha.tipo,
+        chave: linha.chave,
+        valor: linha.valor,
+        updatedAt: new Date(),
+      })),
+    )
+    await db
+      .update(precificacaoProfissional)
+      .set({ publicado: true, publicadoEm: new Date() })
+      .where(eq(precificacaoProfissional.profissionalId, cenario.ids.estranho))
+
+    const publica = await obterPrecificacaoPublicaDoProfissional(
+      cenario.ids.estranho,
+    )
+    expect(publica).not.toBeNull()
+    expect(
+      calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, {
+        ...MINIMO,
+        atendimento: 'hibrido',
+      }).mensalCentavos,
+    ).toBe(33_600)
+  })
+
+  it('a escolha de um profissional não alcança a do outro', async () => {
+    const respostas = { ...MINIMO, atendimento: 'hibrido' }
+    const precoDe = async (id: string) => {
+      const publica = await obterPrecificacaoPublicaDoProfissional(id)
+      return calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, respostas)
+        .mensalCentavos
+    }
+
+    // Um cobra R$ 20 fixos; o outro, os mesmos 12% de sempre. Mesmo perfil de
+    // empresa, mesma pergunta, dois preços — e cada um é o do dono.
+    expect(await precoDe(cenario.ids.profissionalSozinho)).toBe(32_000)
+    expect(await precoDe(cenario.ids.estranho)).toBe(33_600)
+  })
+
+  it('não deixa cobrar em reais onde a grade não permite', async () => {
+    entrarComo(cenario.tokens.profissionalSozinho)
+    const resultado = await salvarRascunhoDePrecos(
+      entradaDe(
+        valoresCom({
+          precosBase: { simples: SUBTOTAL },
+          acrescimosFixos: { [chaveDoFator('atividade', 'comercio')]: 5_000 },
+        }),
+      ),
+    )
+    sairDaSessao()
+
+    expect(resultado.sucesso).toBe(false)
+    expect(resultado.mensagem).toContain('mudou de formato')
+  })
+})
+
 /* --------------------------------------------------- a Vincis, no fim de tudo */
 
 describe('a precificação da Vincis, depois de tudo', () => {
   it('continua exatamente como estava antes', async () => {
     expect(retratoDaVincis(await obterTabelaPrecificacao())).toBe(retratoAntes)
+  })
+
+  it('nenhuma resposta da Vincis cobra valor fixo — todas multiplicam', async () => {
+    const tabela = await obterTabelaPrecificacao()
+
+    const opcoes = tabela.dimensoes.flatMap((d) => d.opcoes)
+    expect(opcoes.every((o) => (o.acrescimoCentavos ?? null) === null)).toBe(true)
+
+    // E o motor confirma na conta: todo fator aplicado em /precos é um
+    // multiplicador, como sempre foi.
+    for (const preco of calcularPrecos(tabela, COMPLETO)) {
+      for (const fator of preco.fatores) {
+        expect(fator.acrescimoCentavos).toBeNull()
+        expect(fator.multiplicadorMilesimos).not.toBeNull()
+      }
+    }
   })
 })

@@ -4,6 +4,7 @@ import {
   percentualParaMultiplicador,
   reaisParaCentavos,
 } from '@/features/precificacao/lib/conversao'
+import type { TipoDeCobranca } from '../constants/precificacao-profissional'
 import type { ValoresDoProfissional } from '../types/precificacao-profissional'
 
 /**
@@ -41,8 +42,26 @@ export type RascunhoDoProfissional = {
   precosBase: Record<string, string>
   /** `tipo/codigo` da faixa → valor em reais. */
   faixas: Record<string, string>
-  /** `dimensao/opcao` → acréscimo em porcentagem ("8" = 8% a mais). */
-  fatores: Record<string, string>
+  /** `dimensao/opcao` → o acréscimo daquela resposta. */
+  fatores: Record<string, AcrescimoDoRascunho>
+}
+
+/**
+ * Um acréscimo em edição — a forma de cobrança e os **dois** campos.
+ *
+ * Guardar o percentual e o valor em reais lado a lado, e não só o do seletor
+ * ativo, é o que faz alternar entre % e R$ não apagar nada: o campo que sai de
+ * cena continua com o que a pessoa tinha digitado, e volta como estava. É
+ * também o que mantém honesto o "há alterações não salvas?" — ir até R$ e
+ * voltar deixa o rascunho idêntico ao que estava gravado.
+ */
+export type AcrescimoDoRascunho = {
+  /** Qual dos dois campos vale. É o que o seletor da tela move. */
+  tipo: TipoDeCobranca
+  /** Acréscimo em porcentagem ("12" = 12% a mais). */
+  percentual: string
+  /** Acréscimo fixo em reais ("20" = R$ 20,00 a mais). */
+  fixoReais: string
 }
 
 /** Texto do campo → número. Aceita a vírgula do teclado brasileiro. */
@@ -67,9 +86,14 @@ export function rascunhoDosValores(
     faixas: mapear(valores.faixas, (centavos) =>
       paraTexto(centavosParaReais(centavos)),
     ),
-    fatores: mapear(valores.fatores, (milesimos) =>
-      paraTexto(acrescimoPercentual(milesimos)),
-    ),
+    fatores: mapear(valores.fatores, (milesimos, chave) => {
+      const fixo = valores.acrescimosFixos[chave]
+      return {
+        tipo: (fixo === undefined ? 'percentual' : 'fixo') satisfies TipoDeCobranca,
+        percentual: paraTexto(acrescimoPercentual(milesimos)),
+        fixoReais: paraTexto(centavosParaReais(fixo ?? 0)),
+      }
+    }),
   }
 }
 
@@ -106,8 +130,21 @@ export function valoresDoRascunho(
     faixas: mapear(referencia.faixas, (atual, chave) =>
       centavos(rascunho.faixas[chave], atual),
     ),
+    // O percentual continua sendo calculado mesmo para quem cobra em reais: ele
+    // é o valor guardado, e a prévia precisa dele intacto para o caso de a
+    // pessoa voltar o seletor.
     fatores: mapear(referencia.fatores, (atual, chave) =>
-      fator(rascunho.fatores[chave], atual),
+      fator(rascunho.fatores[chave]?.percentual, atual),
+    ),
+    // Só as respostas com o seletor em R$. É o mesmo critério do banco: sem
+    // chave aqui, o motor recebe o multiplicador.
+    acrescimosFixos: Object.fromEntries(
+      Object.entries(rascunho.fatores)
+        .filter(([, campo]) => campo.tipo === 'fixo')
+        .map(([chave, campo]) => [
+          chave,
+          centavos(campo.fixoReais, referencia.acrescimosFixos[chave] ?? 0),
+        ]),
     ),
   }
 }

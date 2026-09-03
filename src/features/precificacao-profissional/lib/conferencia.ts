@@ -70,5 +70,16 @@ export function problemasDaGrade(
   conferir('faixa', esperado.faixas, valores.faixas)
   conferir('acréscimo', esperado.fatores, valores.fatores)
 
+  // Cobrar em reais é opcional: faltar é a resposta "cobro em porcentagem", e
+  // por isso aqui só sobra a metade que ainda vale — nenhuma chave estranha, e
+  // nenhuma opção cobrando em reais onde a grade não permite.
+  for (const chave of Object.keys(valores.acrescimosFixos)) {
+    if (!esperado.acrescimosFixos.includes(chave)) {
+      problemas.push(
+        `Acréscimo em reais que não existe na grade: ${chave}.`,
+      )
+    }
+  }
+
   return problemas
 }

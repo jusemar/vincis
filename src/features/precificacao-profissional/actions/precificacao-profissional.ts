@@ -93,6 +93,13 @@ function valoresDaEntrada(
         percentualParaMultiplicador(f.acrescimoPercentual),
       ]),
     ),
+    // Só quem escolheu reais entra. Quem cobra em porcentagem não gera chave —
+    // é essa ausência que o resto do sistema lê como "cobra em %".
+    acrescimosFixos: Object.fromEntries(
+      entrada.fatores
+        .filter((f) => f.acrescimoFixoReais !== null)
+        .map((f) => [f.chave, reaisParaCentavos(f.acrescimoFixoReais ?? 0)]),
+    ),
   }
 }
 

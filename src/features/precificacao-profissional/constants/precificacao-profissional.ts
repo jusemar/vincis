@@ -70,12 +70,43 @@ export const DIMENSOES_COM_FATOR = [
   'rotina',
 ] as const satisfies readonly DimensaoPrecificacaoCodigo[]
 
+/**
+ * Onde o acréscimo pode ser cobrado em reais, e não só em porcentagem.
+ *
+ * A forma de atendimento é a única dimensão em que o custo de quem atende não
+ * acompanha o tamanho da empresa: receber presencialmente uma vez por mês custa
+ * a mesma hora de deslocamento para a padaria da esquina e para a indústria com
+ * 40 funcionários. Uma porcentagem cobraria da segunda quatro vezes o que cobra
+ * da primeira pelo mesmo trabalho, e é exatamente essa distorção que o valor
+ * fixo desfaz.
+ *
+ * O ramo e quem cuida da rotina continuam só em porcentagem de propósito: ali o
+ * esforço realmente escala com o porte, e um valor fixo esconderia isso.
+ */
+export const DIMENSOES_COM_ACRESCIMO_FIXO = [
+  'atendimento',
+] as const satisfies readonly DimensaoPrecificacaoCodigo[]
+
+/**
+ * Como uma opção cobra o acréscimo dela.
+ *
+ * `percentual` multiplica o subtotal; `fixo` soma um valor em reais. Nunca as
+ * duas — é uma escolha por opção, e é ela que o seletor da tela representa.
+ */
+export const TIPOS_DE_COBRANCA = ['percentual', 'fixo'] as const
+export type TipoDeCobranca = (typeof TIPOS_DE_COBRANCA)[number]
+
 /** Estado de um conjunto de valores: em edição ou no ar. */
 export const ESTADOS_DA_CONFIGURACAO = ['rascunho', 'publicado'] as const
 export type EstadoDaConfiguracao = (typeof ESTADOS_DA_CONFIGURACAO)[number]
 
-/** As três origens de valor, e a unidade de cada uma. */
-export const TIPOS_DE_VALOR = ['preco_base', 'faixa', 'fator'] as const
+/** As origens de valor, e a unidade de cada uma. */
+export const TIPOS_DE_VALOR = [
+  'preco_base',
+  'faixa',
+  'fator',
+  'acrescimo_fixo',
+] as const
 export type TipoDeValor = (typeof TIPOS_DE_VALOR)[number]
 
 /** As seções em que o painel do Profissional agrupa os campos. */

@@ -32,6 +32,18 @@ import { usuarios } from '../usuarios/tabela'
  *   (`notas_fiscais/11a30`, `funcionarios/excedente`, `faturamento/ate50k`).
  * - `fator` — **milésimos** (o número real × 1000; 1080 = 1,080×). `chave` é
  *   `dimensao/opcao` (`atividade/comercio`, `rotina/vincis`).
+ * - `acrescimo_fixo` — **centavos**, mesma `chave` de um `fator`. Existe só
+ *   para a opção que cobra um valor em reais em vez de multiplicar o subtotal
+ *   ("Híbrido: R$ 20" no lugar de "Híbrido: 12%").
+ *
+ * ## A linha de `acrescimo_fixo` é opcional, e a ausência dela é a regra
+ *
+ * Toda opção com acréscimo tem uma linha `fator`; só quem cobra em reais tem
+ * **também** uma `acrescimo_fixo`, e é a existência dela que decide qual das
+ * duas vale. Duas consequências, e as duas são de propósito: uma configuração
+ * gravada antes desta escolha existir continua íntegra e continua cobrando o
+ * percentual dela, sem migração de dado nenhuma; e trocar o seletor de volta
+ * para % é apagar uma linha, não redigitar um número que já estava certo.
  *
  * É a mesma convenção de unidades da família `precificacao_*`: dinheiro em
  * centavos inteiros, fator em milésimos, nenhuma fração em coluna nenhuma.
@@ -53,11 +65,11 @@ export const precificacaoProfissionalValores = pgTable(
       .references(() => usuarios.id),
     /** `rascunho` (em edição) ou `publicado` (no ar). */
     estado: varchar('estado', { length: 12 }).notNull(),
-    /** `preco_base`, `faixa` ou `fator` — decide a unidade de `valor`. */
+    /** `preco_base`, `faixa`, `fator` ou `acrescimo_fixo` — a unidade de `valor`. */
     tipo: varchar('tipo', { length: 20 }).notNull(),
     /** Posição na grade da Vincis. Ver o cabeçalho para o formato de cada tipo. */
     chave: varchar('chave', { length: 80 }).notNull(),
-    /** Centavos (`preco_base`, `faixa`) ou milésimos (`fator`). */
+    /** Centavos (`preco_base`, `faixa`, `acrescimo_fixo`) ou milésimos (`fator`). */
     valor: integer('valor').notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -76,12 +88,13 @@ export const precificacaoProfissionalValores = pgTable(
     ),
     tipoConhecido: check(
       'precificacao_profissional_valores_tipo_conhecido',
-      sql`${t.tipo} in ('preco_base', 'faixa', 'fator')`,
+      sql`${t.tipo} in ('preco_base', 'faixa', 'fator', 'acrescimo_fixo')`,
     ),
-    // Zero é preço válido numa faixa (a primeira faixa de notas custa zero) e
-    // num preço-base seria um plano de graça — que a conferência comercial
-    // recusa antes de publicar. O que o banco impede é o negativo, que chegaria
-    // ao cliente como desconto invisível.
+    // Zero é preço válido numa faixa (a primeira faixa de notas custa zero), num
+    // acréscimo fixo ("100% digital: R$ 0,00") e num preço-base seria um plano
+    // de graça — que a conferência comercial recusa antes de publicar. O que o
+    // banco impede é o negativo, que chegaria ao cliente como desconto
+    // invisível.
     valorNaoNegativo: check(
       'precificacao_profissional_valores_nao_negativo',
       sql`${t.valor} >= 0`,

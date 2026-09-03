@@ -309,7 +309,11 @@ function camposPreenchidos(rascunho: RascunhoDoProfissional): boolean {
   return [
     ...Object.values(rascunho.precosBase),
     ...Object.values(rascunho.faixas),
-    ...Object.values(rascunho.fatores),
+    // Só o campo que o seletor deixou em cena. O outro guarda um valor que a
+    // pessoa não está usando, e exigi-lo travaria os botões sem explicação.
+    ...Object.values(rascunho.fatores).map((campo) =>
+      campo.tipo === 'fixo' ? campo.fixoReais : campo.percentual,
+    ),
   ].every((texto) => Number.isFinite(paraNumero(texto)))
 }
 
@@ -324,9 +328,13 @@ function entradaDosCampos(rascunho: RascunhoDoProfissional) {
       chave,
       valorReais: paraNumero(texto),
     })),
-    fatores: Object.entries(rascunho.fatores).map(([chave, texto]) => ({
+    // O percentual vai sempre, inclusive de quem cobra em reais: é o valor
+    // guardado, e é ele que volta a valer se o seletor voltar para %.
+    fatores: Object.entries(rascunho.fatores).map(([chave, campo]) => ({
       chave,
-      acrescimoPercentual: paraNumero(texto),
+      acrescimoPercentual: paraNumero(campo.percentual),
+      acrescimoFixoReais:
+        campo.tipo === 'fixo' ? paraNumero(campo.fixoReais) : null,
     })),
   }
 }

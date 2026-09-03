@@ -152,7 +152,11 @@ export function CartaoDoPreco({
               >
                 <span className="text-muted-foreground">{fator.rotulo}</span>
                 <span className="shrink-0 font-semibold tabular-nums text-foreground">
-                  ×{(fator.multiplicadorMilesimos / 1000).toFixed(2)}
+                  {/* Multiplicar e somar são contas diferentes, e a composição
+                      só é conferível se disser qual das duas aconteceu. */}
+                  {fator.multiplicadorMilesimos === null
+                    ? `+ ${formatarCentavos(fator.acrescimoCentavos ?? 0)}`
+                    : `×${(fator.multiplicadorMilesimos / 1000).toFixed(2)}`}
                 </span>
               </li>
             ))}

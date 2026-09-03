@@ -264,6 +264,10 @@ const valores: ValoresDoProfissional = {
     (percentual) => 1000 + Math.round(percentual * 10),
     'fatores',
   ),
+  // Os conjuntos de demonstração cobram tudo em porcentagem. Cobrar uma forma
+  // de atendimento em reais é escolha de quem configura, feita no painel — e
+  // aqui ela ficaria escondida num script, longe da tela que a explica.
+  acrescimosFixos: {},
 }
 
 // A mesma conferência da Server Action: grade completa e preço que pode ir ao ar.

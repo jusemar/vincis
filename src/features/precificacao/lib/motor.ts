@@ -37,6 +37,7 @@ import type {
  *   + faixa de notas fiscais (só quando quem emite é a Vincis)
  *   + faixa de faturamento
  *   × fatores das dimensões que valem para o grupo
+ *     (ou + o acréscimo fixo, quando a opção cobra assim)
  *   + adicionais, pelo valor cheio
  *   → arredondado para o múltiplo configurado
  * ```
@@ -204,11 +205,17 @@ function precoSimples(
   }
 
   // 5. Fatores das dimensões que valem para este grupo, sobre o núcleo.
+  //    Cada um multiplica o subtotal ou soma um valor fixo a ele — na mesma
+  //    posição da sequência, para que o que vem depois incida sobre o
+  //    resultado dos dois jeitos por igual.
   const somaNucleo = linhas.reduce((total, l) => total + l.valorCentavos, 0)
   const fatores = fatoresAplicaveis(tabela, grupo, respostas)
   let nucleo: ValorExato = exato(somaNucleo)
   for (const fator of fatores) {
-    nucleo = multiplicarPorMilesimos(nucleo, fator.multiplicadorMilesimos)
+    nucleo =
+      fator.multiplicadorMilesimos === null
+        ? somarCentavos(nucleo, fator.acrescimoCentavos ?? 0)
+        : multiplicarPorMilesimos(nucleo, fator.multiplicadorMilesimos)
   }
 
   // 6. Adicionais, pelo valor cheio: nenhum fator incide sobre eles.
@@ -325,11 +332,16 @@ function servicoDe(
 }
 
 /**
- * Fatores de multiplicação que valem para o grupo, na ordem das dimensões.
+ * Acréscimos que valem para o grupo, na ordem das dimensões.
  *
- * Uma dimensão sem multiplicador (o regime, o emissor) não entra: ela decide
- * outra coisa. Uma dimensão que vale para o grupo e não foi respondida é erro,
- * não é "sem fator" — calcular sem ela devolveria um preço menor sem sintoma.
+ * Uma opção sem multiplicador **e** sem acréscimo fixo não entra: ela decide
+ * outra coisa (o regime escolhe o preço-base; o emissor liga a cobrança das
+ * notas). Uma dimensão que vale para o grupo e não foi respondida é erro, não é
+ * "sem fator" — calcular sem ela devolveria um preço menor sem sintoma.
+ *
+ * Quando a opção traz `acrescimoCentavos`, é ele que vale e o multiplicador
+ * fica de fora: as duas formas de cobrar o mesmo acréscimo se excluem, e
+ * deixar as duas preenchidas na mesma linha cobraria duas vezes.
  */
 function fatoresAplicaveis(
   tabela: TabelaPrecificacao,
@@ -356,13 +368,18 @@ function fatoresAplicaveis(
         `Opção desconhecida em ${dimensao.codigo}: ${escolhido}.`,
       )
     }
-    if (opcao.multiplicadorMilesimos === null) continue
+    const acrescimoCentavos = opcao.acrescimoCentavos ?? null
+    if (opcao.multiplicadorMilesimos === null && acrescimoCentavos === null) {
+      continue
+    }
 
     fatores.push({
       dimensao: dimensao.codigo,
       opcao: opcao.codigo,
       rotulo: opcao.rotulo,
-      multiplicadorMilesimos: opcao.multiplicadorMilesimos,
+      multiplicadorMilesimos:
+        acrescimoCentavos === null ? opcao.multiplicadorMilesimos : null,
+      acrescimoCentavos,
     })
   }
 

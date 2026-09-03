@@ -5,6 +5,7 @@ import type {
   TabelaPrecificacao,
 } from '@/features/precificacao/types/precificacao'
 import {
+  DIMENSOES_COM_ACRESCIMO_FIXO,
   DIMENSOES_COM_FATOR,
   GRUPO_DO_PROFISSIONAL,
   TIPOS_DE_FAIXA_DO_PROFISSIONAL,
@@ -85,6 +86,22 @@ export function opcoesComFator(dimensao: DimensaoPrecificacao) {
   )
 }
 
+/**
+ * As dimensões cujas opções podem cobrar um valor fixo em reais.
+ *
+ * Subconjunto de `dimensoesComFator`, e não uma segunda lista: quem não define
+ * acréscimo nenhum também não escolhe a forma de cobrá-lo.
+ */
+export function dimensoesComAcrescimoFixo(
+  estrutura: TabelaPrecificacao,
+): DimensaoPrecificacao[] {
+  return dimensoesComFator(estrutura).filter((d) =>
+    DIMENSOES_COM_ACRESCIMO_FIXO.includes(
+      d.codigo as (typeof DIMENSOES_COM_ACRESCIMO_FIXO)[number],
+    ),
+  )
+}
+
 /** Toda posição da grade, na forma de chave. É o contrato de completude. */
 export function chavesDaGrade(estrutura: TabelaPrecificacao) {
   return {
@@ -93,6 +110,11 @@ export function chavesDaGrade(estrutura: TabelaPrecificacao) {
       chaveDaFaixa(f.tipo, f.codigo),
     ),
     fatores: dimensoesComFator(estrutura).flatMap((d) =>
+      opcoesComFator(d).map((o) => chaveDoFator(d.codigo, o.codigo)),
+    ),
+    // Estas o Profissional **pode** preencher, não **precisa**: a chave ausente
+    // quer dizer "cobra em porcentagem", que é o padrão e o passado inteiro.
+    acrescimosFixos: dimensoesComAcrescimoFixo(estrutura).flatMap((d) =>
       opcoesComFator(d).map((o) => chaveDoFator(d.codigo, o.codigo)),
     ),
   }
@@ -135,6 +157,9 @@ export function valoresDeReferencia(
         ]),
       ),
     ),
+    // A Vincis cobra tudo em porcentagem. Quem começa a configurar começa daí,
+    // e escolhe reais onde quiser.
+    acrescimosFixos: {},
   }
 }
 
@@ -146,6 +171,11 @@ export function valoresDeReferencia(
  * faixa aposentada não pode ressuscitar no preço de ninguém); chave da grade
  * sem linha gravada entra em `faltando` e recebe o valor de referência, para
  * quem chama decidir o que fazer com o buraco.
+ *
+ * `acrescimo_fixo` é a exceção, e é ela que dá compatibilidade a quem já tinha
+ * publicado: a linha é **opcional** por definição, então não existir não é
+ * buraco nenhum — é a opção cobrando em porcentagem, como sempre cobrou. Um
+ * conjunto gravado antes desta escolha existir continua completo.
  */
 export function conjuntoDeValores(
   estrutura: TabelaPrecificacao,
@@ -169,11 +199,21 @@ export function conjuntoDeValores(
       }),
     )
 
+  // Só as posições que a grade admite cobrar em reais, e só as que foram
+  // gravadas. O resto do conjunto responde em porcentagem.
+  const permitidas = new Set(chavesDaGrade(estrutura).acrescimosFixos)
+  const acrescimosFixos = Object.fromEntries(
+    linhas
+      .filter((l) => l.tipo === 'acrescimo_fixo' && permitidas.has(l.chave))
+      .map((l) => [l.chave, l.valor]),
+  )
+
   return {
     valores: {
       precosBase: preencher('preco_base', referencia.precosBase),
       faixas: preencher('faixa', referencia.faixas),
       fatores: preencher('fator', referencia.fatores),
+      acrescimosFixos,
     },
     faltando,
   }
@@ -194,6 +234,14 @@ export function linhasDosValores(valores: ValoresDoProfissional) {
     })),
     ...Object.entries(valores.fatores).map(([chave, valor]) => ({
       tipo: 'fator' as const,
+      chave,
+      valor,
+    })),
+    // Quem cobra em porcentagem não gera linha aqui — e é por isso que o
+    // percentual continua gravado ao lado: voltar para % é apagar esta linha,
+    // não redigitar o número.
+    ...Object.entries(valores.acrescimosFixos).map(([chave, valor]) => ({
+      tipo: 'acrescimo_fixo' as const,
       chave,
       valor,
     })),

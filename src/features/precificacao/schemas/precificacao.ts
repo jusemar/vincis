@@ -68,6 +68,22 @@ export const OpcaoPrecificacaoSchema = z.object({
   rotulo: z.string().trim().min(1).max(120),
   ajuda: z.string().trim().max(240).nullable(),
   multiplicadorMilesimos: milesimos.nullable(),
+  /**
+   * Acréscimo em centavos, para a opção que cobra valor fixo em vez de
+   * multiplicar.
+   *
+   * Ausente ou `null` é o caso de sempre: a opção multiplica o subtotal por
+   * `multiplicadorMilesimos`. Preenchido, ela **soma** este valor ao subtotal
+   * no mesmo ponto da conta em que multiplicaria — e aí o multiplicador não é
+   * consultado. As duas formas nunca valem juntas.
+   *
+   * Nasceu para a precificação individual do Profissional, onde "Híbrido"
+   * pode ser "12% a mais" ou "R$ 20 a mais", à escolha de quem cobra. A
+   * precificação da Vincis não grava este campo em lugar nenhum: a coluna não
+   * existe em `precificacao_opcoes`, então toda opção da casa chega aqui sem
+   * ele e continua multiplicando exatamente como antes.
+   */
+  acrescimoCentavos: centavos.nullable().optional(),
   padrao: z.boolean(),
   ordem: z.number().int(),
   ativo: z.boolean(),

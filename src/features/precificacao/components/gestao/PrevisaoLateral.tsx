@@ -109,13 +109,22 @@ export function PrevisaoLateral({
       .filter((l) => l.tipo !== 'adicional')
       .reduce((total, l) => total + l.valorCentavos, 0) ?? 0
   const fatores = (foco?.fatores ?? []).reduce<{
-    lista: { dimensao: string; rotulo: string; multiplicadorMilesimos: number; efeito: number }[]
+    lista: {
+      dimensao: string
+      rotulo: string
+      multiplicadorMilesimos: number | null
+      efeito: number
+    }[]
     acumulado: number
   }>(
     (estado, fator) => {
-      const depois = Math.round(
-        (estado.acumulado * fator.multiplicadorMilesimos) / 1000,
-      )
+      // A opção multiplica o subtotal ou soma um valor fixo a ele. A tabela da
+      // Vincis só tem multiplicadores; a segunda forma existe na precificação
+      // individual do Profissional, e o rateio a lê pelo mesmo caminho.
+      const depois =
+        fator.multiplicadorMilesimos === null
+          ? estado.acumulado + (fator.acrescimoCentavos ?? 0)
+          : Math.round((estado.acumulado * fator.multiplicadorMilesimos) / 1000)
       return {
         lista: [...estado.lista, { ...fator, efeito: depois - estado.acumulado }],
         acumulado: depois,
@@ -324,7 +333,10 @@ export function PrevisaoLateral({
               className="flex justify-between gap-2 text-muted-foreground"
             >
               <span className="truncate">
-                {fator.rotulo} ({(fator.multiplicadorMilesimos / 1000).toFixed(2)}x)
+                {fator.rotulo}
+                {fator.multiplicadorMilesimos === null
+                  ? ''
+                  : ` (${(fator.multiplicadorMilesimos / 1000).toFixed(2)}x)`}
               </span>
               <span className="shrink-0 tabular-nums text-foreground">
                 {fator.efeito > 0 ? '+ ' : ''}

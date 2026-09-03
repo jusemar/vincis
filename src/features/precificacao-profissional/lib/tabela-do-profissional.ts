@@ -21,8 +21,12 @@ import { chaveDaFaixa, chaveDoFator } from './grade'
  * `TabelaPrecificacao`. Ele não sabe de onde a tabela veio, não conhece
  * `/precos` e não fala com o banco. Isso quer dizer que **precificar um
  * Profissional não exige motor nenhum novo** — exige uma tabela nova. É o que
- * esta função monta, e é por isso que nada em `features/precificacao` precisou
- * mudar para o recurso existir.
+ * esta função monta.
+ *
+ * O motor ganhou depois uma capacidade que a Vincis não usa: uma opção pode
+ * somar um valor fixo em vez de multiplicar (`acrescimoCentavos`). É uma forma
+ * a mais de cobrar dentro do mesmo passo da conta, e não um caminho paralelo —
+ * continua não existindo cálculo de preço fora de `motor.ts`.
  *
  * ```
  * motor + tabela lida de precificacao_*        = preço Vincis
@@ -128,12 +132,21 @@ export function tabelaDoProfissional(
 }
 
 /**
- * As respostas de uma pergunta, com o multiplicador do Profissional.
+ * As respostas de uma pergunta, com o acréscimo do Profissional.
  *
  * Opção que não multiplicava nada na Vincis continua não multiplicando: o
  * `null` do regime e do emissor é informação, não campo vazio. Gravar 1000
  * neles esconderia a diferença entre "esta resposta é neutra" e "esta resposta
  * decide outra coisa".
+ *
+ * ## Porcentagem ou reais, nunca os dois
+ *
+ * Uma opção com valor em `acrescimosFixos` chega ao motor com
+ * `multiplicadorMilesimos: null` e `acrescimoCentavos` preenchido — assim a
+ * tabela derivada **afirma** qual das duas formas vale, em vez de deixar as
+ * duas preenchidas e o motor escolher. O percentual daquela opção continua
+ * gravado no conjunto de valores, fora da tabela: ele é o que volta a valer no
+ * dia em que a pessoa trocar o seletor de volta.
  */
 function aplicarFatores(
   dimensao: DimensaoPrecificacao,
@@ -148,14 +161,23 @@ function aplicarFatores(
     opcoes: dimensao.opcoes.map((opcao) => {
       const chave = chaveDoFator(dimensao.codigo, opcao.codigo)
       const substituto = rotulos[chave]
+      const acrescimoFixo = valores.acrescimosFixos[chave]
+      // Uma opção que nunca multiplicou (regime, emissor) também não passa a
+      // cobrar em reais: uma chave solta ali não pode inventar um acréscimo.
+      const cobraEmReais =
+        opcao.multiplicadorMilesimos !== null && acrescimoFixo !== undefined
+
+      const multiplicadorDoProfissional =
+        opcao.multiplicadorMilesimos === null
+          ? null
+          : (valores.fatores[chave] ?? opcao.multiplicadorMilesimos)
+
       return {
         ...opcao,
         rotulo: substituto?.rotulo ?? opcao.rotulo,
         ajuda: substituto?.ajuda ?? opcao.ajuda,
-        multiplicadorMilesimos:
-          opcao.multiplicadorMilesimos === null
-            ? null
-            : (valores.fatores[chave] ?? opcao.multiplicadorMilesimos),
+        multiplicadorMilesimos: cobraEmReais ? null : multiplicadorDoProfissional,
+        acrescimoCentavos: cobraEmReais ? acrescimoFixo : null,
       }
     }),
   }

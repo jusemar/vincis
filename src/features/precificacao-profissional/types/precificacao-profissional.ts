@@ -9,8 +9,8 @@ import type { EstadoDaConfiguracao } from '../constants/precificacao-profissiona
  * renomear uma faixa ou reordenar uma dimensão sem invalidar o preço que
  * alguém já configurou.
  *
- * Unidades, iguais às da família `precificacao_*`: centavos em `precosBase` e
- * `faixas`, milésimos em `fatores` (1080 = 1,080×).
+ * Unidades, iguais às da família `precificacao_*`: centavos em `precosBase`,
+ * `faixas` e `acrescimosFixos`, milésimos em `fatores` (1080 = 1,080×).
  */
 export type ValoresDoProfissional = {
   /** Código do regime → centavos. */
@@ -19,6 +19,18 @@ export type ValoresDoProfissional = {
   faixas: Record<string, number>
   /** `dimensao/opcao` → milésimos. */
   fatores: Record<string, number>
+  /**
+   * `dimensao/opcao` → centavos, para quem cobra em reais em vez de %.
+   *
+   * **A ausência da chave é a informação**: sem ela, a opção cobra o percentual
+   * de `fatores`, que é como toda configuração gravada antes desta escolha
+   * existir continua sendo lida. Com ela, o percentual fica guardado e sem
+   * efeito — trocar de volta para % devolve exatamente o valor de antes.
+   *
+   * Só as opções das dimensões em `DIMENSOES_COM_ACRESCIMO_FIXO` podem
+   * aparecer aqui, e a conferência recusa qualquer outra chave.
+   */
+  acrescimosFixos: Record<string, number>
 }
 
 /**

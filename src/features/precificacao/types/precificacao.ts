@@ -70,12 +70,22 @@ export interface LinhaComposicao {
   quantidade?: number
 }
 
-/** Um multiplicador que incidiu sobre o núcleo, e de onde ele veio. */
+/**
+ * Um acréscimo que incidiu sobre o núcleo, e de onde ele veio.
+ *
+ * Exatamente um dos dois campos é preenchido: a opção **multiplica** o subtotal
+ * ou **soma** um valor fixo a ele. Os dois estão aqui, e nenhum deles é
+ * opcional, porque quem exibe a composição precisa dizer qual das duas coisas
+ * aconteceu — "×1,12" e "+ R$ 20,00" são leituras diferentes da mesma linha.
+ */
 export interface FatorAplicado {
   dimensao: string
   opcao: string
   rotulo: string
-  multiplicadorMilesimos: number
+  /** Multiplicador em milésimos. `null` quando a opção cobra valor fixo. */
+  multiplicadorMilesimos: number | null
+  /** Acréscimo fixo em centavos. `null` quando a opção multiplica. */
+  acrescimoCentavos: number | null
 }
 
 /** O mesmo preço mensal visto por prazo de fechamento. */

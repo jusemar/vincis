@@ -46,10 +46,29 @@ const acrescimo = z
 
 const chave = z.string().trim().min(1).max(80)
 
+/**
+ * Um acréscimo, com a forma de cobrá-lo.
+ *
+ * `acrescimoPercentual` vem **sempre**, mesmo de quem cobra em reais: é o valor
+ * que o campo de % mostra e o que volta a valer ao trocar o seletor. Quando
+ * `acrescimoFixoReais` chega preenchido, é ele que a opção cobra, e o
+ * percentual fica guardado sem efeito.
+ *
+ * A alternativa — mandar um campo só, e um rótulo dizendo qual é a unidade —
+ * perderia o outro número a cada troca de seletor, e a pessoa redigitaria o
+ * percentual que ela já tinha ajustado.
+ */
+const AcrescimoDoProfissionalSchema = z.object({
+  chave,
+  acrescimoPercentual: acrescimo,
+  /** Preenchido só por quem cobra em reais. `null` = cobra em porcentagem. */
+  acrescimoFixoReais: reais.nullable().default(null),
+})
+
 export const ValoresDoProfissionalSchema = z.object({
   precosBase: z.array(z.object({ chave, valorReais: reais })).min(1),
   faixas: z.array(z.object({ chave, valorReais: reais })),
-  fatores: z.array(z.object({ chave, acrescimoPercentual: acrescimo })),
+  fatores: z.array(AcrescimoDoProfissionalSchema),
 })
 
 export type ValoresDoProfissionalEntrada = z.output<
