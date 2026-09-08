@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { db } from '@/db/connection'
 import { oportunidadeArquivos, oportunidades } from '@/db/schema'
 import {
@@ -14,6 +15,8 @@ import { resumirTexto } from '@/features/notificacoes/lib/emitir'
 import type { AnexoEnviado } from '@/lib/anexos-privados'
 import { SEM_AUTORIZACAO_COM_DADOS } from '@/features/usuarios/constants/autorizacao'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
+import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
+import { registrarAtribuicaoDaOportunidade } from '@/features/parceiros/lib/registrar-atribuicao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import type { CategoriaOportunidade } from '../constants/oportunidade'
@@ -187,6 +190,9 @@ export async function criarOportunidade(formData: FormData) {
 
   const oportunidadeId = randomUUID()
 
+  // Lido fora da transação: `cookies()` é da requisição, não do banco.
+  const cookieDeIndicacao = (await cookies()).get(COOKIE_INDICACAO)?.value
+
   try {
     const enviados: AnexoEnviado[] = []
     for (const arquivo of anexos.arquivos) {
@@ -206,6 +212,21 @@ export async function criarOportunidade(formData: FormData) {
         expiraEm,
         visibilidade: destinatario ? 'privada' : 'publica',
         destinatarioId: destinatario?.id ?? null,
+      })
+
+      /*
+        De qual parceiro este Cliente veio, quando veio de algum.
+
+        Rastreamento de origem, e nada mais: não muda a solicitação, não muda
+        quem a recebe e não cria direito a nada. Sem indicação, a função lê uma
+        consulta e volta — a esmagadora maioria das solicitações passa por aqui
+        sem produzir uma linha sequer. A falha dela não derruba esta transação.
+      */
+      await registrarAtribuicaoDaOportunidade(tx, {
+        oportunidadeId,
+        usuarioId: sessao.id,
+        visitanteToken: cookieDeIndicacao,
+        servico: dados.categoria,
       })
 
       if (enviados.length) {

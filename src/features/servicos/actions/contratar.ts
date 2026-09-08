@@ -2,11 +2,15 @@
 
 import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { db } from '@/db/connection'
 import { contratacoesServico, servicos } from '@/db/schema'
 import { garantirClienteNaCarteira } from '@/features/clientes/lib/garantir-cliente-na-carteira'
 import { garantirAtendimentoDaContratacao } from '@/features/atendimentos/lib/criar-atendimento-da-contratacao'
+import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
+import { referenciaDePrazoDaCategoria } from '@/features/parceiros/constants/prazo'
+import { registrarAtribuicaoDaContratacao } from '@/features/parceiros/lib/registrar-atribuicao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import type { ModeloPreco } from '../schemas/servico'
@@ -73,6 +77,13 @@ export async function contratarServico(entrada: unknown) {
     }
   }
 
+  /*
+    Lido antes da transação: `cookies()` é da requisição, não do banco, e é o
+    único lugar de onde a origem do visitante pode vir. Nenhum id de parceiro é
+    aceito do cliente — quem resolve a indicação é o servidor.
+  */
+  const visitanteToken = (await cookies()).get(COOKIE_INDICACAO)?.value
+
   try {
     return await db.transaction(async (tx) => {
       // Trava o serviço para que preço e snapshot não corram com uma edição
@@ -105,7 +116,7 @@ export async function contratarServico(entrada: unknown) {
       // Uma solicitação viva por serviço e cliente: clicar duas vezes não gera
       // duas contratações.
       const [existente] = await tx
-        .select({ id: contratacoesServico.id })
+        .select({ id: contratacoesServico.id, status: contratacoesServico.status })
         .from(contratacoesServico)
         .where(
           and(
@@ -123,6 +134,24 @@ export async function contratarServico(entrada: unknown) {
           tx,
           existente.id,
         )
+        /*
+          Também aqui, e não só na contratação nova.
+
+          Quem clicou duas vezes, ou voltou depois de a atribuição falhar, tem o
+          mesmo direito de quem clicou uma vez — e o índice único em
+          `contratacao_id` garante que a segunda passagem não crie a segunda
+          linha. Sem isto, uma contratação criada antes do parceiro existir
+          jamais ganharia atribuição.
+        */
+        await registrarAtribuicaoDaContratacao(tx, {
+          contratacaoId: existente.id,
+          usuarioId: sessao.id,
+          visitanteToken,
+          servico: referenciaDePrazoDaCategoria(servico.categoria),
+          nome: servico.nome,
+          // O estado real da linha que já existe, não o que nasceria agora.
+          efetivada: existente.status !== 'aguardando_orcamento',
+        })
         return {
           sucesso: true as const,
           mensagem: 'Você já possui uma solicitação em andamento para este serviço.',
@@ -165,6 +194,22 @@ export async function contratarServico(entrada: unknown) {
         contratacao.id,
         validacao.data.mensagem,
       )
+
+      /*
+        Se este cliente veio de um parceiro, o negócio nasce sob ele.
+
+        A função tem ponto de salvamento próprio e nunca lança: uma falha do
+        programa de parceiros não pode derrubar a contratação de quem nem sabe
+        que ele existe.
+      */
+      await registrarAtribuicaoDaContratacao(tx, {
+        contratacaoId: contratacao.id,
+        usuarioId: sessao.id,
+        visitanteToken,
+        servico: referenciaDePrazoDaCategoria(servico.categoria),
+        nome: servico.nome,
+        efetivada: inicial.status !== 'aguardando_orcamento',
+      })
 
       revalidatePath('/cliente')
       revalidatePath('/admin')

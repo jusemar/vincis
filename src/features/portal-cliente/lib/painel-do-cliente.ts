@@ -22,7 +22,7 @@ export type ItemDeAtencao = {
   etiqueta: string
   titulo: string
   detalhe: string
-  /** Aba do portal para onde o item leva. */
+  /** Página da Área do Cliente para onde o item leva. */
   aba: 'orcamentos' | 'atendimentos'
   acao: string
 }

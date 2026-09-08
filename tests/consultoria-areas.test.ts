@@ -220,7 +220,7 @@ describe('Área do Cliente', () => {
   it('o botão aponta para a rota real da Área do Cliente', async () => {
     const { futuras } = await listarConsultoriasDoCliente(contas.clienteA.id)
     const rota = rotaDoAtendimento(futuras[0].protocolo!)
-    expect(rota.startsWith('/cliente?aba=atendimentos&atendimento=')).toBe(true)
+    expect(rota.startsWith('/cliente/atendimentos?atendimento=')).toBe(true)
     expect(rota).toContain(encodeURIComponent(futuras[0].protocolo!))
   })
 

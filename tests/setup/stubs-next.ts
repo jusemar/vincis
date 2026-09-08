@@ -1,7 +1,7 @@
 import { afterAll, vi } from 'vitest'
 import { conexaoPostgres } from '@/db/connection'
 import { COOKIE_SESSAO } from '@/features/usuarios/constants/sessao'
-import { tokenDaSessao } from './sessao'
+import { cookieDeTeste, tokenDaSessao } from './sessao'
 
 // Encerra o pool ao fim de cada arquivo: sem isto, conexões ociosas seguem
 // abertas quando o container do banco é derrubado, e o encerramento da suíte
@@ -25,9 +25,12 @@ vi.mock('next/headers', () => ({
       // permite dois Clientes diferentes disputarem o mesmo horário ao mesmo
       // tempo sem um sobrescrever o cookie do outro.
       const token = tokenDaSessao()
-      return nome === COOKIE_SESSAO && token
-        ? { name: nome, value: token }
-        : undefined
+      if (nome === COOKIE_SESSAO) {
+        return token ? { name: nome, value: token } : undefined
+      }
+      // Demais cookies — o identificador do visitante, hoje. Vazio por padrão.
+      const valor = cookieDeTeste(nome)
+      return valor ? { name: nome, value: valor } : undefined
     },
     set: () => undefined,
     delete: () => undefined,

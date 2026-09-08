@@ -430,7 +430,7 @@ export default function ClientsPage() {
               setPagina(1);
             }}
             className="h-11 pl-10"
-            placeholder="Buscar por nome, empresa ou e-mail..."
+            placeholder="Buscar por nome, empresa, e-mail ou WhatsApp..."
           />
         </div>
         <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-1">

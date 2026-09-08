@@ -43,7 +43,7 @@ export function PrecoIndisponivel() {
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button asChild size="lg">
-            <Link href="/cliente?aba=orcamentos">
+            <Link href="/cliente/orcamentos">
               Pedir uma proposta <ArrowRight className="size-4" />
             </Link>
           </Button>

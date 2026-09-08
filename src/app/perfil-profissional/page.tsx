@@ -12,6 +12,9 @@ import {
   listarPerguntasFrequentesPublicas,
 } from "@/features/perfis/queries/conteudo-vitrine";
 import { obterIdentidadePublica } from "@/features/servicos/queries/identidade-publica";
+import { montarLinkDeIndicacao } from "@/features/parceiros/constants/destino";
+import { baseDoSite } from "@/features/parceiros/lib/link-de-indicacao";
+import { obterParceiroDaSessao } from "@/features/parceiros/queries/obter-parceiro";
 import { rotaDosPrecosDoProfissional } from "@/features/precificacao-profissional/constants/precificacao-profissional";
 import { temPrecosPublicados } from "@/features/precificacao-profissional/queries/obter-configuracao";
 import { obterSessaoServidor } from "@/features/usuarios/lib/sessao-servidor";
@@ -52,6 +55,28 @@ export default async function PerfilProfissionalRoute({
    * abaixo (agenda e permissão de edição) para não repetir a consulta de sessão.
    */
   const sessao = await obterSessaoServidor();
+
+  /*
+    O endereço que o botão Compartilhar entrega.
+
+    Quem é parceiro ativo compartilha o **próprio link de indicação** apontando
+    para este perfil: a pessoa que abrir passa por `/p/<codigo>`, o acesso é
+    registrado pelo mecanismo de sempre e ela cai exatamente aqui. Qualquer
+    outro visitante compartilha o endereço normal da página — não existe um
+    segundo mecanismo, só um destino a mais no que já existia.
+
+    Sem `?prestador=` é a vitrine de demonstração: não há perfil real para
+    divulgar, e o compartilhamento cai na home do link do parceiro.
+  */
+  const parceiro = prestadorId ? await obterParceiroDaSessao() : null;
+  const caminhoDestePerfil = prestadorId
+    ? `/perfil-profissional?prestador=${encodeURIComponent(prestadorId)}`
+    : null;
+  const linkCompartilhavel = caminhoDestePerfil
+    ? parceiro
+      ? montarLinkDeIndicacao(baseDoSite(), parceiro.codigo, caminhoDestePerfil)
+      : `${baseDoSite().replace(/\/+$/, "")}${caminhoDestePerfil}`
+    : null;
 
   /**
    * Só o próprio dono edita, e a prova nunca vem da URL.
@@ -167,6 +192,7 @@ export default async function PerfilProfissionalRoute({
   return (
     <PerfilProfissionalV2
       identidade={identidade}
+      linkCompartilhavel={linkCompartilhavel}
       servicos={servicos}
       avaliacoes={avaliacoes}
       agendaConsultoria={agendaConsultoria}

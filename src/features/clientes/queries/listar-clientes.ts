@@ -25,6 +25,32 @@ import {
 
 const CLIENTES_POR_PAGINA = 9
 
+/** Abaixo disto o termo é texto que por acaso tem número, não um telefone. */
+const MINIMO_DIGITOS_TELEFONE = 4
+
+/**
+ * O termo digitado, reduzido ao formato em que o telefone está guardado.
+ *
+ * `clientes.telefone` nasce do `TelefoneSchema`, que grava **só dígitos**.
+ * Aplicar a mesma regra ao termo faz `(11) 99999-9999`, `11999999999` e
+ * `+55 11 99999-9999` caírem todos na mesma comparação, sem uma segunda
+ * regra de normalização e sem tocar na coluna.
+ *
+ * O DDI cai quando sobra um telefone brasileiro completo: quem digita o
+ * número internacional procura o mesmo cliente que quem digita sem ele.
+ *
+ * Termo com poucos dígitos não vira critério. Sem esse piso, buscar
+ * "Loja 1" passaria a varrer a coluna de telefone com `%1%` e devolveria a
+ * carteira inteira — a busca por nome pioraria em vez de melhorar.
+ */
+function digitosDoTelefone(busca: string) {
+  const digitos = busca.replace(/\D/g, '')
+  const semDdi =
+    digitos.length > 11 && digitos.startsWith('55') ? digitos.slice(2) : digitos
+
+  return semDdi.length >= MINIMO_DIGITOS_TELEFONE ? semDdi : null
+}
+
 export async function listarClientesProfissional(
   profissionalId: string,
   filtrosRecebidos: FiltrosClientesDTO = {},
@@ -47,10 +73,14 @@ export async function listarClientesProfissional(
 
   if (filtros.busca) {
     const termo = `%${filtros.busca.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`
+    const telefone = digitosDoTelefone(filtros.busca)
     const busca = or(
       ilike(clientes.nome, termo),
       ilike(clientes.email, termo),
       ilike(clientes.empresaNome, termo),
+      // Critério a mais, nunca no lugar dos outros: nome e e-mail continuam
+      // encontrando o que sempre encontraram.
+      ...(telefone ? [ilike(clientes.telefone, `%${telefone}%`)] : []),
     )
     if (busca) condicoes.push(busca)
   }

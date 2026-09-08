@@ -178,7 +178,7 @@ export function BotaoDeInteresse({
           Solicitações.
         </p>
         <Button variant="outline" size="sm" className="mt-3" asChild>
-          <Link href="/cliente?aba=orcamentos">
+          <Link href="/cliente/orcamentos">
             Acompanhar <ArrowRight className="size-4" />
           </Link>
         </Button>

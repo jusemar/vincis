@@ -16,6 +16,9 @@ export async function obterIdentidadePublica(prestadorId: string) {
   const [prestador] = await db
     .select({
       nome: usuarios.nome,
+      // O identificador que o cliente pode citar. É o mesmo que aparece no
+      // card do negócio em Parceiros — um profissional, um código.
+      codigoPublico: perfisProfissionais.codigoPublico,
       apresentacao: perfisProfissionais.apresentacao,
       experienciaAnos: perfisProfissionais.tempoExperiencia,
       // Campos já persistidos no cadastro, expostos aqui para o perfil público

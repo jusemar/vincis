@@ -16,6 +16,7 @@ import Footer from '../../../components/shared/Footer';
 import { contratarServico } from '@/features/servicos/actions/contratar';
 import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
 import { salvarVitrineProfissional } from '@/features/usuarios/actions/salvar-vitrine-profissional';
+import { BotaoCompartilhar } from '@/features/parceiros/components/cliente/BotaoCompartilhar';
 import { REGIMES_TRIBUTARIOS } from '@/features/usuarios/schemas/perfil-profissional';
 import {
   salvarCasosSucesso,
@@ -248,6 +249,8 @@ type ServicoPublico = {
 /** Identidade pública real do prestador. Ausente = vitrine de demonstração. */
 export type IdentidadePublica = {
   nome: string
+  /** Identificador público, `PRO-XXXXXX`. Nunca o uuid da linha. */
+  codigoPublico?: string | null
   apresentacao: string
   experienciaAnos: number | null
   avaliacaoMedia: number | null
@@ -308,6 +311,8 @@ export type FaqPublico = {
 
 type PerfilProfissionalV2Props = {
   identidade?: IdentidadePublica;
+  /** Endereço que o botão Compartilhar entrega. Já resolvido no servidor. */
+  linkCompartilhavel?: string | null;
   /**
    * Comentários reais do prestador, mais recentes primeiro.
    *
@@ -369,6 +374,7 @@ type PerfilProfissionalV2Props = {
 
 export default function PerfilProfissionalV2({
   identidade,
+  linkCompartilhavel,
   servicos,
   avaliacoes,
   solicitacaoDireta,
@@ -900,6 +906,31 @@ export default function PerfilProfissionalV2({
                   {nomeExibido}
                 </motion.h1>
               )}
+              {/*
+                O identificador público, o mesmo que o parceiro vê no card do
+                negócio. Só aparece quando existe: perfil de demonstração não
+                tem código, e inventar um faria uma pessoa fictícia parecer
+                cadastrada.
+              */}
+              {identidade?.codigoPublico || linkCompartilhavel ? (
+                <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {identidade?.codigoPublico ? (
+                    <p className="text-sm text-muted-foreground">
+                      ID profissional{' '}
+                      <span className="font-medium tabular-nums text-foreground">
+                        {identidade.codigoPublico}
+                      </span>
+                    </p>
+                  ) : null}
+                  {linkCompartilhavel ? (
+                    <BotaoCompartilhar
+                      url={linkCompartilhavel}
+                      titulo={nomeExibido}
+                      texto={`Conheça ${nomeExibido} na Vincis`}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
               {emEdicao ? (
                 <div className="max-w-[700px] mb-3.5">
                   <textarea

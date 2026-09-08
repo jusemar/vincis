@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db/connection";
+import { gerarCodigoPublicoProfissional } from "../lib/codigo-publico-profissional";
 import { perfisProfissionais } from "@/db/schema";
 import { STATUS_PRESTADOR_HABILITADO } from "../constants/prestador";
 import { ehPessoaColaborador } from "../lib/prestador";
@@ -125,7 +126,9 @@ export async function salvarPerfilColaborador(dados: PerfilColaboradorDTO) {
   try {
     await db
       .insert(perfisProfissionais)
-      .values({ usuarioId: usuario.id, ...registro })
+      .values({
+        // Identificador público do prestador, sorteado no servidor e imutável.
+        codigoPublico: gerarCodigoPublicoProfissional(), usuarioId: usuario.id, ...registro })
       .onConflictDoUpdate({
         target: perfisProfissionais.usuarioId,
         set: { ...registro, updatedAt: agora },

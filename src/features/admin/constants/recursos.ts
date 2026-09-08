@@ -89,6 +89,17 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     noMenuPrincipal: false,
     naCentral: true,
   },
+  {
+    // Configuração do Programa de Parceiros. Módulo da Central, como os
+    // demais assuntos da plataforma — não é trabalho do escritório de ninguém,
+    // então não ocupa linha na barra lateral do prestador.
+    id: 'parceiros',
+    rota: '/admin/parceiros',
+    rotulo: 'Parceiros',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
 ]
 
 /** Raiz da Central Vincis — a área global de gestão da plataforma. */

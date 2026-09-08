@@ -7,6 +7,9 @@ import { gerarHash } from '../lib/hash-senha'
 import { buscarUsuarioPorEmail } from '../queries/buscar-usuario-por-email'
 import { criarTokenConfirmacao } from '../queries/criar-token-confirmacao'
 import { eq } from 'drizzle-orm'
+import { cookies } from 'next/headers'
+import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
+import { associarIndicacaoAoCadastro } from '@/features/parceiros/lib/associar-cadastro'
 import type { ResultadoPadrao, DadosToken } from '../types'
 
 export type ResultadoCadastro = ResultadoPadrao & {
@@ -67,6 +70,16 @@ export async function cadastrarUsuario(dados: CadastroUsuarioDTO): Promise<Resul
   await db.insert(usuariosPerfis).values({
     usuarioId,
     perfilId: perfilExistente[0].id,
+  })
+
+  /*
+    Mesma associação da rota `/api/auth/cadastro`, na mesma função — os dois
+    caminhos de cadastro não podem divergir na regra de captação. Ela não lança
+    e não muda nada do retorno daqui.
+  */
+  await associarIndicacaoAoCadastro({
+    usuarioId,
+    visitanteToken: (await cookies()).get(COOKIE_INDICACAO)?.value,
   })
 
   const token = await criarTokenConfirmacao(usuarioId)

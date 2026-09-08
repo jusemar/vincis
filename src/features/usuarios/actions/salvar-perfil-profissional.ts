@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
+import { gerarCodigoPublicoProfissional } from "../lib/codigo-publico-profissional";
 import { empresaMembros, empresas, perfisProfissionais } from "@/db/schema";
 import { obterReputacaoDoPrestador } from "@/features/avaliacoes/queries/reputacao";
 import {
@@ -186,7 +187,9 @@ export async function salvarPerfilProfissional(
     };
     await db
       .insert(perfisProfissionais)
-      .values({ usuarioId: usuario.id, ...registro })
+      .values({
+        // Identificador público do prestador, sorteado no servidor e imutável.
+        codigoPublico: gerarCodigoPublicoProfissional(), usuarioId: usuario.id, ...registro })
       .onConflictDoUpdate({
         target: perfisProfissionais.usuarioId,
         set: { ...registro, analisadoEm: null, updatedAt: agora },

@@ -25,6 +25,18 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   tipoPrestador: varchar('tipo_prestador', { length: 20 })
     .notNull()
     .default('profissional'),
+  /**
+   * O identificador público do prestador, no formato `PRO-XXXXXX`.
+   *
+   * O `id` é uuid e serve ao banco: expô-lo numa tela pública entregaria a
+   * chave técnica de uma linha a quem só precisa citar o profissional. Este
+   * código existe para ser lido, ditado e conferido — o parceiro vê no card do
+   * negócio o mesmo código que aparece no perfil público.
+   *
+   * Nulo só nas linhas anteriores a esta coluna; o código nasce no cadastro e
+   * nunca muda, porque um identificador que muda não identifica.
+   */
+  codigoPublico: varchar('codigo_publico', { length: 12 }).unique(),
   tipoProfissional: varchar('tipo_profissional', { length: 20 }).notNull(),
   numeroRegistro: varchar('numero_registro', { length: 50 }),
   estadoRegistro: varchar('estado_registro', { length: 2 }),

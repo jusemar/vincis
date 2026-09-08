@@ -11,6 +11,8 @@ import { CadastroUsuarioSchema } from "@/features/usuarios/schemas/cadastro";
 import { gerarHash } from "@/features/usuarios/lib/hash-senha";
 import { gerarToken } from "@/features/usuarios/lib/gerar-token";
 import { enviarEmailConfirmacao } from "@/integracoes/email/enviar-confirmacao-email";
+import { COOKIE_INDICACAO } from "@/features/parceiros/constants/indicacao";
+import { associarIndicacaoAoCadastro } from "@/features/parceiros/lib/associar-cadastro";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,18 +29,30 @@ export async function POST(request: NextRequest) {
     const { nome, email, whatsapp, senha, perfilTipo } = validated.data;
 
     const usuarioExistente = await db
-      .select({ id: usuarios.id })
+      .select({ email: usuarios.email, whatsapp: usuarios.whatsapp })
       .from(usuarios)
       .where(
         or(eq(usuarios.email, email), eq(usuarios.whatsapp, whatsapp))
       )
       .limit(1);
 
-    if (usuarioExistente[0]) {
+    /*
+      A regra de duplicidade não muda: e-mail **ou** WhatsApp já usado barra o
+      cadastro, como sempre barrou. O que muda é a resposta dizer qual dos dois
+      colidiu — "E-mail ou WhatsApp já cadastrado" obrigava quem tentava se
+      cadastrar a adivinhar qual campo trocar, e mandava o Gestor procurar uma
+      conta sem saber por qual identificador procurá-la.
+    */
+    const conflito = usuarioExistente[0];
+
+    if (conflito) {
       return NextResponse.json(
         {
           sucesso: false,
-          mensagem: "E-mail ou WhatsApp já cadastrado",
+          mensagem:
+            conflito.email === email
+              ? "E-mail já cadastrado"
+              : "WhatsApp já cadastrado",
         },
         { status: 409 }
       );
@@ -78,6 +92,19 @@ export async function POST(request: NextRequest) {
     await db.insert(usuariosPerfis).values({
       usuarioId: usuarioInserido.id,
       perfilId: perfilEncontrado.id,
+    });
+
+    /*
+      Se este navegador tinha chegado pelo link de um parceiro, a indicação
+      passa a apontar para a conta que acabou de nascer dela.
+
+      A função não lança e não altera nada do cadastro: o resultado é ignorado
+      de propósito, porque nenhuma resposta desta rota depende dele. Criar conta
+      continua sendo criar conta, com ou sem programa de indicação.
+    */
+    await associarIndicacaoAoCadastro({
+      usuarioId: usuarioInserido.id,
+      visitanteToken: request.cookies.get(COOKIE_INDICACAO)?.value,
     });
 
     const { token, hash } = gerarToken();

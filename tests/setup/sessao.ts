@@ -44,3 +44,28 @@ export function tokenDaSessao(): string | null {
   const doContexto = contexto.getStore()
   return doContexto !== undefined ? doContexto : sessaoAtual.token
 }
+
+/**
+ * Cookies que não são o da sessão.
+ *
+ * O stub de `next/headers` sempre soube entregar `vincis_sessao`; o programa de
+ * indicação trouxe um segundo cookie — o identificador do visitante —, e a
+ * associação no cadastro só pode ser testada de verdade se ele chegar às
+ * Server Actions pelo mesmo caminho que usa em produção.
+ *
+ * Vazio por padrão: nenhum teste existente muda de comportamento por isto
+ * existir.
+ */
+const outrosCookies = new Map<string, string>()
+
+export function definirCookie(nome: string, valor: string) {
+  outrosCookies.set(nome, valor)
+}
+
+export function limparCookies() {
+  outrosCookies.clear()
+}
+
+export function cookieDeTeste(nome: string): string | undefined {
+  return outrosCookies.get(nome)
+}

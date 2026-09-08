@@ -154,7 +154,7 @@ export function PropostaRecebida({
           {!pago ? (
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild size="sm">
-                <Link href={`/cliente?aba=orcamentos&pagar=${oportunidadeId}`}>
+                <Link href={`/cliente/orcamentos?pagar=${oportunidadeId}`}>
                   <CreditCard className="size-4" />
                   Pagar
                 </Link>

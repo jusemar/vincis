@@ -2,6 +2,7 @@
 
 import { and, desc, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { moverComissaoDaContratacao } from '@/features/parceiros/lib/registrar-comissao'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 import { db } from '@/db/connection'
@@ -121,6 +122,22 @@ export async function alterarStatusContratacao(entrada: unknown) {
 
   if (!atualizada) {
     return { sucesso: false as const, mensagem: 'Contratação não encontrada.' }
+  }
+
+  /*
+    Concluir libera a comissão do parceiro; cancelar a encerra.
+
+    São os dois únicos estados inequívocos do negócio, e é deles que a comissão
+    depende — não de um gatilho inventado. A função não lança: o avanço de
+    status é ato do prestador e não pode falhar por causa do programa de
+    indicação.
+  */
+  if (concluido || validacao.data.status === 'cancelado') {
+    await moverComissaoDaContratacao(
+      db,
+      validacao.data.contratacaoId,
+      concluido ? 'disponivel' : 'cancelada',
+    )
   }
 
   revalidatePath('/admin')

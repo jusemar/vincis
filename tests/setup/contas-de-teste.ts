@@ -15,6 +15,7 @@ import {
   usuariosPerfis,
 } from '@/db/schema'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
+import { gerarCodigoPublicoProfissional } from '@/features/usuarios/lib/codigo-publico-profissional'
 import { limparAtendimentosDosPrestadores } from './limpeza-atendimentos'
 
 export type ContaDeTeste = { id: string; token: string }
@@ -80,6 +81,9 @@ export async function criarContas<Chave extends string>(
     if (definicao.prestador) {
       await db.insert(perfisProfissionais).values({
         usuarioId: usuario.id,
+        // O cadastro real sorteia um; sem ele, o teste veria um perfil que a
+        // plataforma não produz.
+        codigoPublico: gerarCodigoPublicoProfissional(),
         tipoPrestador: definicao.prestador,
         tipoProfissional: 'contabilidade',
         apresentacao: 'Conta criada por teste automatizado.',

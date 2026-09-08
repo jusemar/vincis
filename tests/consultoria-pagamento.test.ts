@@ -308,7 +308,7 @@ describe('pagamento aprovado', () => {
     if (resultado.situacao !== 'confirmado') throw new Error('não confirmou')
 
     const rota = rotaDoAtendimento(resultado.protocolo)
-    expect(rota.startsWith('/cliente?aba=atendimentos&atendimento=')).toBe(true)
+    expect(rota.startsWith('/cliente/atendimentos?atendimento=')).toBe(true)
     // O `#` do protocolo precisa sobreviver à URL.
     expect(rota).toContain(encodeURIComponent(resultado.protocolo))
   })

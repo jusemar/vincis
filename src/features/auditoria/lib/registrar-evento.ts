@@ -37,6 +37,14 @@ export const ACOES_AUDITORIA = {
   precificacaoProfissionalSalva: 'precificacao_profissional_salva',
   /** O Profissional publicou (ou tirou do ar) a própria tabela de preços. */
   precificacaoProfissionalPublicada: 'precificacao_profissional_publicada',
+  /**
+   * O Gestor alterou um prazo do Programa de Parceiros.
+   *
+   * Auditado desde o primeiro dia porque este número vai lastrear comissão: uma
+   * atribuição contestada precisa poder ser explicada por quem mudou o quê e
+   * quando, e `updated_at` só guarda o último toque.
+   */
+  prazoParceiroAlterado: 'prazo_parceiro_alterado',
 } as const
 
 export type AcaoAuditoria =

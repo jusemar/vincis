@@ -358,6 +358,48 @@
       "when": 1788430131932,
       "tag": "0050_oportunidade_conversa_direta",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1788511056140,
+      "tag": "0051_parceiros",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1788512571741,
+      "tag": "0052_parceiro_indicacoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1788524854385,
+      "tag": "0053_parceiro_atribuicoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1788548685383,
+      "tag": "0054_parceiro_prazos",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1788793932194,
+      "tag": "0055_parceiro_atribuicao_contratacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1788809922775,
+      "tag": "0056_parceiro_comissoes",
+      "breakpoints": true
     }
   ]
 }

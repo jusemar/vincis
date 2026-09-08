@@ -43,7 +43,7 @@ function areasDoPerfil(perfil: PerfilTipo, ehGestor: boolean) {
   }
   return {
     painel: { rotulo: 'Área do Cliente', href: '/cliente' },
-    conta: { rotulo: 'Minha conta', href: '/cliente?aba=conta' },
+    conta: { rotulo: 'Minha conta', href: '/cliente/conta' },
   }
 }
 

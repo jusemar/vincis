@@ -46,13 +46,12 @@ export const ACAO_CONTINUAR = 'Continuar para pagamento'
 /**
  * Para onde leva o botão do sucesso.
  *
- * A Área do Cliente navega por query (`?aba=…&atendimento=…`) — é o mesmo
- * deep-link que o sino já usa para abrir um Atendimento. Montar a URL aqui, e
- * numa função só, evita que a próxima tela invente um `/atendimentos/:id` que
- * não existe.
+ * A página de Atendimentos do Cliente aceita `?atendimento=` — o mesmo
+ * deep-link que o sino já usa para abrir um protocolo. Montar a URL aqui, e
+ * numa função só, evita que a próxima tela invente um endereço que não existe.
  */
 export function rotaDoAtendimento(protocolo: string): string {
-  return `/cliente?aba=atendimentos&atendimento=${encodeURIComponent(protocolo)}`
+  return `/cliente/atendimentos?atendimento=${encodeURIComponent(protocolo)}`
 }
 
 /**

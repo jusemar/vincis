@@ -826,7 +826,7 @@ function DetalheAtendimento({
                 rotulo="Origem"
                 valor={
                   <Link
-                    href={`/cliente?aba=orcamentos&pagar=${atendimento.origemOportunidade.oportunidadeId}`}
+                    href={`/cliente/orcamentos?pagar=${atendimento.origemOportunidade.oportunidadeId}`}
                     className="text-primary underline-offset-4 hover:underline"
                   >
                     Solicitação de orçamento

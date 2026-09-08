@@ -24,19 +24,3 @@ export type DadosPortalCliente = {
   whatsappVerificado: boolean
   criadoEm: string
 }
-
-/** As quatro áreas do portal. A aba viaja na URL, e por isso é linkável. */
-export const ABAS_PORTAL = [
-  'visao',
-  'orcamentos',
-  'atendimentos',
-  'conta',
-] as const
-
-export type AbaPortal = (typeof ABAS_PORTAL)[number]
-
-export function abaValida(valor: string | null | undefined): AbaPortal {
-  return (ABAS_PORTAL as readonly string[]).includes(valor ?? '')
-    ? (valor as AbaPortal)
-    : 'visao'
-}

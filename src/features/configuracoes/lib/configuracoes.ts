@@ -24,6 +24,18 @@ export const CHAVE_PRECIFICACAO_ARREDONDAMENTO =
 export const CHAVE_PRECIFICACAO_FUNCIONARIOS_PADRAO =
   'precificacao_funcionarios_padrao' as const
 
+/**
+ * Prazo padrão da atribuição de parceiro, em dias.
+ *
+ * Vale para todo serviço que a Gestão ainda não configurou individualmente —
+ * o específico mora em `parceiro_prazos`, que é uma linha por serviço. Este é
+ * parâmetro único, e parâmetro único é exatamente o que este registro guarda.
+ *
+ * Atenção: quem lê este valor no caminho de criação de oportunidade **não** usa
+ * `lerNumero`. Ver `features/parceiros/queries/obter-prazo`.
+ */
+export const CHAVE_PRAZO_PARCEIRO = 'parceiro_prazo_atribuicao_dias' as const
+
 export const CONFIGURACOES = {
   [CHAVE_PRECIFICACAO_ARREDONDAMENTO]: {
     rotulo: 'Arredondamento do preço final',
@@ -43,6 +55,16 @@ export const CONFIGURACOES = {
     padrao: 3,
     minimo: 0,
     maximo: 200,
+  },
+  [CHAVE_PRAZO_PARCEIRO]: {
+    rotulo: 'Prazo padrão da indicação de parceiro',
+    ajuda:
+      'Por quantos dias uma indicação continua valendo para o negócio que ela originou, quando o serviço não tem prazo próprio. Vale apenas para novas indicações.',
+    unidade: 'dias',
+    /** Ponto de partida técnico. A Gestão pode alterar a qualquer momento. */
+    padrao: 30,
+    minimo: 1,
+    maximo: 3650,
   },
   [CHAVE_PRAZO_OPORTUNIDADE]: {
     rotulo: 'Prazo máximo da oportunidade pública',

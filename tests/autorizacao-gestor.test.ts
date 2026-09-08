@@ -80,6 +80,9 @@ describe('registro de recursos administrativos', () => {
       // A Precificação nasceu exclusiva: quem define o preço da plataforma é
       // a Vincis, não o escritório que usa o painel.
       '/admin/precificacao',
+      // Parceiros também: o prazo da indicação é regra da Vincis, e vai
+      // lastrear comissão.
+      '/admin/parceiros',
     ])
   })
 
@@ -89,6 +92,7 @@ describe('registro de recursos administrativos', () => {
     expect(rotaExigeGestor('/admin/comunicados')).toBe(true)
     expect(rotaExigeGestor('/admin/consultorias')).toBe(true)
     expect(rotaExigeGestor('/admin/precificacao')).toBe(true)
+    expect(rotaExigeGestor('/admin/parceiros')).toBe(true)
     // Prefixo parecido não herda proteção — nem falta de proteção.
     expect(rotaExigeGestor('/admin/usuarios-relatorio')).toBe(false)
     expect(recursoDaRota('/admin/usuarios-relatorio')).toBeNull()
@@ -116,6 +120,7 @@ describe('registro de recursos administrativos', () => {
       ['Comunicados', '/admin/comunicados'],
       ['Consultorias', '/admin/consultorias'],
       ['Precificação', '/admin/precificacao'],
+      ['Parceiros', '/admin/parceiros'],
     ])
   })
 })

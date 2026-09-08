@@ -12,6 +12,7 @@ import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
 } from '@/features/auditoria/lib/registrar-evento'
+import { moverComissaoDaContratacao } from '@/features/parceiros/lib/registrar-comissao'
 import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
 import {
   emitirNotificacoes,
@@ -219,11 +220,31 @@ export async function concluirAtendimento({
       // O status esperado é a trava: dois cliques (ou dois usuários ao mesmo
       // tempo) disputam esta condição, um vence e o outro não escreve nada.
       .where(and(eq(atendimentos.id, atendimentoId), eq(atendimentos.status, de)))
-      .returning({ id: atendimentos.id })
+      .returning({
+        id: atendimentos.id,
+        contratacaoId: atendimentos.contratacaoId,
+      })
 
     // Alguém chegou primeiro. Nada foi escrito: nem manifestação, nem aviso,
     // nem arquivo marcado.
     if (!atualizado) return { conflito: true as const }
+
+    /*
+      Serviço entregue: a comissão do parceiro sai de `gerada` e fica disponível.
+
+      Aqui, e não em `alterar-status`, porque concluir passa obrigatoriamente
+      por esta função — a outra porta recusa `concluido` de propósito. E depois
+      da trava de status acima: quem perdeu a corrida devolveu `conflito` e nem
+      chega nesta linha, então dois cliques liberam a comissão uma vez só.
+
+      `contratacao_id` nulo é o Atendimento que nasceu de consultoria, que não
+      tem comissão nesta fatia. A função não lança e só move o que ainda está
+      em `gerada`: comissão paga ou cancelada não volta atrás, e entregar um
+      serviço nunca pode falhar por causa do programa de indicação.
+    */
+    if (atualizado.contratacaoId) {
+      await moverComissaoDaContratacao(tx, atualizado.contratacaoId, 'disponivel')
+    }
 
     if (escolhidos.length) {
       await tx

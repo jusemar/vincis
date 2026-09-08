@@ -116,7 +116,7 @@ export function VisaoGeralCliente({
             {atencao.map((item) => (
               <Link
                 key={item.id}
-                href={`/cliente?aba=${item.aba}`}
+                href={`/cliente/${item.aba}`}
                 className="flex flex-col gap-2 p-4 transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between sm:gap-6"
               >
                 <div className="min-w-0">
@@ -154,7 +154,7 @@ export function VisaoGeralCliente({
             titulo="Serviços em andamento"
             acao={
               <Link
-                href="/cliente?aba=atendimentos"
+                href="/cliente/atendimentos"
                 className="alvo-toque-h -mr-2 inline-flex items-center px-2 text-xs font-medium text-primary hover:underline"
               >
                 Ver todos
@@ -173,7 +173,7 @@ export function VisaoGeralCliente({
                 return (
                   <Link
                     key={atendimento.id}
-                    href={`/cliente?aba=atendimentos&atendimento=${atendimento.id}`}
+                    href={`/cliente/atendimentos?atendimento=${atendimento.id}`}
                     className="block p-4 transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -260,7 +260,7 @@ export function VisaoGeralCliente({
                 {solicitacoesAbertas.slice(0, 4).map((oportunidade) => (
                   <Link
                     key={oportunidade.id}
-                    href="/cliente?aba=orcamentos"
+                    href="/cliente/orcamentos"
                     className="block p-4 transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
                   >
                     <p className="text-xs text-muted-foreground">

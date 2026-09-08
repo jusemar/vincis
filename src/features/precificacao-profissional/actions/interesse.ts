@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { db } from '@/db/connection'
 import { oportunidadeMensagens, oportunidades } from '@/db/schema'
 import {
@@ -20,6 +21,8 @@ import { obterDestinatarioPrivado } from '@/features/oportunidades/queries/obter
 import { formatarCentavos } from '@/features/precificacao/lib/formato'
 import { calcularPreco } from '@/features/precificacao/lib/motor'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
+import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
+import { registrarAtribuicaoDaOportunidade } from '@/features/parceiros/lib/registrar-atribuicao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import { SERVICO_DO_PROFISSIONAL } from '../constants/precificacao-profissional'
@@ -195,6 +198,8 @@ export async function demonstrarInteresseNaSimulacao(entrada: unknown) {
   const descricao = descricaoDaSimulacao(simulacao, precificacao.primeiroNome)
   const prazoHoras = await obterPrazoOportunidadeHoras()
   const oportunidadeId = randomUUID()
+  // Lido fora da transação: `cookies()` é da requisição, não do banco.
+  const cookieDeIndicacao = (await cookies()).get(COOKIE_INDICACAO)?.value
 
   try {
     await db.transaction(async (tx) => {
@@ -217,6 +222,18 @@ export async function demonstrarInteresseNaSimulacao(entrada: unknown) {
         origem: 'simulacao_preco',
         simulacao,
         chaveIntencao,
+      })
+
+      /*
+        Mesma função da solicitação de orçamento: o fluxo direto também pode ter
+        nascido da indicação de um parceiro. Só rastreamento de origem — não
+        muda o retrato, o destinatário nem o que o Profissional recebe.
+      */
+      await registrarAtribuicaoDaOportunidade(tx, {
+        oportunidadeId,
+        usuarioId: sessao.id,
+        visitanteToken: cookieDeIndicacao,
+        servico: categoria,
       })
 
       /*

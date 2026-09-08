@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { usuarios } from '@/db/schema'
-import type { DadosPortalCliente } from '../components/PortalClientePage'
+import type { DadosPortalCliente } from '../types/portal'
 
 /** Dados da própria conta do Cliente. Só o que a área dele precisa exibir. */
 export async function obterDadosCliente(

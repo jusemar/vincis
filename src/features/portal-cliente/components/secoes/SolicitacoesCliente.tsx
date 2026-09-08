@@ -144,7 +144,7 @@ export function SolicitacoesCliente({
             return (
               <Link
                 key={opcao.id}
-                href={`/cliente?aba=orcamentos&filtro=${opcao.id}`}
+                href={`/cliente/orcamentos?filtro=${opcao.id}`}
                 aria-current={ativo ? 'page' : undefined}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   ativo
@@ -442,7 +442,7 @@ export function SolicitacoesCliente({
                   {/* A ação que falta, no lugar onde a decisão termina. */}
                   {acordo && !oportunidade.pagamento ? (
                     <Button asChild size="sm">
-                      <Link href={`/cliente?aba=orcamentos&pagar=${oportunidade.id}`}>
+                      <Link href={`/cliente/orcamentos?pagar=${oportunidade.id}`}>
                         <CreditCard className="size-4" />
                         Pagar
                       </Link>
@@ -451,7 +451,7 @@ export function SolicitacoesCliente({
                   {oportunidade.atendimento ? (
                     <Button asChild variant="outline" size="sm">
                       <Link
-                        href={`/cliente?aba=atendimentos&atendimento=${oportunidade.atendimento.id}`}
+                        href={`/cliente/atendimentos?atendimento=${oportunidade.atendimento.id}`}
                       >
                         <Headphones className="size-4" />
                         {oportunidade.atendimento.protocolo}

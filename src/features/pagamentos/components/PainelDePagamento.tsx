@@ -228,7 +228,7 @@ export function PainelDePagamento({
 function VoltarParaOrcamentos() {
   return (
     <Button asChild variant="ghost" size="sm">
-      <Link href="/cliente?aba=orcamentos">
+      <Link href="/cliente/orcamentos">
         <ArrowLeft className="size-4" />
         Voltar
       </Link>
@@ -302,7 +302,7 @@ function ComprovanteSimulado({
           </p>
           <Button asChild size="sm" className="ml-auto">
             <Link
-              href={`/cliente?aba=atendimentos&atendimento=${oportunidade.atendimento.id}`}
+              href={`/cliente/atendimentos?atendimento=${oportunidade.atendimento.id}`}
             >
               Abrir atendimento
             </Link>

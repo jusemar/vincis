@@ -170,3 +170,18 @@ export { precificacaoProfissionalRelations } from './tables/precificacao_profiss
 
 export { precificacaoProfissionalValores } from './tables/precificacao_profissional_valores/tabela'
 export { precificacaoProfissionalValoresRelations } from './tables/precificacao_profissional_valores/relacoes'
+
+export { parceiros } from './tables/parceiros/tabela'
+export { parceirosRelations } from './tables/parceiros/relacoes'
+
+export { parceiroIndicacoes } from './tables/parceiro_indicacoes/tabela'
+export { parceiroIndicacoesRelations } from './tables/parceiro_indicacoes/relacoes'
+
+export { parceiroEventos } from './tables/parceiro_eventos/tabela'
+export { parceiroEventosRelations } from './tables/parceiro_eventos/relacoes'
+
+export { parceiroComissoes } from './tables/parceiro_comissoes/tabela'
+export { parceiroAtribuicoes } from './tables/parceiro_atribuicoes/tabela'
+export { parceiroAtribuicoesRelations } from './tables/parceiro_atribuicoes/relacoes'
+
+export { parceiroPrazos } from './tables/parceiro_prazos/tabela'
