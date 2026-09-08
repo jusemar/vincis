@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import {
   BadgeDollarSign,
   Briefcase,
@@ -40,13 +40,16 @@ import { PERCENTUAL_AVULSO, percentualFormatado } from '../../constants/programa
 import {
   PRAZO_PAGAMENTO_SIMULADO,
   RECEBIMENTO_SIMULADO,
-  SAQUES_SIMULADOS,
 } from '../../constants/mock-financeiro'
+import { ROTULO_SAQUE, TOM_SAQUE } from '../../constants/saque'
+import { solicitarSaque } from '../../actions/solicitar-saque'
 import { rotuloDaReferencia } from '../../constants/prazo'
 import type {
   ComissaoDoParceiro,
   ResumoDeComissoes,
+  SaqueDoParceiro,
 } from '../../queries/listar-comissoes'
+import { toast } from 'sonner'
 import { NumeroAnimado } from './NumeroAnimado'
 
 const MOEDA = new Intl.NumberFormat('pt-BR', {
@@ -201,14 +204,34 @@ function Indicador({
 export function ComissoesDoParceiro({
   comissoes,
   resumo,
+  saques,
 }: {
   comissoes: ComissaoDoParceiro[]
   resumo: ResumoDeComissoes
+  saques: SaqueDoParceiro[]
 }) {
   const [aba, setAba] = useState<'todas' | StatusComissao>('todas')
   const [busca, setBusca] = useState('')
   const [tipo, setTipo] = useState('todos')
   const [periodo, setPeriodo] = useState<string>('tudo')
+  const [pedindo, comecarPedido] = useTransition()
+
+  /*
+    O botão obedece ao saldo **livre**, não ao disponível.
+
+    Comissão liberada que já está num pedido continua `disponivel` — ela não foi
+    paga —, mas não pode sustentar um segundo saque. Quem manda no botão é o que
+    sobrou; o servidor confere de novo e o índice único decide a corrida.
+  */
+  const podeSacar = resumo.livreCentavos > 0
+
+  function pedirSaque() {
+    comecarPedido(async () => {
+      const resultado = await solicitarSaque()
+      if (resultado.sucesso) toast.success(resultado.mensagem)
+      else toast.error(resultado.mensagem)
+    })
+  }
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -258,9 +281,14 @@ export function ComissoesDoParceiro({
             <Download className="size-4" aria-hidden />
             Extrato
           </Button>
-          <Button size="sm" className="gap-2" disabled>
+          <Button
+            size="sm"
+            className="gap-2"
+            onClick={pedirSaque}
+            disabled={!podeSacar || pedindo}
+          >
             <Wallet className="size-4" aria-hidden />
-            Solicitar saque
+            {pedindo ? 'Solicitando…' : 'Solicitar saque'}
           </Button>
         </div>
       </div>
@@ -379,11 +407,16 @@ export function ComissoesDoParceiro({
             Disponível agora
           </p>
           <p className="mt-1 font-serif text-3xl font-semibold tracking-tight tabular-nums">
-            {reais(resumo.disponivelCentavos)}
+            {reais(resumo.livreCentavos)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {reais(resumo.geradaCentavos)} aguardando conclusão
           </p>
+          {resumo.reservadoCentavos > 0 ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {reais(resumo.reservadoCentavos)} reservados em saques solicitados
+            </p>
+          ) : null}
 
           <div className="mt-5 rounded-xl border bg-muted/30 px-3.5 py-3">
             <p className="text-[11px] text-muted-foreground">
@@ -397,13 +430,17 @@ export function ComissoesDoParceiro({
             </p>
           </div>
 
-          <Button className="mt-4 w-full" disabled>
-            Solicitar saque
+          <Button
+            className="mt-4 w-full"
+            onClick={pedirSaque}
+            disabled={!podeSacar || pedindo}
+          >
+            {pedindo ? 'Solicitando…' : 'Solicitar saque'}
           </Button>
           <p className="mt-2 flex items-start gap-1.5 text-[11px] text-muted-foreground">
             <Info className="mt-0.5 size-3 shrink-0" aria-hidden />
-            {PRAZO_PAGAMENTO_SIMULADO} Saque ainda em construção — os dados deste
-            bloco são de demonstração.
+            {PRAZO_PAGAMENTO_SIMULADO} O pagamento é processado pela Vincis; o
+            método de recebimento acima ainda é de demonstração.
           </p>
         </Cartao>
       </div>
@@ -615,40 +652,49 @@ export function ComissoesDoParceiro({
       </Cartao>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Bloco simulado: não existe tabela de saque. */}
         <Cartao className="p-5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">Histórico de saques</p>
-            <Pilula rotulo="Demonstração" tom="neutro" />
+            <p className="text-[11px] text-muted-foreground">
+              {saques.length} solicitação(ões)
+            </p>
           </div>
-          <ul className="mt-4 space-y-2">
-            {SAQUES_SIMULADOS.map((saque) => (
-              <li
-                key={saque.id}
-                className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3.5 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm">
-                    {saque.id} · {saque.metodo}
-                  </p>
-                  <p className="text-[11px] tabular-nums text-muted-foreground">
-                    {DIA.format(new Date(saque.data))}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-serif font-semibold tabular-nums">
-                    {reais(saque.valorCentavos)}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {saque.status}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {saques.length === 0 ? (
+            <p className="mt-4 rounded-xl border bg-muted/30 px-3.5 py-6 text-center text-xs text-muted-foreground">
+              Nenhum saque solicitado ainda. Quando houver saldo disponível, o
+              pedido aparece aqui.
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {saques.map((saque) => (
+                <li
+                  key={saque.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3.5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">
+                      Solicitação {saque.id.slice(0, 8)}
+                    </p>
+                    <p className="text-[11px] tabular-nums text-muted-foreground">
+                      {DIA.format(saque.solicitadoEm)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <p className="font-serif font-semibold tabular-nums">
+                      {reais(saque.valorCentavos)}
+                    </p>
+                    <Pilula
+                      rotulo={ROTULO_SAQUE[saque.status]}
+                      tom={TOM_SAQUE[saque.status]}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="mt-3 text-[11px] text-muted-foreground">
-            Estes saques são de demonstração: o pagamento ao parceiro ainda não
-            foi implementado e nenhum valor aqui vem do banco.
+            Solicitar reserva o valor; o pagamento é registrado pela Vincis numa
+            etapa seguinte.
           </p>
         </Cartao>
 

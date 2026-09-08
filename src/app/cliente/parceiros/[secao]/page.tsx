@@ -66,6 +66,7 @@ export default async function SecaoParceirosRoute({
       link={parceiro?.link ?? null}
       indicacoes={indicacoes}
       comissoes={financeiro?.comissoes ?? []}
+      saques={financeiro?.saques ?? []}
       baseDoSite={baseDoSite()}
       profissionais={profissionais}
       {...(financeiro ? { resumoComissoes: financeiro.resumo } : {})}

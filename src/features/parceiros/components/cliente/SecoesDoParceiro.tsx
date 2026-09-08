@@ -4,6 +4,7 @@ import type { IndicacaoDoParceiro } from '../../queries/listar-indicacoes'
 import type {
   ComissaoDoParceiro,
   ResumoDeComissoes,
+  SaqueDoParceiro,
 } from '../../queries/listar-comissoes'
 import { ComissoesDoParceiro } from './ComissoesDoParceiro'
 import { CentralDeCompartilhamento } from './CentralDeCompartilhamento'
@@ -53,6 +54,7 @@ export function SecaoDoParceiro({
   link,
   indicacoes,
   comissoes,
+  saques,
   resumoComissoes,
   baseDoSite,
   profissionais,
@@ -64,6 +66,7 @@ export function SecaoDoParceiro({
   /** Acessos reais pelo link. Só a seção de Leads consome. */
   indicacoes: IndicacaoDoParceiro[]
   comissoes: ComissaoDoParceiro[]
+  saques: SaqueDoParceiro[]
   resumoComissoes: ResumoDeComissoes
   baseDoSite: string
   profissionais: DestinoProfissional[]
@@ -77,6 +80,7 @@ export function SecaoDoParceiro({
         link,
         indicacoes,
         comissoes,
+        saques,
         resumoComissoes,
         baseDoSite,
         profissionais,
@@ -94,6 +98,7 @@ function conteudoDaSecao(
   link: LinkDoParceiro | null,
   indicacoes: IndicacaoDoParceiro[],
   comissoes: ComissaoDoParceiro[],
+  saques: SaqueDoParceiro[],
   resumoComissoes: ResumoDeComissoes,
   baseDoSite: string,
   profissionais: DestinoProfissional[],
@@ -210,7 +215,11 @@ function conteudoDaSecao(
             secao={secao}
             descricao="Acompanhe quanto você gerou, o que aguarda conclusão e a origem exata de cada valor."
           />
-          <ComissoesDoParceiro comissoes={comissoes} resumo={resumoComissoes} />
+          <ComissoesDoParceiro
+            comissoes={comissoes}
+            resumo={resumoComissoes}
+            saques={saques}
+          />
         </>
       )
 

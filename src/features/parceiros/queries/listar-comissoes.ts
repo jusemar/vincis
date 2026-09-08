@@ -1,12 +1,20 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
 import {
   contratacoesServico,
   parceiroComissoes,
+  parceiroSaqueItens,
+  parceiroSaques,
   perfisProfissionais,
   usuarios,
 } from '@/db/schema'
+import {
+  ROTULO_SAQUE,
+  STATUS_SAQUE_RESERVA,
+  statusSaqueValido,
+  type StatusSaque,
+} from '../constants/saque'
 import { statusComissaoValido, type StatusComissao } from '../constants/comissao'
 
 const profissional = alias(usuarios, 'profissional_da_comissao')
@@ -33,6 +41,19 @@ export type ResumoDeComissoes = {
   pagaCentavos: number
   canceladaCentavos: number
   negocios: number
+  /** Comissões liberadas que já estão comprometidas com um saque. */
+  reservadoCentavos: number
+  /** O que ainda pode virar um pedido novo: disponível menos reservado. */
+  livreCentavos: number
+}
+
+export type SaqueDoParceiro = {
+  id: string
+  valorCentavos: number
+  status: StatusSaque
+  rotulo: string
+  solicitadoEm: Date
+  pagoEm: Date | null
 }
 
 /**
@@ -60,7 +81,11 @@ export type ResumoDeComissoes = {
 export async function listarComissoesDoParceiro(
   parceiroId: string,
   limite = 100,
-): Promise<{ comissoes: ComissaoDoParceiro[]; resumo: ResumoDeComissoes }> {
+): Promise<{
+  comissoes: ComissaoDoParceiro[]
+  resumo: ResumoDeComissoes
+  saques: SaqueDoParceiro[]
+}> {
   const linhas = await db
     .select({
       id: parceiroComissoes.id,
@@ -103,9 +128,58 @@ export async function listarComissoesDoParceiro(
       .filter((comissao) => estados.includes(comissao.status))
       .reduce((total, comissao) => total + comissao.valorCentavos, 0)
 
+  /*
+    Os saques deste parceiro, e quanto eles seguram.
+
+    O reservado sai dos **itens**, não do total do saque: é a soma das comissões
+    de fato comprometidas, a mesma fonte que o índice único protege. Somar o
+    campo agregado daria o mesmo número hoje e mentiria no dia em que os dois
+    discordassem.
+  */
+  const linhasSaque = await db
+    .select({
+      id: parceiroSaques.id,
+      valorCentavos: parceiroSaques.valorCentavos,
+      status: parceiroSaques.status,
+      solicitadoEm: parceiroSaques.solicitadoEm,
+      pagoEm: parceiroSaques.pagoEm,
+    })
+    .from(parceiroSaques)
+    .where(eq(parceiroSaques.parceiroId, parceiroId))
+    .orderBy(desc(parceiroSaques.solicitadoEm))
+    .limit(limite)
+
+  const saques = linhasSaque.map((linha) => {
+    const status = statusSaqueValido(linha.status)
+      ? linha.status
+      : ('solicitado' as StatusSaque)
+    return { ...linha, status, rotulo: ROTULO_SAQUE[status] }
+  })
+
+  const [reserva] = await db
+    .select({
+      total: sql<number>`coalesce(sum(${parceiroSaqueItens.valorCentavos}), 0)::int`,
+    })
+    .from(parceiroSaqueItens)
+    .innerJoin(parceiroSaques, eq(parceiroSaques.id, parceiroSaqueItens.saqueId))
+    .where(
+      and(
+        eq(parceiroSaques.parceiroId, parceiroId),
+        inArray(parceiroSaques.status, STATUS_SAQUE_RESERVA),
+      ),
+    )
+
+  const reservadoCentavos = Number(reserva?.total ?? 0)
+  const disponivelCentavos = somar(['disponivel'])
+
   return {
     comissoes,
+    saques,
     resumo: {
+      reservadoCentavos,
+      // Nunca negativo: se algum dia a reserva passar o disponível, o problema
+      // é de dado, e mostrar saldo negativo esconderia isso atrás de um número.
+      livreCentavos: Math.max(disponivelCentavos - reservadoCentavos, 0),
       totalCentavos: somar(['gerada', 'disponivel', 'paga']),
       geradaCentavos: somar(['gerada']),
       disponivelCentavos: somar(['disponivel']),

@@ -1,0 +1,51 @@
+import { integer, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { parceiroComissoes } from '../parceiro_comissoes/tabela'
+import { parceiroSaques } from '../parceiro_saques/tabela'
+
+/**
+ * Quais comissões sustentam um saque.
+ *
+ * ## Esta tabela é a trava do saldo
+ *
+ * O índice único em `comissao_id` é o que impede a mesma comissão de pagar dois
+ * saques — e, por consequência, o que impede o saldo de ficar negativo. Não é
+ * uma consulta antes do insert que garante isso: são duas requisições
+ * simultâneas disputando a mesma linha de índice, uma vencendo e a outra
+ * recebendo 23505. Validação de tela e leitura prévia evitam o erro comum;
+ * só o banco resolve a corrida.
+ *
+ * ## Por que reservar a comissão inteira
+ *
+ * Uma comissão pertence a um negócio, com valor congelado. Fatiá-la entre dois
+ * saques criaria "meia comissão", um conceito que não existe em lugar nenhum do
+ * domínio e que precisaria de regra própria de arredondamento. Reservando a
+ * linha inteira, a soma dos itens é exatamente o valor do saque, sempre, sem
+ * nenhum centavo a explicar.
+ *
+ * ## O valor viaja junto
+ *
+ * `valor_centavos` repete o da comissão no instante da reserva. É cópia
+ * deliberada: a comissão é imutável depois de gerada, mas o dia em que alguma
+ * correção mexer nela, o saque continua valendo o que foi pedido.
+ */
+export const parceiroSaqueItens = pgTable(
+  'parceiro_saque_itens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    saqueId: uuid('saque_id')
+      .notNull()
+      .references(() => parceiroSaques.id, { onDelete: 'cascade' }),
+    /** Sem cascata: comissão é histórico financeiro, não se apaga. */
+    comissaoId: uuid('comissao_id')
+      .notNull()
+      .references(() => parceiroComissoes.id),
+    valorCentavos: integer('valor_centavos').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => ({
+    // Uma comissão paga um saque só. É aqui que o saldo fica seguro.
+    porComissaoUnica: uniqueIndex('parceiro_saque_itens_comissao_unica').on(
+      t.comissaoId,
+    ),
+  }),
+)

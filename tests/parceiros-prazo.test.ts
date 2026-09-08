@@ -8,6 +8,7 @@ import {
   oportunidadeMensagens,
   oportunidades,
   parceiroAtribuicoes,
+  parceiroComissoes,
   parceiroEventos,
   parceiroIndicacoes,
   parceiroPrazos,
@@ -507,19 +508,23 @@ describe('nada do que já existia mudou', () => {
     }
   })
 
-  it('comissão existe, mas pagamento ao parceiro não', async () => {
+  it('o pedido de saque existe, mas o pagamento não', async () => {
     /*
-      A comissão avulsa virou direito real e tem tabela própria. O que continua
-      não existindo é o dinheiro saindo: saque, saldo, extrato e contas a pagar
-      são outra conversa, com outras regras, e nenhuma tabela aqui as antecipa.
+      O parceiro já consegue solicitar o saque, e o valor fica reservado. O que
+      continua não existindo é dinheiro saindo: nenhuma integração bancária,
+      nenhum Pix, nenhuma comissão marcada como paga por conta própria.
     */
-    const linhas = await db.execute(sql`
+    const integracoes = await db.execute(sql`
       select table_name from information_schema.tables
       where table_schema = 'public'
-        and (table_name like '%saque%'
-          or table_name like '%extrato%'
-          or table_name like '%parceiro_pagamento%')
+        and (table_name like '%pix%' or table_name like '%conta_banc%')
     `)
-    expect([...linhas]).toHaveLength(0)
+    expect([...integracoes]).toHaveLength(0)
+
+    const pagas = await db
+      .select({ id: parceiroComissoes.id })
+      .from(parceiroComissoes)
+      .where(eq(parceiroComissoes.status, 'paga'))
+    expect(pagas).toHaveLength(0)
   })
 })

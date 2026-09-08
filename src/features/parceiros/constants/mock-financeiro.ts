@@ -7,17 +7,16 @@
  * — que dependem de pagamento ao parceiro, e pagamento não existe nesta fatia —
  * apareçam com forma e conteúdo plausíveis enquanto são construídos.
  *
- * Apagar este arquivo e os três blocos que o importam remove a parte simulada
- * da tela sem tocar em uma linha de dado real. É esse o critério: se algo daqui
+ * O histórico de saques saiu daqui quando a solicitação virou real: ele agora
+ * vem de `parceiro_saques`. O que resta é o método de recebimento, e ele
+ * continua simulado de propósito — a plataforma não guarda dado bancário em
+ * lugar nenhum, e inventar esse armazenamento só para completar o visual seria
+ * o pior tipo de atalho.
+ *
+ * Apagar este arquivo e o bloco que o importa remove a parte simulada da tela
+ * sem tocar em uma linha de dado real. É esse o critério: se algo daqui
  * precisasse ser somado a um valor verdadeiro, estaria no lugar errado.
  */
-
-/** Saques já concluídos. Não existe tabela de saque — nem deve existir ainda. */
-export const SAQUES_SIMULADOS = [
-  { id: 'SQ-00219', data: '2026-08-29', valorCentavos: 116000, metodo: 'PIX · ****4821', status: 'Pago' },
-  { id: 'SQ-00204', data: '2026-07-30', valorCentavos: 94000, metodo: 'PIX · ****4821', status: 'Pago' },
-  { id: 'SQ-00198', data: '2026-07-02', valorCentavos: 72500, metodo: 'PIX · ****4821', status: 'Pago' },
-] as const
 
 /** Método de recebimento. Nenhum dado bancário real é guardado hoje. */
 export const RECEBIMENTO_SIMULADO = {

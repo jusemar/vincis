@@ -400,6 +400,13 @@
       "when": 1788809922775,
       "tag": "0056_parceiro_comissoes",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1788858755940,
+      "tag": "0057_parceiro_saques",
+      "breakpoints": true
     }
   ]
 }

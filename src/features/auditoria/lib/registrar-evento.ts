@@ -45,6 +45,15 @@ export const ACOES_AUDITORIA = {
    * quando, e `updated_at` só guarda o último toque.
    */
   prazoParceiroAlterado: 'prazo_parceiro_alterado',
+  /**
+   * O parceiro pediu para sacar o saldo disponível.
+   *
+   * Auditado desde o primeiro pedido porque é o momento em que dinheiro real
+   * fica reservado: os metadados guardam o valor e **quais comissões** o
+   * sustentam, para que uma contestação futura possa ser respondida sem
+   * depender de reconstruir a conta.
+   */
+  saqueParceiroSolicitado: 'saque_parceiro_solicitado',
 } as const
 
 export type AcaoAuditoria =

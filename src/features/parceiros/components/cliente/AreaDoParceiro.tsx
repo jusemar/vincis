@@ -4,6 +4,7 @@ import type { IndicacaoDoParceiro } from '../../queries/listar-indicacoes'
 import type {
   ComissaoDoParceiro,
   ResumoDeComissoes,
+  SaqueDoParceiro,
 } from '../../queries/listar-comissoes'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import { secaoValida } from '../../constants/navegacao'
@@ -26,6 +27,7 @@ export function AreaDoParceiro({
   link,
   indicacoes = [],
   comissoes = [],
+  saques = [],
   baseDoSite = '',
   profissionais = [],
   resumoComissoes = {
@@ -35,6 +37,8 @@ export function AreaDoParceiro({
     pagaCentavos: 0,
     canceladaCentavos: 0,
     negocios: 0,
+    reservadoCentavos: 0,
+    livreCentavos: 0,
   },
 }: {
   nome: string
@@ -55,6 +59,7 @@ export function AreaDoParceiro({
    */
   indicacoes?: IndicacaoDoParceiro[]
   comissoes?: ComissaoDoParceiro[]
+  saques?: SaqueDoParceiro[]
   baseDoSite?: string
   profissionais?: DestinoProfissional[]
   resumoComissoes?: ResumoDeComissoes
@@ -69,6 +74,7 @@ export function AreaDoParceiro({
       link={link}
       indicacoes={indicacoes}
       comissoes={comissoes}
+      saques={saques}
       baseDoSite={baseDoSite}
       profissionais={profissionais}
       resumoComissoes={resumoComissoes}
