@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   eventosAuditoria,
@@ -21,6 +21,12 @@ vi.mock('@/integracoes/email/enviar-confirmacao-email', () => ({
 
 const { ativarParceiro } = await import('@/features/parceiros/actions/ativar-parceiro')
 const { solicitarSaque } = await import('@/features/parceiros/actions/solicitar-saque')
+const { marcarSaquePago } = await import(
+  '@/features/parceiros/actions/marcar-saque-pago'
+)
+const { listarSaquesParaGestao } = await import(
+  '@/features/parceiros/queries/listar-saques-gestao'
+)
 const { obterParceiroDoUsuario } = await import(
   '@/features/parceiros/queries/obter-parceiro'
 )
@@ -29,7 +35,7 @@ const { listarComissoesDoParceiro } = await import(
 )
 
 const SUFIXO = '@parceiros.saque.teste'
-type Chave = 'joao' | 'maria' | 'cliente' | 'prestador'
+type Chave = 'joao' | 'maria' | 'cliente' | 'prestador' | 'gestor'
 
 let contas: Record<Chave, { id: string; token: string }>
 let joao: { id: string; codigo: string }
@@ -114,6 +120,7 @@ beforeAll(async () => {
       maria: { perfil: 'cliente' },
       cliente: { perfil: 'cliente' },
       prestador: { perfil: 'profissional', prestador: 'profissional' },
+      gestor: { perfil: 'gestor_vincis' },
     },
     '119492',
   )) as Record<Chave, { id: string; token: string }>
@@ -290,5 +297,181 @@ describe('solicitação de saque do parceiro', () => {
       .from(parceiroComissoes)
       .where(eq(parceiroComissoes.status, 'paga'))
     expect(pagas).toHaveLength(0)
+  })
+})
+
+/**
+ * O pagamento acontece fora da Vincis; aqui só se registra que aconteceu.
+ *
+ * O que estes testes protegem é o dinheiro: ninguém além do Gestor marca, um
+ * saque não é pago duas vezes, e comissão que não pertence àquele saque não é
+ * tocada — nem por engano, nem por id forjado.
+ */
+describe('Gestão registra o pagamento do saque', () => {
+  it('só o Gestor marca como pago', async () => {
+    const [saque] = await db
+      .select({ id: parceiroSaques.id })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.parceiroId, joao.id))
+      .limit(1)
+
+    // O dono do saque não paga o próprio saque.
+    entrarComo(contas.joao.token)
+    const peloDono = await marcarSaquePago({ saqueId: saque.id })
+    sairDaSessao()
+    expect(peloDono.sucesso).toBe(false)
+
+    // Nem outro parceiro, nem um cliente comum, nem quem não está autenticado.
+    entrarComo(contas.maria.token)
+    const porOutro = await marcarSaquePago({ saqueId: saque.id })
+    sairDaSessao()
+    expect(porOutro.sucesso).toBe(false)
+
+    entrarComo(contas.cliente.token)
+    const porCliente = await marcarSaquePago({ saqueId: saque.id })
+    sairDaSessao()
+    expect(porCliente.sucesso).toBe(false)
+
+    const semSessao = await marcarSaquePago({ saqueId: saque.id })
+    expect(semSessao.sucesso).toBe(false)
+
+    // Nada mudou depois de quatro tentativas negadas.
+    const [depois] = await db
+      .select({ status: parceiroSaques.status, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, saque.id))
+    expect(depois.status).toBe('solicitado')
+    expect(depois.pagoEm).toBeNull()
+  })
+
+  it('o Gestor paga o saque e quita as comissões daquele saque', async () => {
+    const [saque] = await db
+      .select({ id: parceiroSaques.id, valor: parceiroSaques.valorCentavos })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.parceiroId, joao.id))
+      .limit(1)
+
+    const itens = await db
+      .select({ comissaoId: parceiroSaqueItens.comissaoId })
+      .from(parceiroSaqueItens)
+      .where(eq(parceiroSaqueItens.saqueId, saque.id))
+
+    entrarComo(contas.gestor.token)
+    const resultado = await marcarSaquePago({ saqueId: saque.id })
+    sairDaSessao()
+    expect(resultado.sucesso).toBe(true)
+
+    const [pago] = await db
+      .select({ status: parceiroSaques.status, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, saque.id))
+    expect(pago.status).toBe('pago')
+    expect(pago.pagoEm).toBeInstanceOf(Date)
+
+    const quitadas = await db
+      .select({
+        status: parceiroComissoes.status,
+        pagaEm: parceiroComissoes.pagaEm,
+        valor: parceiroComissoes.valorCentavos,
+      })
+      .from(parceiroComissoes)
+      .where(inArray(parceiroComissoes.id, itens.map((i) => i.comissaoId)))
+
+    expect(quitadas.every((c) => c.status === 'paga')).toBe(true)
+    expect(quitadas.every((c) => c.pagaEm instanceof Date)).toBe(true)
+    // A soma das comissões quitadas é exatamente o valor do saque.
+    expect(quitadas.reduce((t, c) => t + c.valor, 0)).toBe(saque.valor)
+  })
+
+  it('o saldo do parceiro reflete o pagamento, sem dinheiro ressuscitado', async () => {
+    const { resumo, saques } = await listarComissoesDoParceiro(joao.id)
+
+    // O valor pago entrou no total já pago.
+    expect(resumo.pagaCentavos).toBeGreaterThan(0)
+
+    /*
+      O que sobra em `disponivel` é o segundo saque de João, ainda solicitado —
+      e é justamente por isso que o livre continua zero: pago não volta ao
+      saldo, e reservado também não. Dinheiro pago reaparecendo como sacável é
+      o pior estado possível desta tela.
+    */
+    const aindaReservado = saques
+      .filter((saque) => saque.status === 'solicitado')
+      .reduce((total, saque) => total + saque.valorCentavos, 0)
+    expect(resumo.disponivelCentavos).toBe(aindaReservado)
+    expect(resumo.livreCentavos).toBe(0)
+  })
+
+  it('pagar de novo não duplica nada', async () => {
+    const [saque] = await db
+      .select({ id: parceiroSaques.id, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.status, 'pago'))
+      .limit(1)
+
+    entrarComo(contas.gestor.token)
+    const repetido = await marcarSaquePago({ saqueId: saque.id })
+    sairDaSessao()
+    expect(repetido.sucesso).toBe(false)
+
+    const [depois] = await db
+      .select({ status: parceiroSaques.status, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, saque.id))
+    // O timestamp original não foi sobrescrito.
+    expect(depois.status).toBe('pago')
+    expect(depois.pagoEm?.getTime()).toBe(saque.pagoEm?.getTime())
+
+    // Um evento de pagamento, e só um. O de solicitação aponta para o mesmo
+    // saque de propósito: junto, os dois contam a história inteira dele.
+    const pagamentos = await db
+      .select({ id: eventosAuditoria.id })
+      .from(eventosAuditoria)
+      .where(
+        and(
+          eq(eventosAuditoria.registroAfetado, saque.id),
+          eq(eventosAuditoria.acao, 'saque_parceiro_pago'),
+        ),
+      )
+    expect(pagamentos).toHaveLength(1)
+  })
+
+  it('comissão de outro parceiro não é tocada', async () => {
+    const daMaria = await listarComissoesDoParceiro(maria.id)
+    // Maria tem saque próprio, ainda solicitado: nada dela virou paga.
+    expect(daMaria.resumo.pagaCentavos).toBe(0)
+    expect(daMaria.saques.every((s) => s.status === 'solicitado')).toBe(true)
+  })
+
+  it('comissão fora de qualquer saque permanece intacta', async () => {
+    const geradas = await db
+      .select({ status: parceiroComissoes.status })
+      .from(parceiroComissoes)
+      .where(eq(parceiroComissoes.status, 'gerada'))
+    // A comissão em `gerada` do começo do cenário continua lá.
+    expect(geradas.length).toBeGreaterThan(0)
+  })
+
+  it('a Gestão enxerga o saque com a origem de cada centavo', async () => {
+    const saques = await listarSaquesParaGestao()
+    const doJoao = saques.find((s) => s.parceiroId === joao.id)!
+
+    expect(doJoao.parceiroCodigo).toBe(joao.codigo)
+    expect(doJoao.origens.length).toBeGreaterThan(0)
+    expect(
+      doJoao.origens.reduce((t, o) => t + o.valorCentavos, 0),
+    ).toBe(doJoao.valorCentavos)
+  })
+
+  it('o pagamento fica auditado com autor, valor e comissões', async () => {
+    const [evento] = await db
+      .select({ acao: eventosAuditoria.acao, metadados: eventosAuditoria.metadados })
+      .from(eventosAuditoria)
+      .where(eq(eventosAuditoria.acao, 'saque_parceiro_pago'))
+
+    const dados = evento.metadados as { valorCentavos: number; comissoes: string[] }
+    expect(evento.acao).toBe('saque_parceiro_pago')
+    expect(dados.comissoes.length).toBeGreaterThan(0)
+    expect(dados.valorCentavos).toBeGreaterThan(0)
   })
 })

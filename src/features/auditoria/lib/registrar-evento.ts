@@ -54,6 +54,14 @@ export const ACOES_AUDITORIA = {
    * depender de reconstruir a conta.
    */
   saqueParceiroSolicitado: 'saque_parceiro_solicitado',
+  /**
+   * A Gestão registrou que pagou um saque.
+   *
+   * O pagamento acontece **fora** da Vincis — a plataforma não move dinheiro.
+   * Esta trilha guarda quem registrou, quanto e quais comissões foram quitadas,
+   * que é exatamente o que uma conferência posterior precisa reconstruir.
+   */
+  saqueParceiroPago: 'saque_parceiro_pago',
 } as const
 
 export type AcaoAuditoria =

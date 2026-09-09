@@ -38,6 +38,9 @@ import {
  * Componente de servidor: quem tem interação (gráfico, níveis, botões de
  * copiar) já é cliente por conta própria.
  */
+/** Seções que já leem o banco, e por isso não podem se anunciar como maquete. */
+const SECOES_COM_DADO_REAL = new Set(['leads', 'comissoes', 'meu-link'])
+
 function Titulo({ secao, descricao }: { secao: string; descricao: string }) {
   return (
     <CabecalhoSecao
@@ -85,9 +88,18 @@ export function SecaoDoParceiro({
         baseDoSite,
         profissionais,
       )}
+      {/*
+        O aviso segue a seção, porque nem toda seção é maquete.
+
+        Leads, Meu link e Comissões trabalham com dado do banco — e dizer que
+        R$ 25,00 de comissão real são "demonstrativos" é pior do que não avisar
+        nada: desmente na legenda o número que a pessoa vê em cima. As demais
+        continuam sendo prévia, e continuam dizendo isso.
+      */}
       <p className="pb-2 text-center text-xs text-muted-foreground">
-        Prévia visual do Programa de Parceiros. Os números desta tela são
-        demonstrativos.
+        {SECOES_COM_DADO_REAL.has(secao)
+          ? 'Os números desta tela vêm dos seus dados reais na Vincis.'
+          : 'Prévia visual do Programa de Parceiros. Os números desta tela são demonstrativos.'}
       </p>
     </div>
   )
