@@ -30,6 +30,19 @@ export type SaqueParaGestao = {
   recusadoEm: Date | null
   /** Motivo administrativo da recusa, quando a Gestão registrou um. */
   observacao: string | null
+  /**
+   * O destino congelado no instante do pedido.
+   *
+   * Nulo nos saques anteriores a esta funcionalidade — e a tela diz isso, em
+   * vez de inventar uma chave. A chave inteira vem porque o Gestor precisa
+   * dela para transferir; é o único lugar do sistema onde ela é lida.
+   */
+  recebimento: {
+    metodo: string
+    tipoChave: string
+    chave: string
+    titular: string
+  } | null
   origens: OrigemDoSaque[]
 }
 
@@ -70,6 +83,10 @@ export async function listarSaquesParaGestao(
       pagoEm: parceiroSaques.pagoEm,
       recusadoEm: parceiroSaques.recusadoEm,
       observacao: parceiroSaques.observacao,
+      recebimentoMetodo: parceiroSaques.recebimentoMetodo,
+      recebimentoTipoChave: parceiroSaques.recebimentoTipoChave,
+      recebimentoChave: parceiroSaques.recebimentoChave,
+      recebimentoTitular: parceiroSaques.recebimentoTitular,
     })
     .from(parceiroSaques)
     .innerJoin(parceiros, eq(parceiros.id, parceiroSaques.parceiroId))
@@ -111,11 +128,28 @@ export async function listarSaquesParaGestao(
     porSaque.set(saqueId, lista)
   }
 
-  return linhas.map((linha) => ({
-    ...linha,
-    status: statusSaqueValido(linha.status)
-      ? linha.status
-      : ('solicitado' as StatusSaque),
-    origens: porSaque.get(linha.id) ?? [],
-  }))
+  return linhas.map(
+    ({
+      recebimentoMetodo,
+      recebimentoTipoChave,
+      recebimentoChave,
+      recebimentoTitular,
+      ...linha
+    }) => ({
+      ...linha,
+      status: statusSaqueValido(linha.status)
+        ? linha.status
+        : ('solicitado' as StatusSaque),
+      recebimento:
+        recebimentoChave && recebimentoTipoChave && recebimentoTitular
+          ? {
+              metodo: recebimentoMetodo ?? 'pix',
+              tipoChave: recebimentoTipoChave,
+              chave: recebimentoChave,
+              titular: recebimentoTitular,
+            }
+          : null,
+      origens: porSaque.get(linha.id) ?? [],
+    }),
+  )
 }

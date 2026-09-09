@@ -7,6 +7,7 @@ import type {
   SaqueDoParceiro,
 } from '../../queries/listar-comissoes'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
+import type { RecebimentoDoParceiro } from '../../queries/obter-recebimento'
 import { secaoValida } from '../../constants/navegacao'
 import { SecaoDoParceiro } from './SecoesDoParceiro'
 
@@ -30,6 +31,7 @@ export function AreaDoParceiro({
   saques = [],
   baseDoSite = '',
   profissionais = [],
+  recebimento = null,
   resumoComissoes = {
     totalCentavos: 0,
     geradaCentavos: 0,
@@ -62,6 +64,7 @@ export function AreaDoParceiro({
   saques?: SaqueDoParceiro[]
   baseDoSite?: string
   profissionais?: DestinoProfissional[]
+  recebimento?: RecebimentoDoParceiro | null
   resumoComissoes?: ResumoDeComissoes
 }) {
   const { primeiroNome, tratamentoComNome } = separarNomeDeTratamento(nome)
@@ -77,6 +80,7 @@ export function AreaDoParceiro({
       saques={saques}
       baseDoSite={baseDoSite}
       profissionais={profissionais}
+      recebimento={recebimento}
       resumoComissoes={resumoComissoes}
     />
   )

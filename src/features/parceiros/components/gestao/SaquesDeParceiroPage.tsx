@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Banknote, Briefcase, Wallet, XCircle } from 'lucide-react'
+import { Banknote, Briefcase, Eye, EyeOff, KeyRound, Wallet, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -19,6 +19,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Pilula } from '@/features/portal-cliente/components/ui/primitivos'
+import { BotaoCopiar } from '../cliente/BotaoCopiar'
+import {
+  ROTULO_CHAVE_PIX,
+  mascararChavePix,
+  tipoChaveValido,
+} from '../../constants/recebimento'
 import { marcarSaquePago } from '../../actions/marcar-saque-pago'
 import { recusarSaque } from '../../actions/recusar-saque'
 import { ROTULO_SAQUE, TOM_SAQUE } from '../../constants/saque'
@@ -38,6 +44,64 @@ const QUANDO = new Intl.DateTimeFormat('pt-BR', {
 })
 
 const reais = (centavos: number) => MOEDA.format(centavos / 100)
+
+/**
+ * A chave de pagamento, oculta por padrão.
+ *
+ * Revelar é um ato deliberado e reversível; copiar não exige revelar, porque
+ * quem vai colar no aplicativo do banco não precisa ler o valor. A chave nunca
+ * entra em URL, em atributo de link ou em log — ela chega no HTML da página que
+ * só o Gestor consegue abrir, e para de lá.
+ */
+function ChaveDoSaque({
+  recebimento,
+}: {
+  recebimento: NonNullable<SaqueParaGestao['recebimento']>
+}) {
+  const [revelada, setRevelada] = useState(false)
+  const tipo = tipoChaveValido(recebimento.tipoChave)
+    ? recebimento.tipoChave
+    : null
+
+  return (
+    <div className="mt-2 rounded-lg border bg-muted/40 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <span className="flex min-w-0 items-center gap-2 text-sm">
+          <KeyRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="text-muted-foreground">
+            {recebimento.metodo.toUpperCase()}
+            {tipo ? ` · ${ROTULO_CHAVE_PIX[tipo]}` : ''}
+          </span>
+          <span className="truncate font-mono">
+            {revelada || !tipo
+              ? recebimento.chave
+              : mascararChavePix(tipo, recebimento.chave)}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="gap-1.5"
+            onClick={() => setRevelada((atual) => !atual)}
+          >
+            {revelada ? (
+              <EyeOff className="size-3.5" aria-hidden />
+            ) : (
+              <Eye className="size-3.5" aria-hidden />
+            )}
+            {revelada ? 'Ocultar' : 'Mostrar'}
+          </Button>
+          <BotaoCopiar texto={recebimento.chave} rotulo="Copiar chave" />
+        </span>
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        Titular: <span className="text-foreground">{recebimento.titular}</span>
+      </p>
+    </div>
+  )
+}
 
 /**
  * Um saque, com a origem de cada centavo.
@@ -146,6 +210,29 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/*
+          O destino congelado deste pedido.
+
+          A chave começa oculta e é revelada sob clique: o Gestor precisa dela
+          para transferir, mas a tela fica aberta no meio do expediente, e um
+          painel com várias chaves à mostra as entrega a quem só passou perto.
+          Copiar não exige revelar — quem vai colar no banco não precisa ler.
+        */}
+        <div className="mt-4 border-t pt-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            Dados para pagamento
+          </p>
+          {saque.recebimento ? (
+            <ChaveDoSaque recebimento={saque.recebimento} />
+          ) : (
+            <p className="mt-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Dados de recebimento não registrados neste saque. Pedido anterior
+              ao cadastro da chave — confirme o destino com o parceiro antes de
+              pagar.
+            </p>
+          )}
         </div>
 
         {saque.observacao ? (

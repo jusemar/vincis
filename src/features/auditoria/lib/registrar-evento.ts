@@ -69,6 +69,15 @@ export const ACOES_AUDITORIA = {
    * explica por que um saldo que estava reservado voltou a aparecer.
    */
   saqueParceiroRecusado: 'saque_parceiro_recusado',
+  /**
+   * O parceiro trocou os dados para onde recebe.
+   *
+   * Guarda o tipo da chave e os quatro últimos dígitos — nunca a chave inteira:
+   * a trilha tem outra regra de acesso, e repetir o dado pessoal aqui o
+   * espalharia de graça. É o bastante para reconstituir "quando mudou e para
+   * qual formato".
+   */
+  recebimentoParceiroAlterado: 'recebimento_parceiro_alterado',
 } as const
 
 export type AcaoAuditoria =

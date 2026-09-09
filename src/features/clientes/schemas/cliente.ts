@@ -11,7 +11,14 @@ const DDDS_VALIDOS = new Set([
   86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99,
 ])
 
-const TelefoneSchema = z
+/**
+ * A regra oficial de telefone da plataforma.
+ *
+ * Exportada para que outros domínios validem telefone **por esta regra**, e não
+ * por uma cópia: duas definições de "telefone válido" divergem na primeira
+ * exceção, e aí o mesmo número passa numa tela e falha na outra.
+ */
+export const TelefoneSchema = z
   .string()
   .transform((valor) => valor.replace(/\D/g, ''))
   .superRefine((telefone, contexto) => {

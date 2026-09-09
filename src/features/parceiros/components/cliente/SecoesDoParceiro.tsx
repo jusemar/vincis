@@ -7,6 +7,8 @@ import type {
   SaqueDoParceiro,
 } from '../../queries/listar-comissoes'
 import { ComissoesDoParceiro } from './ComissoesDoParceiro'
+import { DadosDeRecebimento } from './DadosDeRecebimento'
+import type { RecebimentoDoParceiro } from '../../queries/obter-recebimento'
 import { CentralDeCompartilhamento } from './CentralDeCompartilhamento'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import { rotuloDaSecao } from '../../constants/navegacao'
@@ -39,7 +41,12 @@ import {
  * copiar) já é cliente por conta própria.
  */
 /** Seções que já leem o banco, e por isso não podem se anunciar como maquete. */
-const SECOES_COM_DADO_REAL = new Set(['leads', 'comissoes', 'meu-link'])
+const SECOES_COM_DADO_REAL = new Set([
+  'leads',
+  'comissoes',
+  'meu-link',
+  'configuracoes',
+])
 
 function Titulo({ secao, descricao }: { secao: string; descricao: string }) {
   return (
@@ -61,6 +68,7 @@ export function SecaoDoParceiro({
   resumoComissoes,
   baseDoSite,
   profissionais,
+  recebimento,
 }: {
   secao: string
   nome: string
@@ -73,6 +81,7 @@ export function SecaoDoParceiro({
   resumoComissoes: ResumoDeComissoes
   baseDoSite: string
   profissionais: DestinoProfissional[]
+  recebimento: RecebimentoDoParceiro | null
 }) {
   if (secao === 'dashboard') return <PainelDoParceiro nome={nome} link={link} />
 
@@ -87,6 +96,7 @@ export function SecaoDoParceiro({
         resumoComissoes,
         baseDoSite,
         profissionais,
+        recebimento,
       )}
       {/*
         O aviso segue a seção, porque nem toda seção é maquete.
@@ -114,6 +124,7 @@ function conteudoDaSecao(
   resumoComissoes: ResumoDeComissoes,
   baseDoSite: string,
   profissionais: DestinoProfissional[],
+  recebimento: RecebimentoDoParceiro | null,
 ) {
   switch (secao) {
     case 'meu-link':
@@ -310,15 +321,22 @@ function conteudoDaSecao(
       )
 
     case 'configuracoes':
+      /*
+        A chave de recebimento é real; aviso e termos continuam por fazer.
+
+        Os dois blocos ficam separados de propósito: um guarda dado de verdade,
+        o outro anuncia o que ainda não existe.
+      */
       return (
         <>
           <Titulo
             secao={secao}
             descricao="Dados de recebimento, preferências de aviso e adesão ao programa."
           />
+          <DadosDeRecebimento recebimento={recebimento} />
           <SecaoEmPreparo
-            titulo="Configurações do parceiro"
-            descricao="Aqui ficarão a chave de recebimento, as preferências de aviso e os termos do programa."
+            titulo="Preferências e termos"
+            descricao="Aqui ficarão os avisos que você recebe e os termos do programa."
           />
         </>
       )

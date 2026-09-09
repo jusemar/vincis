@@ -59,6 +59,21 @@ export const parceiroSaques = pgTable(
     recusadoEm: timestamp('recusado_em'),
     /** Espaço do Gestor para registrar o que decidiu, na etapa futura. */
     observacao: text('observacao'),
+    /*
+      O retrato dos dados de recebimento no instante do pedido.
+
+      Copiados, e não lidos por join: o parceiro pode trocar a chave amanhã, e
+      um saque pendente não pode mudar de destino em silêncio porque alguém
+      editou uma configuração depois. É o mesmo princípio de
+      `valor_snapshot_centavos` na contratação — o que foi pedido é o que vale.
+
+      Nulos nos saques anteriores a esta coluna. A tela do Gestor diz que não
+      há dados registrados, em vez de inventar uma chave.
+    */
+    recebimentoMetodo: varchar('recebimento_metodo', { length: 20 }),
+    recebimentoTipoChave: varchar('recebimento_tipo_chave', { length: 20 }),
+    recebimentoChave: varchar('recebimento_chave', { length: 140 }),
+    recebimentoTitular: varchar('recebimento_titular', { length: 120 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

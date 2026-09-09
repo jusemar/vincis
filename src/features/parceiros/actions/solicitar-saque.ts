@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
 import {
   parceiroComissoes,
+  parceiroRecebimentos,
   parceiroSaqueItens,
   parceiroSaques,
 } from '@/db/schema'
@@ -65,6 +66,34 @@ export async function solicitarSaque() {
   const parceiro = await obterParceiroDaSessao()
   if (!usuario || !parceiro) return SEM_AUTORIZACAO
 
+  /*
+    Sem destino não há pedido.
+
+    Reservar comissões para um saque que ninguém consegue pagar prenderia o
+    saldo do parceiro à espera de um dado que só ele pode informar. Barrar aqui
+    é mais honesto do que criar o pedido e descobrir na hora de transferir.
+  */
+  const [destino] = await db
+    .select({
+      metodo: parceiroRecebimentos.metodo,
+      tipoChave: parceiroRecebimentos.tipoChave,
+      chave: parceiroRecebimentos.chave,
+      titular: parceiroRecebimentos.titular,
+    })
+    .from(parceiroRecebimentos)
+    .where(eq(parceiroRecebimentos.parceiroId, parceiro.id))
+    .limit(1)
+
+  if (!destino) {
+    return {
+      sucesso: false as const,
+      mensagem:
+        'Cadastre seus dados para recebimento antes de solicitar o saque.',
+      // A tela usa isto para levar o parceiro ao lugar certo em vez de só avisar.
+      dados: { faltaRecebimento: true as const },
+    }
+  }
+
   try {
     const resultado = await db.transaction(async (tx) => {
       /*
@@ -106,9 +135,23 @@ export async function solicitarSaque() {
 
       const total = livres.reduce((soma, linha) => soma + linha.valorCentavos, 0)
 
+      /*
+        O destino entra copiado no pedido, não por referência.
+
+        A partir daqui este saque paga para estes dados, aconteça o que
+        acontecer com a configuração do parceiro. Editar a chave depois vale
+        para os próximos — um pedido pendente não muda de destino em silêncio.
+      */
       const [saque] = await tx
         .insert(parceiroSaques)
-        .values({ parceiroId: parceiro.id, valorCentavos: total })
+        .values({
+          parceiroId: parceiro.id,
+          valorCentavos: total,
+          recebimentoMetodo: destino.metodo,
+          recebimentoTipoChave: destino.tipoChave,
+          recebimentoChave: destino.chave,
+          recebimentoTitular: destino.titular,
+        })
         .returning({ id: parceiroSaques.id })
 
       // Se qualquer uma destas linhas colidir, a transação inteira cai: não
@@ -140,6 +183,9 @@ export async function solicitarSaque() {
             parceiroId: parceiro.id,
             valorCentavos: total,
             comissoes: livres.map((comissao) => comissao.id),
+            // O destino fica identificável sem a chave inteira entrar na trilha.
+            recebimentoTipoChave: destino.tipoChave,
+            recebimentoFinalDaChave: destino.chave.slice(-4),
           },
         },
         tx,

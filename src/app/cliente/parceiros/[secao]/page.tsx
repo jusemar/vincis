@@ -9,6 +9,7 @@ import { listarIndicacoesDoParceiro } from '@/features/parceiros/queries/listar-
 import { listarComissoesDoParceiro } from '@/features/parceiros/queries/listar-comissoes'
 import { listarDestinosProfissionais } from '@/features/parceiros/queries/listar-destinos-profissionais'
 import { baseDoSite } from '@/features/parceiros/lib/link-de-indicacao'
+import { obterRecebimentoDoParceiro } from '@/features/parceiros/queries/obter-recebimento'
 import { exigirClienteDaSessao } from '@/features/portal-cliente/lib/sessao-do-cliente'
 
 /**
@@ -54,6 +55,12 @@ export default async function SecaoParceirosRoute({
   const profissionais =
     secao === 'meu-link' && parceiro ? await listarDestinosProfissionais() : []
 
+  // Só a tela que mostra os dados paga a consulta deles.
+  const recebimento =
+    secao === 'configuracoes' && parceiro
+      ? await obterRecebimentoDoParceiro(parceiro.id)
+      : null
+
   const financeiro =
     secao === 'comissoes' && parceiro
       ? await listarComissoesDoParceiro(parceiro.id)
@@ -69,6 +76,7 @@ export default async function SecaoParceirosRoute({
       saques={financeiro?.saques ?? []}
       baseDoSite={baseDoSite()}
       profissionais={profissionais}
+      recebimento={recebimento}
       {...(financeiro ? { resumoComissoes: financeiro.resumo } : {})}
     />
   )

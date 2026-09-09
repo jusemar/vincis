@@ -6,6 +6,7 @@ import {
   parceiroAtribuicoes,
   parceiroComissoes,
   parceiroIndicacoes,
+  parceiroRecebimentos,
   parceiroSaqueItens,
   parceiroSaques,
   contratacoesServico,
@@ -21,6 +22,9 @@ vi.mock('@/integracoes/email/enviar-confirmacao-email', () => ({
 
 const { ativarParceiro } = await import('@/features/parceiros/actions/ativar-parceiro')
 const { solicitarSaque } = await import('@/features/parceiros/actions/solicitar-saque')
+const { salvarRecebimento } = await import(
+  '@/features/parceiros/actions/salvar-recebimento'
+)
 const { marcarSaquePago } = await import(
   '@/features/parceiros/actions/marcar-saque-pago'
 )
@@ -128,9 +132,19 @@ beforeAll(async () => {
     '119492',
   )) as Record<Chave, { id: string; token: string }>
 
+  /*
+    Parceiro sem dados de recebimento não solicita saque — regra da fatia de
+    recebimento. Cadastrar aqui mantém estes cenários falando do que eles
+    testam: reserva, concorrência e isolamento do saldo.
+  */
   for (const chave of ['joao', 'maria'] as const) {
     entrarComo(contas[chave].token)
     await ativarParceiro()
+    await salvarRecebimento({
+      tipoChave: 'email',
+      chave: `${chave}.saque@vincis.local`,
+      titular: `Titular ${chave}`,
+    })
   }
   sairDaSessao()
   joao = (await obterParceiroDoUsuario(contas.joao.id))!
@@ -150,6 +164,9 @@ afterAll(async () => {
       .where(inArray(parceiroSaqueItens.saqueId, saques.map((s) => s.id)))
     await db.delete(parceiroSaques).where(inArray(parceiroSaques.id, ids.length ? saques.map((s) => s.id) : []))
   }
+  await db
+    .delete(parceiroRecebimentos)
+    .where(inArray(parceiroRecebimentos.parceiroId, ids))
   await db.delete(parceiroComissoes).where(inArray(parceiroComissoes.parceiroId, ids))
   await db.delete(parceiroAtribuicoes).where(inArray(parceiroAtribuicoes.parceiroId, ids))
   await db.delete(parceiroIndicacoes).where(inArray(parceiroIndicacoes.parceiroId, ids))
@@ -286,7 +303,12 @@ describe('solicitação de saque do parceiro', () => {
         metadados: eventosAuditoria.metadados,
       })
       .from(eventosAuditoria)
-      .where(eq(eventosAuditoria.autorId, contas.maria.id))
+      .where(
+        and(
+          eq(eventosAuditoria.autorId, contas.maria.id),
+          eq(eventosAuditoria.acao, 'saque_parceiro_solicitado'),
+        ),
+      )
 
     expect(evento.acao).toBe('saque_parceiro_solicitado')
     const dados = evento.metadados as { valorCentavos: number; comissoes: string[] }
