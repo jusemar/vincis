@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Banknote, Briefcase, Wallet } from 'lucide-react'
+import { Banknote, Briefcase, Wallet, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -16,8 +16,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Pilula } from '@/features/portal-cliente/components/ui/primitivos'
 import { marcarSaquePago } from '../../actions/marcar-saque-pago'
+import { recusarSaque } from '../../actions/recusar-saque'
 import { ROTULO_SAQUE, TOM_SAQUE } from '../../constants/saque'
 import type { SaqueParaGestao } from '../../queries/listar-saques-gestao'
 
@@ -47,6 +50,8 @@ const reais = (centavos: number) => MOEDA.format(centavos / 100)
 function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
   const router = useRouter()
   const [aberto, setAberto] = useState(false)
+  const [recusaAberta, setRecusaAberta] = useState(false)
+  const [motivo, setMotivo] = useState('')
   const [registrando, iniciarTransicao] = useTransition()
   const pendente = saque.status === 'solicitado'
 
@@ -56,6 +61,20 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
       if (resultado.sucesso) {
         toast.success(resultado.mensagem)
         setAberto(false)
+        router.refresh()
+      } else {
+        toast.error(resultado.mensagem)
+      }
+    })
+  }
+
+  function confirmarRecusa() {
+    iniciarTransicao(async () => {
+      const resultado = await recusarSaque({ saqueId: saque.id, motivo })
+      if (resultado.sucesso) {
+        toast.success(resultado.mensagem)
+        setRecusaAberta(false)
+        setMotivo('')
         router.refresh()
       } else {
         toast.error(resultado.mensagem)
@@ -92,6 +111,11 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
                 Pago {QUANDO.format(saque.pagoEm)}
               </p>
             ) : null}
+            {saque.recusadoEm ? (
+              <p className="text-xs tabular-nums text-muted-foreground">
+                Recusado {QUANDO.format(saque.recusadoEm)}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -124,6 +148,13 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
           </ul>
         </div>
 
+        {saque.observacao ? (
+          <p className="mt-3 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Motivo:</span>{' '}
+            {saque.observacao}
+          </p>
+        ) : null}
+
         {pendente ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             {/*
@@ -133,10 +164,21 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
             <p className="text-xs text-muted-foreground">
               Faça a transferência pelo seu banco e registre aqui depois.
             </p>
-            <Button size="sm" className="gap-2" onClick={() => setAberto(true)}>
-              <Banknote className="size-4" aria-hidden />
-              Marcar como pago
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => setRecusaAberta(true)}
+              >
+                <XCircle className="size-4" aria-hidden />
+                Recusar
+              </Button>
+              <Button size="sm" className="gap-2" onClick={() => setAberto(true)}>
+                <Banknote className="size-4" aria-hidden />
+                Marcar como pago
+              </Button>
+            </div>
           </div>
         ) : null}
 
@@ -165,6 +207,44 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
                 disabled={registrando}
               >
                 {registrando ? 'Registrando…' : 'Confirmar pagamento'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={recusaAberta} onOpenChange={setRecusaAberta}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Recusar o saque de {reais(saque.valorCentavos)}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                O pedido é encerrado sem pagamento e{' '}
+                {reais(saque.valorCentavos)} voltam ao saldo de{' '}
+                {saque.parceiroNome}, que poderá solicitar de novo. As{' '}
+                {saque.origens.length} comissão(ões) continuam válidas.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor={`motivo-${saque.id}`}>Motivo (opcional)</Label>
+              <Textarea
+                id={`motivo-${saque.id}`}
+                value={motivo}
+                onChange={(evento) => setMotivo(evento.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="Fica registrado no histórico administrativo."
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={registrando}>Voltar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(evento) => {
+                  evento.preventDefault()
+                  confirmarRecusa()
+                }}
+                disabled={registrando}
+              >
+                {registrando ? 'Recusando…' : 'Confirmar recusa'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
 import {
@@ -9,12 +9,7 @@ import {
   perfisProfissionais,
   usuarios,
 } from '@/db/schema'
-import {
-  ROTULO_SAQUE,
-  STATUS_SAQUE_RESERVA,
-  statusSaqueValido,
-  type StatusSaque,
-} from '../constants/saque'
+import { ROTULO_SAQUE, statusSaqueValido, type StatusSaque } from '../constants/saque'
 import { statusComissaoValido, type StatusComissao } from '../constants/comissao'
 
 const profissional = alias(usuarios, 'profissional_da_comissao')
@@ -165,7 +160,17 @@ export async function listarComissoesDoParceiro(
     .where(
       and(
         eq(parceiroSaques.parceiroId, parceiroId),
-        inArray(parceiroSaques.status, STATUS_SAQUE_RESERVA),
+        /*
+          Reservado é o que está **preso num pedido em aberto**.
+
+          Saque pago não reserva nada: as comissões dele viraram `paga` e já
+          saíram de `disponivel`, então contá-las aqui subtrairia um valor que
+          nunca foi somado — e o saldo livre do parceiro ficaria travado em
+          zero para sempre. Saque recusado também não reserva: os itens dele
+          estão liberados.
+        */
+        eq(parceiroSaques.status, 'solicitado'),
+        isNull(parceiroSaqueItens.liberadoEm),
       ),
     )
 

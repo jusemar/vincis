@@ -27,6 +27,9 @@ export type SaqueParaGestao = {
   status: StatusSaque
   solicitadoEm: Date
   pagoEm: Date | null
+  recusadoEm: Date | null
+  /** Motivo administrativo da recusa, quando a Gestão registrou um. */
+  observacao: string | null
   origens: OrigemDoSaque[]
 }
 
@@ -65,6 +68,8 @@ export async function listarSaquesParaGestao(
       status: parceiroSaques.status,
       solicitadoEm: parceiroSaques.solicitadoEm,
       pagoEm: parceiroSaques.pagoEm,
+      recusadoEm: parceiroSaques.recusadoEm,
+      observacao: parceiroSaques.observacao,
     })
     .from(parceiroSaques)
     .innerJoin(parceiros, eq(parceiros.id, parceiroSaques.parceiroId))

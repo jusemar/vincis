@@ -407,6 +407,13 @@
       "when": 1788858755940,
       "tag": "0057_parceiro_saques",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788920467996,
+      "tag": "0058_parceiro_saque_recusa",
+      "breakpoints": true
     }
   ]
 }

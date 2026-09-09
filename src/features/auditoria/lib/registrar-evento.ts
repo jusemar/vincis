@@ -62,6 +62,13 @@ export const ACOES_AUDITORIA = {
    * que é exatamente o que uma conferência posterior precisa reconstruir.
    */
   saqueParceiroPago: 'saque_parceiro_pago',
+  /**
+   * A Gestão encerrou um saque sem pagá-lo, devolvendo o valor ao parceiro.
+   *
+   * Guarda o motivo, quando houver, e as comissões liberadas: é o registro que
+   * explica por que um saldo que estava reservado voltou a aparecer.
+   */
+  saqueParceiroRecusado: 'saque_parceiro_recusado',
 } as const
 
 export type AcaoAuditoria =

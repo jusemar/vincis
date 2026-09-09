@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { integer, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { parceiroComissoes } from '../parceiro_comissoes/tabela'
 import { parceiroSaques } from '../parceiro_saques/tabela'
@@ -13,6 +14,18 @@ import { parceiroSaques } from '../parceiro_saques/tabela'
  * simultâneas disputando a mesma linha de índice, uma vencendo e a outra
  * recebendo 23505. Validação de tela e leitura prévia evitam o erro comum;
  * só o banco resolve a corrida.
+ *
+ * ## Parcial, porque saque recusado devolve o dinheiro
+ *
+ * A trava vale **enquanto a reserva vale**: `where liberado_em is null`. Quando
+ * a Gestão recusa um saque, os itens são liberados e a comissão volta a poder
+ * entrar num saque novo — sem que a linha desapareça, porque ela é a prova do
+ * que aquele saque continha. É o mesmo idioma de
+ * `parceiro_indicacoes_ciclo_aberto_unico`: único entre os ativos, preservado
+ * no histórico.
+ *
+ * Um índice incondicional aqui deixaria o dinheiro preso para sempre — o saldo
+ * voltaria na conta e o insert do próximo saque falharia com 23505.
  *
  * ## Por que reservar a comissão inteira
  *
@@ -40,12 +53,20 @@ export const parceiroSaqueItens = pgTable(
       .notNull()
       .references(() => parceiroComissoes.id),
     valorCentavos: integer('valor_centavos').notNull(),
+    /**
+     * Quando a reserva deixou de valer.
+     *
+     * Preenchido ao recusar o saque: a comissão volta ao saldo do parceiro e a
+     * linha permanece, contando o que aquele saque continha. Nulo enquanto a
+     * reserva está de pé.
+     */
+    liberadoEm: timestamp('liberado_em'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (t) => ({
-    // Uma comissão paga um saque só. É aqui que o saldo fica seguro.
-    porComissaoUnica: uniqueIndex('parceiro_saque_itens_comissao_unica').on(
-      t.comissaoId,
-    ),
+    // Uma comissão paga um saque só — enquanto a reserva estiver de pé.
+    porComissaoUnica: uniqueIndex('parceiro_saque_itens_comissao_unica')
+      .on(t.comissaoId)
+      .where(sql`liberado_em is null`),
   }),
 )

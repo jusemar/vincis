@@ -26,13 +26,13 @@ export const TOM_SAQUE: Record<
   cancelado: 'neutro',
 }
 
-/**
- * Os estados em que o saque ainda segura o dinheiro.
- *
- * Recusado e cancelado devolvem as comissões ao saldo — quando esses fluxos
- * existirem, é esta lista que decide, e não um `if` espalhado por consulta.
- */
-export const STATUS_SAQUE_RESERVA: StatusSaque[] = ['solicitado', 'pago']
+/*
+  Não existe aqui uma lista de "estados que seguram o dinheiro".
+
+  Quem responde isso é `parceiro_saque_itens.liberado_em`, que é também o que o
+  índice único do banco cobre. Uma constante paralela seria uma segunda
+  definição de "reservado", livre para divergir da que o banco aplica.
+*/
 
 export function statusSaqueValido(valor: string): valor is StatusSaque {
   return (STATUS_SAQUE as readonly string[]).includes(valor)

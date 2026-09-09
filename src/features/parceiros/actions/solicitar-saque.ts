@@ -1,6 +1,6 @@
 'use server'
 
-import { and, asc, eq, inArray, notInArray } from 'drizzle-orm'
+import { and, asc, eq, isNull, notInArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
 import {
@@ -15,7 +15,6 @@ import {
 import { ROTA_PARCEIROS } from '@/features/portal-cliente/constants/navegacao'
 import { SEM_AUTORIZACAO } from '@/features/usuarios/constants/autorizacao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
-import { STATUS_SAQUE_RESERVA } from '../constants/saque'
 import { obterParceiroDaSessao } from '../queries/obter-parceiro'
 
 /** Violação de unicidade do Postgres. */
@@ -74,14 +73,16 @@ export async function solicitarSaque() {
         O `parceiro_id` vem do parceiro da sessão — a ação não aceita parâmetro
         nenhum, então não há como sacar o saldo alheio nem conhecendo o id.
       */
+      /*
+        Reservado é o item que ainda não foi liberado — exatamente o conjunto
+        que o índice único cobre. Perguntar pelo status do saque daria o mesmo
+        resultado, mas por outro caminho: duas noções de "reservado" acabariam
+        divergindo no dia em que uma mudasse sem a outra.
+      */
       const reservadas = tx
         .select({ id: parceiroSaqueItens.comissaoId })
         .from(parceiroSaqueItens)
-        .innerJoin(
-          parceiroSaques,
-          eq(parceiroSaques.id, parceiroSaqueItens.saqueId),
-        )
-        .where(inArray(parceiroSaques.status, STATUS_SAQUE_RESERVA))
+        .where(isNull(parceiroSaqueItens.liberadoEm))
 
       const livres = await tx
         .select({

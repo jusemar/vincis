@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   eventosAuditoria,
@@ -23,6 +23,9 @@ const { ativarParceiro } = await import('@/features/parceiros/actions/ativar-par
 const { solicitarSaque } = await import('@/features/parceiros/actions/solicitar-saque')
 const { marcarSaquePago } = await import(
   '@/features/parceiros/actions/marcar-saque-pago'
+)
+const { recusarSaque } = await import(
+  '@/features/parceiros/actions/recusar-saque'
 )
 const { listarSaquesParaGestao } = await import(
   '@/features/parceiros/queries/listar-saques-gestao'
@@ -473,5 +476,218 @@ describe('Gestão registra o pagamento do saque', () => {
     expect(evento.acao).toBe('saque_parceiro_pago')
     expect(dados.comissoes.length).toBeGreaterThan(0)
     expect(dados.valorCentavos).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * Recusar devolve dinheiro. O que estes testes protegem é que ele volte por
+ * inteiro, uma vez só, e possa de fato ser sacado de novo — um saldo que
+ * reaparece na tela mas trava no próximo pedido seria pior do que não voltar.
+ */
+describe('Gestão recusa um saque e devolve o saldo', () => {
+  it('só o Gestor recusa', async () => {
+    await darComissao(maria.id, 4000)
+    entrarComo(contas.maria.token)
+    await solicitarSaque()
+    sairDaSessao()
+
+    const [saque] = await db
+      .select({ id: parceiroSaques.id })
+      .from(parceiroSaques)
+      .where(
+        and(
+          eq(parceiroSaques.parceiroId, maria.id),
+          eq(parceiroSaques.status, 'solicitado'),
+        ),
+      )
+      .limit(1)
+
+    for (const chave of ['maria', 'joao', 'cliente'] as const) {
+      entrarComo(contas[chave].token)
+      const negado = await recusarSaque({ saqueId: saque.id })
+      sairDaSessao()
+      expect(negado.sucesso).toBe(false)
+    }
+    const anonimo = await recusarSaque({ saqueId: saque.id })
+    expect(anonimo.sucesso).toBe(false)
+
+    const [intacto] = await db
+      .select({ status: parceiroSaques.status })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, saque.id))
+    expect(intacto.status).toBe('solicitado')
+  })
+
+  it('a recusa devolve o valor ao saldo livre do parceiro', async () => {
+    const antes = await listarComissoesDoParceiro(maria.id)
+    const pendente = antes.saques.find((s) => s.status === 'solicitado')!
+    expect(antes.resumo.livreCentavos).toBe(0)
+
+    entrarComo(contas.gestor.token)
+    const resultado = await recusarSaque({
+      saqueId: pendente.id,
+      motivo: 'Dados de recebimento a conferir.',
+    })
+    sairDaSessao()
+    expect(resultado.sucesso).toBe(true)
+
+    const depois = await listarComissoesDoParceiro(maria.id)
+    // O reservado sai e o livre volta exatamente o valor recusado.
+    expect(depois.resumo.reservadoCentavos).toBe(
+      antes.resumo.reservadoCentavos - pendente.valorCentavos,
+    )
+    expect(depois.resumo.livreCentavos).toBe(pendente.valorCentavos)
+    expect(depois.saques.find((s) => s.id === pendente.id)!.status).toBe(
+      'recusado',
+    )
+  })
+
+  it('as comissões continuam disponíveis, e nenhuma vira paga', async () => {
+    const { resumo } = await listarComissoesDoParceiro(maria.id)
+    expect(resumo.disponivelCentavos).toBeGreaterThan(0)
+    expect(resumo.pagaCentavos).toBe(0)
+  })
+
+  it('o mesmo valor pode entrar num saque novo', async () => {
+    const antes = await listarComissoesDoParceiro(maria.id)
+    const livre = antes.resumo.livreCentavos
+    expect(livre).toBeGreaterThan(0)
+
+    entrarComo(contas.maria.token)
+    const novo = await solicitarSaque()
+    sairDaSessao()
+
+    // Sem o índice parcial, este insert colidiria com a reserva antiga: o
+    // dinheiro apareceria no saldo e travaria na hora de sacar.
+    expect(novo.sucesso).toBe(true)
+    expect(novo.sucesso && novo.dados?.valorCentavos).toBe(livre)
+
+    const depois = await listarComissoesDoParceiro(maria.id)
+    expect(depois.resumo.livreCentavos).toBe(0)
+  })
+
+  it('recusar de novo não devolve o saldo duas vezes', async () => {
+    const [recusado] = await db
+      .select({ id: parceiroSaques.id, em: parceiroSaques.recusadoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.status, 'recusado'))
+      .limit(1)
+
+    const antes = await listarComissoesDoParceiro(maria.id)
+
+    entrarComo(contas.gestor.token)
+    const repetido = await recusarSaque({ saqueId: recusado.id })
+    sairDaSessao()
+    expect(repetido.sucesso).toBe(false)
+
+    const depois = await listarComissoesDoParceiro(maria.id)
+    expect(depois.resumo.livreCentavos).toBe(antes.resumo.livreCentavos)
+    expect(depois.resumo.reservadoCentavos).toBe(antes.resumo.reservadoCentavos)
+
+    const [agora] = await db
+      .select({ em: parceiroSaques.recusadoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, recusado.id))
+    // O carimbo original não foi sobrescrito.
+    expect(agora.em?.getTime()).toBe(recusado.em?.getTime())
+
+    const eventos = await db
+      .select({ id: eventosAuditoria.id })
+      .from(eventosAuditoria)
+      .where(
+        and(
+          eq(eventosAuditoria.registroAfetado, recusado.id),
+          eq(eventosAuditoria.acao, 'saque_parceiro_recusado'),
+        ),
+      )
+    expect(eventos).toHaveLength(1)
+  })
+
+  it('saque já pago não pode ser recusado', async () => {
+    const [pago] = await db
+      .select({ id: parceiroSaques.id, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.status, 'pago'))
+      .limit(1)
+
+    entrarComo(contas.gestor.token)
+    const negado = await recusarSaque({ saqueId: pago.id })
+    sairDaSessao()
+    expect(negado.sucesso).toBe(false)
+
+    const [depois] = await db
+      .select({ status: parceiroSaques.status, pagoEm: parceiroSaques.pagoEm })
+      .from(parceiroSaques)
+      .where(eq(parceiroSaques.id, pago.id))
+    expect(depois.status).toBe('pago')
+    expect(depois.pagoEm?.getTime()).toBe(pago.pagoEm?.getTime())
+
+    // E as comissões dele continuam quitadas.
+    const itens = await db
+      .select({ comissaoId: parceiroSaqueItens.comissaoId })
+      .from(parceiroSaqueItens)
+      .where(eq(parceiroSaqueItens.saqueId, pago.id))
+    const comissoes = await db
+      .select({ status: parceiroComissoes.status })
+      .from(parceiroComissoes)
+      .where(inArray(parceiroComissoes.id, itens.map((i) => i.comissaoId)))
+    expect(comissoes.every((c) => c.status === 'paga')).toBe(true)
+  })
+
+  it('duas recusas simultâneas: só uma vence', async () => {
+    await darComissao(maria.id, 9000)
+    entrarComo(contas.maria.token)
+    await solicitarSaque()
+    sairDaSessao()
+
+    // O mais recente: Maria pode ter outros saques em aberto do cenário.
+    const [alvo] = await db
+      .select({ id: parceiroSaques.id, valor: parceiroSaques.valorCentavos })
+      .from(parceiroSaques)
+      .where(
+        and(
+          eq(parceiroSaques.parceiroId, maria.id),
+          eq(parceiroSaques.status, 'solicitado'),
+        ),
+      )
+      .orderBy(desc(parceiroSaques.solicitadoEm))
+      .limit(1)
+
+    const antes = await listarComissoesDoParceiro(maria.id)
+
+    entrarComo(contas.gestor.token)
+    const [a, b] = await Promise.all([
+      recusarSaque({ saqueId: alvo.id }),
+      recusarSaque({ saqueId: alvo.id }),
+    ])
+    sairDaSessao()
+    expect([a.sucesso, b.sucesso].filter(Boolean)).toHaveLength(1)
+
+    const depois = await listarComissoesDoParceiro(maria.id)
+    // O saldo voltou uma vez, não duas: exatamente o valor daquele saque.
+    expect(depois.resumo.livreCentavos).toBe(
+      antes.resumo.livreCentavos + alvo.valor,
+    )
+  })
+
+  it('o saque de outro parceiro não é afetado', async () => {
+    const doJoao = await listarComissoesDoParceiro(joao.id)
+    expect(doJoao.saques.some((s) => s.status === 'recusado')).toBe(false)
+  })
+
+  it('a recusa fica auditada com motivo e comissões liberadas', async () => {
+    const [evento] = await db
+      .select({ metadados: eventosAuditoria.metadados })
+      .from(eventosAuditoria)
+      .where(eq(eventosAuditoria.acao, 'saque_parceiro_recusado'))
+
+    const dados = evento.metadados as {
+      valorCentavos: number
+      comissoes: string[]
+      motivo: string | null
+    }
+    expect(dados.valorCentavos).toBeGreaterThan(0)
+    expect(dados.comissoes.length).toBeGreaterThan(0)
+    expect(dados.motivo).toBe('Dados de recebimento a conferir.')
   })
 })

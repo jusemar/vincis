@@ -30,9 +30,11 @@ import { parceiros } from '../parceiros/tabela'
  *
  * ## Estados
  *
- * `solicitado` hoje. `pago`, `recusado` e `cancelado` cabem na mesma coluna
- * quando o fluxo do Gestor existir — o `check` já os aceita para que a fatia
- * seguinte não precise de migração de dados, mas nada nesta escreve neles.
+ * `solicitado` nasce com o pedido. `pago` quando a Gestão registra a
+ * transferência feita por fora, e `recusado` quando ela encerra o pedido sem
+ * pagar — aí a reserva é liberada e o valor volta ao saldo do parceiro.
+ * `cancelado` continua no vocabulário para um cancelamento pelo próprio
+ * parceiro, que ainda não existe.
  */
 export const parceiroSaques = pgTable(
   'parceiro_saques',
@@ -47,6 +49,14 @@ export const parceiroSaques = pgTable(
     solicitadoEm: timestamp('solicitado_em').defaultNow().notNull(),
     /** Preenchido quando o Gestor pagar. Nulo enquanto não houver pagamento. */
     pagoEm: timestamp('pago_em'),
+    /**
+     * Preenchido quando a Gestão recusa o pedido sem pagá-lo.
+     *
+     * Simétrico a `pago_em`, e não um `updated_at` genérico: os dois desfechos
+     * do saque merecem a mesma clareza no histórico, e "quando foi recusado" é
+     * pergunta que se faz meses depois.
+     */
+    recusadoEm: timestamp('recusado_em'),
     /** Espaço do Gestor para registrar o que decidiu, na etapa futura. */
     observacao: text('observacao'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
