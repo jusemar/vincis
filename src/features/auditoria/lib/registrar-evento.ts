@@ -110,6 +110,10 @@ export const ACOES_AUDITORIA = {
   saqueParceiroAjustadoPorEstorno: 'saque_parceiro_ajustado_estorno',
   /** Um saque solicitado perdeu a última comissão por estorno. */
   saqueParceiroCanceladoPorEstorno: 'saque_parceiro_cancelado_estorno',
+  /** A Gestão publicou uma nova versão da configuração de níveis. */
+  parceiroNiveisConfigurados: 'parceiro_niveis_configurados',
+  /** O nível de um parceiro mudou — subida, queda ou efeito de configuração. */
+  parceiroNivelAlterado: 'parceiro_nivel_alterado',
 } as const
 
 export type AcaoAuditoria =

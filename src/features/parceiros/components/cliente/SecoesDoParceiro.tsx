@@ -12,7 +12,7 @@ import type { RecebimentoDoParceiro } from '../../queries/obter-recebimento'
 import { CentralDeCompartilhamento } from './CentralDeCompartilhamento'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import { rotuloDaSecao } from '../../constants/navegacao'
-import { SITUACAO_PARCEIRO } from '../../constants/mock-painel'
+import type { SituacaoDeNivel } from '../../lib/niveis'
 import { CardDeNiveis } from './CardDeNiveis'
 import { IndicacoesRecebidas } from './IndicacoesRecebidas'
 import { PainelDoParceiro } from './PainelDoParceiro'
@@ -69,6 +69,7 @@ export function SecaoDoParceiro({
   baseDoSite,
   profissionais,
   recebimento,
+  situacaoNivel = null,
 }: {
   secao: string
   nome: string
@@ -82,8 +83,11 @@ export function SecaoDoParceiro({
   baseDoSite: string
   profissionais: DestinoProfissional[]
   recebimento: RecebimentoDoParceiro | null
+  situacaoNivel?: SituacaoDeNivel | null
 }) {
-  if (secao === 'dashboard') return <PainelDoParceiro nome={nome} link={link} />
+  if (secao === 'dashboard') {
+    return <PainelDoParceiro nome={nome} link={link} situacaoNivel={situacaoNivel} />
+  }
 
   return (
     <div className="space-y-6">
@@ -97,6 +101,7 @@ export function SecaoDoParceiro({
         baseDoSite,
         profissionais,
         recebimento,
+        situacaoNivel,
       )}
       {/*
         O aviso segue a seção, porque nem toda seção é maquete.
@@ -125,6 +130,7 @@ function conteudoDaSecao(
   baseDoSite: string,
   profissionais: DestinoProfissional[],
   recebimento: RecebimentoDoParceiro | null,
+  situacaoNivel: SituacaoDeNivel | null,
 ) {
   switch (secao) {
     case 'meu-link':
@@ -152,7 +158,7 @@ function conteudoDaSecao(
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <CupomDoParceiro />
             <div className="lg:col-span-2 lg:h-full">
-              <SistemaHibrido />
+              <SistemaHibrido situacao={situacaoNivel} />
             </div>
           </div>
         </>
@@ -196,11 +202,7 @@ function conteudoDaSecao(
             descricao="Quem você indicou: ativos, consultorias contratadas e a carteira recorrente."
           />
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
-            <CardDeNiveis
-              nivel={SITUACAO_PARCEIRO.nivel}
-              recorrentesAtivos={SITUACAO_PARCEIRO.recorrentesAtivos}
-              emProtecao={SITUACAO_PARCEIRO.emProtecao}
-            />
+            <CardDeNiveis situacao={situacaoNivel} />
             <div className="lg:col-span-2 lg:h-full">
               <FunilDeConversao />
             </div>
@@ -254,13 +256,9 @@ function conteudoDaSecao(
             descricao="Bronze, Prata e Ouro: o que cada nível paga e o que ele exige."
           />
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
-            <CardDeNiveis
-              nivel={SITUACAO_PARCEIRO.nivel}
-              recorrentesAtivos={SITUACAO_PARCEIRO.recorrentesAtivos}
-              emProtecao={SITUACAO_PARCEIRO.emProtecao}
-            />
+            <CardDeNiveis situacao={situacaoNivel} />
             <div className="lg:col-span-2 lg:h-full">
-              <SistemaHibrido />
+              <SistemaHibrido situacao={situacaoNivel} />
             </div>
           </div>
         </>

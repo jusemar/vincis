@@ -4,6 +4,7 @@ import {
   SECOES_PARCEIRO,
   SECAO_PADRAO,
 } from '@/features/parceiros/constants/navegacao'
+import { obterSituacaoDeNivel } from '@/features/parceiros/lib/niveis'
 import { obterParceiroDaSessao } from '@/features/parceiros/queries/obter-parceiro'
 import { listarIndicacoesDoParceiro } from '@/features/parceiros/queries/listar-indicacoes'
 import { listarComissoesDoParceiro } from '@/features/parceiros/queries/listar-comissoes'
@@ -66,11 +67,18 @@ export default async function SecaoParceirosRoute({
       ? await listarComissoesDoParceiro(parceiro.id)
       : null
 
+  // Só as seções que mostram o nível pagam o cálculo dele.
+  const situacaoNivel =
+    (secao === 'niveis' || secao === 'clientes-indicados') && parceiro
+      ? await obterSituacaoDeNivel(parceiro.id)
+      : null
+
   return (
     <AreaDoParceiro
       nome={dados.nome}
       secao={secao}
       link={parceiro?.link ?? null}
+      situacaoNivel={situacaoNivel}
       indicacoes={indicacoes}
       comissoes={financeiro?.comissoes ?? []}
       saques={financeiro?.saques ?? []}

@@ -23,10 +23,7 @@ import {
 } from '@/db/schema'
 import { PROVEDOR_HOMOLOGACAO } from '@/features/assinaturas/constants/pagamento'
 import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
-import {
-  PERCENTUAL_AVULSO,
-  PERCENTUAL_RECORRENTE_BASE,
-} from '@/features/parceiros/constants/programa'
+import { PERCENTUAL_AVULSO } from '@/features/parceiros/constants/programa'
 import { gerarTokenDeVisitante } from '@/features/parceiros/lib/visitante'
 import { calcularPreco } from '@/features/precificacao/lib/motor'
 import { respostasIniciais } from '@/features/precificacao/lib/respostas'
@@ -79,6 +76,9 @@ const { cancelarCompetenciasNaoPrestadas, materializarCompetenciaMensal } = awai
 const { garantirComissaoRecorrenteDaCompetencia } = await import(
   '@/features/parceiros/lib/comissao-recorrente'
 )
+const { obterConfiguracaoVigente, publicarConfiguracaoDeNiveis } = await import(
+  '@/features/parceiros/lib/niveis'
+)
 const { calcularComissaoCentavos } = await import(
   '@/features/parceiros/lib/registrar-comissao'
 )
@@ -94,6 +94,7 @@ let maria: { id: string; codigo: string }
 let tabela: TabelaPrecificacao
 let respostas: RespostasPrecificacao
 let contagensIniciais: Awaited<ReturnType<typeof contagens>>
+let configuracaoOriginal: Awaited<ReturnType<typeof obterConfiguracaoVigente>>
 const AMBIENTE_ORIGINAL = process.env.VINCIS_AMBIENTE
 let sequencia = 0
 
@@ -296,11 +297,39 @@ beforeAll(async () => {
   tabela = await obterTabelaDaVitrine()
   respostas = respostasIniciais(tabela)
   contagensIniciais = await contagens()
+
+  /*
+    Esta suíte é sobre a comissão recorrente, não sobre níveis: todos os
+    parceiros dela ficam na base, com o percentual de entrada da configuração.
+    Os mínimos altos são fixture desta suíte; a original volta no fim.
+  */
+  configuracaoOriginal = await obterConfiguracaoVigente()
+  const publicada = await publicarConfiguracaoDeNiveis({
+    protecaoDias: 30,
+    regras: [
+      { codigo: 'bronze', minimoClientes: 0, percentualCentesimos: 500 },
+      { codigo: 'prata', minimoClientes: 1_000, percentualCentesimos: 750 },
+      { codigo: 'ouro', minimoClientes: 2_000, percentualCentesimos: 1_000 },
+    ],
+    autorId: null,
+  })
+  if (!publicada.ok) throw new Error(publicada.mensagem)
 })
 
 afterAll(async () => {
   sairDaSessao()
   limparCookies()
+  if (configuracaoOriginal?.ok) {
+    await publicarConfiguracaoDeNiveis({
+      protecaoDias: configuracaoOriginal.configuracao.protecaoDias,
+      regras: configuracaoOriginal.configuracao.niveis.map((n) => ({
+        codigo: n.codigo,
+        minimoClientes: n.minimoClientes,
+        percentualCentesimos: n.percentualCentesimos,
+      })),
+      autorId: null,
+    })
+  }
   if (AMBIENTE_ORIGINAL === undefined) delete process.env.VINCIS_AMBIENTE
   else process.env.VINCIS_AMBIENTE = AMBIENTE_ORIGINAL
 
@@ -727,8 +756,10 @@ describe('o que não gera comissão', () => {
     expect(await comissoesDe(id)).toHaveLength(0)
   })
 
-  it('cálculo em centavos inteiros, 5% determinístico, avulso segue 10%', () => {
-    expect(PERCENTUAL_RECORRENTE_BASE).toBe(5)
+  it('cálculo em centavos inteiros, 5% determinístico, avulso segue 10%', async () => {
+    // O percentual de entrada vem da configuração publicada, não de constante.
+    const vigente = await obterConfiguracaoVigente()
+    expect(vigente.ok && vigente.configuracao.niveis[0].percentualCentesimos).toBe(500)
     expect(PERCENTUAL_AVULSO).toBe(10)
     expect(calcularComissaoCentavos(24_000, 5)).toBe(1_200)
     expect(calcularComissaoCentavos(33_333, 5)).toBe(1_667) // 1.666,65 → 1.667

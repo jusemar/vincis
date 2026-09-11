@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue } from "framer-motion";
 import {
@@ -10,6 +12,26 @@ import {
   Flame,
 } from "lucide-react";
 import Footer from "../../../components/shared/Footer";
+import { formatarPercentualCentesimos } from "../constants/programa";
+import type { NiveisPublicos } from "../lib/niveis";
+
+/** Ícone de cada nível. Estrutura, não regra: os números vêm da configuração. */
+const ICONE_DO_NIVEL: Record<string, typeof Award> = {
+  bronze: Award,
+  prata: Gem,
+  ouro: Crown,
+};
+
+/** O topo e o nível do meio, pelos nomes configurados. */
+function nomesDosNiveis(niveis: NiveisPublicos | null) {
+  const lista = niveis?.niveis ?? [];
+  const topo = lista.at(-1)?.nome ?? "Parceiro";
+  return { topo, meio: lista[1]?.nome ?? topo };
+}
+
+function quantosClientes(quantidade: number) {
+  return `${quantidade} ${quantidade === 1 ? "cliente recorrente ativo" : "clientes recorrentes ativos"}`;
+}
 
 function AnimatedNumber({ value, prefix = "", suffix = "", decimals = 0, duration = 1200 }: {
   value: number; prefix?: string; suffix?: string; decimals?: number; duration?: number;
@@ -291,21 +313,38 @@ function ComoFunciona() {
   );
 }
 
-function Niveis() {
-  const tiers = [
-    {
-      name: "Bronze", icon: Award, pct: "10%", desc: "Comece a indicar e construa sua base.",
-      perks: ["Link de indicação", "Materiais prontos", "Pagamento mensal"], popular: false,
-    },
-    {
-      name: "Prata", icon: Gem, pct: "20%", desc: "Para parceiros consistentes que escalam.",
-      perks: ["Tudo do Bronze", "Mentoria mensal", "Pagamento quinzenal", "Eventos exclusivos"], popular: true,
-    },
-    {
-      name: "Diamante", icon: Crown, pct: "30%", desc: "Status de elite, renda de verdadeiros líderes.",
-      perks: ["Tudo do Prata", "Gestor dedicado", "Pagamento semanal", "Bônus por meta", "Acesso aos lançamentos"], popular: false,
-    },
-  ];
+function Niveis({ niveis }: { niveis: NiveisPublicos | null }) {
+  // Nome, percentual e critério são os publicados pela Gestão. A página não
+  // conhece nenhum desses números: se a regra muda, esta trilha muda junto.
+  const tiers = (niveis?.niveis ?? []).map((nivel, indice) => ({
+    name: nivel.nome,
+    icon: ICONE_DO_NIVEL[nivel.codigo] ?? Award,
+    pct: formatarPercentualCentesimos(nivel.percentualCentesimos),
+    desc:
+      indice === 0
+        ? "Comece aqui: é o nível de entrada do programa."
+        : `Atinja ${quantosClientes(nivel.minimoClientes)}.`,
+    perks: [
+      `Comissão recorrente de ${formatarPercentualCentesimos(nivel.percentualCentesimos)} por mês`,
+      "Você recebe enquanto o cliente indicado continuar ativo",
+      ...(indice > 0 && niveis && niveis.protecaoDias > 0
+        ? [`Proteção de ${niveis.protecaoDias} ${niveis.protecaoDias === 1 ? "dia" : "dias"} contra queda de nível`]
+        : []),
+    ],
+    popular: indice === 1,
+  }));
+
+  if (!tiers.length) {
+    return (
+      <section id="niveis" className="container mx-auto px-6 py-28 relative">
+        <SectionHeader eyebrow="Níveis de carreira" title={<>Suba de nível e <span className="text-gradient-gold">multiplique</span> sua renda</>} />
+        <p className="mt-14 text-center text-sm text-muted-foreground">
+          Os níveis do programa estão sendo atualizados. Em instantes eles aparecem aqui.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section id="niveis" className="container mx-auto px-6 py-28 relative">
       <SectionHeader eyebrow="Níveis de carreira" title={<>Suba de nível e <span className="text-gradient-gold">multiplique</span> sua renda</>} />
@@ -353,11 +392,17 @@ function Niveis() {
   );
 }
 
-function Simulador() {
+function Simulador({ niveis }: { niveis: NiveisPublicos | null }) {
+  const opcoes = niveis?.niveis ?? [];
   const [clientes, setClientes] = useState(15);
   const [ticket, setTicket] = useState(450);
-  const [tier, setTier] = useState<"bronze" | "prata" | "diamante">("prata");
-  const pct = tier === "bronze" ? 0.1 : tier === "prata" ? 0.2 : 0.3;
+  const [tier, setTier] = useState<string | null>(null);
+  // O percentual de cada nível vem da configuração; nenhum número aqui.
+  const selecionado =
+    opcoes.find((nivel) => nivel.codigo === tier) ??
+    opcoes[Math.min(1, opcoes.length - 1)] ??
+    null;
+  const pct = selecionado ? selecionado.percentualCentesimos / 10_000 : 0;
   const mensal = clientes * ticket * pct;
   const anual = mensal * 12;
   const cinco = mensal * 60;
@@ -366,6 +411,17 @@ function Simulador() {
     () => Array.from({ length: 12 }).map((_, i) => ({ m: i + 1, v: mensal * (i + 1) })),
     [mensal]
   );
+
+  if (!selecionado) {
+    return (
+      <section id="simulador" className="container mx-auto px-6 py-28 relative">
+        <SectionHeader eyebrow="Simulador interativo" title={<>Veja <span className="text-gradient-amber">quanto você pode ganhar</span> por mês</>} />
+        <p className="mt-14 text-center text-sm text-muted-foreground">
+          O simulador volta assim que os níveis do programa forem publicados.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section id="simulador" className="container mx-auto px-6 py-28 relative">
@@ -378,12 +434,12 @@ function Simulador() {
           <div>
             <div className="text-xs text-muted-foreground mb-2">Seu nível</div>
             <div className="grid grid-cols-3 gap-2">
-              {(["bronze","prata","diamante"] as const).map((t) => (
-                <button key={t} onClick={() => setTier(t)}
+              {opcoes.map((nivel) => (
+                <button key={nivel.codigo} onClick={() => setTier(nivel.codigo)}
                   className={`rounded-xl py-2.5 text-xs font-semibold capitalize transition ${
-                    tier === t ? "text-on-primary bg-gradient-gold" : "glass hover:bg-white/5"
+                    selecionado.codigo === nivel.codigo ? "text-on-primary bg-gradient-gold" : "glass hover:bg-white/5"
                   }`}>
-                  {t}
+                  {nivel.nome}
                 </button>
               ))}
             </div>
@@ -459,7 +515,8 @@ function Stat({ label, value, highlight = false }: { label: string; value: numbe
   );
 }
 
-function PainelPreview() {
+function PainelPreview({ niveis }: { niveis: NiveisPublicos | null }) {
+  const { topo } = nomesDosNiveis(niveis);
   return (
     <section id="painel" className="container mx-auto px-6 py-28 relative">
       <SectionHeader eyebrow="Painel do Parceiro" title={<>Tudo o que você precisa em <span className="text-gradient-gold">um só lugar</span></>} />
@@ -505,7 +562,7 @@ function PainelPreview() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="glass rounded-full px-3 py-1.5 text-xs flex items-center gap-2">
-                    <Crown className="size-3 text-amber-500" /> Diamante 87%
+                    <Crown className="size-3 text-amber-500" /> {topo} 87%
                   </div>
                 </div>
               </div>
@@ -562,7 +619,7 @@ function PainelPreview() {
                   </div>
                   <div className="-mt-32 text-center pointer-events-none">
                     <div className="font-display text-2xl font-semibold">87%</div>
-                    <div className="text-[10px] text-muted-foreground">para Diamante</div>
+                    <div className="text-[10px] text-muted-foreground">para {topo}</div>
                   </div>
                 </div>
               </div>
@@ -578,13 +635,14 @@ function PainelPreview() {
   );
 }
 
-function Ranking() {
+function Ranking({ niveis }: { niveis: NiveisPublicos | null }) {
+  const { topo, meio } = nomesDosNiveis(niveis);
   const list = [
-    { p: 1, n: "Marina Costa", c: "São Paulo · SP", v: 28430, g: 24, t: "Diamante" },
-    { p: 2, n: "Rafael Andrade", c: "Curitiba · PR", v: 24100, g: 18, t: "Diamante" },
-    { p: 3, n: "Camila Reis", c: "Recife · PE", v: 21800, g: 21, t: "Prata" },
-    { p: 4, n: "Diego Martins", c: "Porto Alegre · RS", v: 19250, g: 9, t: "Prata" },
-    { p: 5, n: "Aline Souza", c: "Salvador · BA", v: 17400, g: 14, t: "Prata" },
+    { p: 1, n: "Marina Costa", c: "São Paulo · SP", v: 28430, g: 24, t: topo },
+    { p: 2, n: "Rafael Andrade", c: "Curitiba · PR", v: 24100, g: 18, t: topo },
+    { p: 3, n: "Camila Reis", c: "Recife · PE", v: 21800, g: 21, t: meio },
+    { p: 4, n: "Diego Martins", c: "Porto Alegre · RS", v: 19250, g: 9, t: meio },
+    { p: 5, n: "Aline Souza", c: "Salvador · BA", v: 17400, g: 14, t: meio },
   ];
   return (
     <section id="ranking" className="container mx-auto px-6 py-28 relative">
@@ -649,11 +707,12 @@ function Ranking() {
   );
 }
 
-function Depoimentos() {
+function Depoimentos({ niveis }: { niveis: NiveisPublicos | null }) {
+  const { topo, meio } = nomesDosNiveis(niveis);
   const items = [
     { n: "Marina C.", r: "Top 1 nacional", q: "Em 8 meses construí uma renda recorrente que substituiu meu salário. O painel é absurdamente intuitivo." },
-    { n: "Rafael A.", r: "Diamante", q: "O suporte e os materiais fazem total diferença. Eu só compartilho — a Vincis cuida do resto." },
-    { n: "Camila R.", r: "Prata", q: "Comecei sem entender de nada e em 60 dias bati minha primeira meta. O simulador é literalmente real." },
+    { n: "Rafael A.", r: topo, q: "O suporte e os materiais fazem total diferença. Eu só compartilho — a Vincis cuida do resto." },
+    { n: "Camila R.", r: meio, q: "Comecei sem entender de nada e em 60 dias bati minha primeira meta. O simulador é literalmente real." },
   ];
   return (
     <section className="container mx-auto px-6 py-28 relative">
@@ -689,10 +748,10 @@ function Depoimentos() {
 function FAQ() {
   const items = [
     { q: "Preciso pagar para ser parceiro?", a: "Não. O programa Vincis é 100% gratuito. Você só investe seu tempo." },
-    { q: "Como funciona o pagamento?", a: "Pagamentos via Pix. Mensal no Bronze, quinzenal no Prata e semanal no Diamante." },
+    { q: "Como funciona o pagamento?", a: "Pagamentos via Pix. Suas comissões liberadas ficam disponíveis para saque, e você pede quando quiser." },
     { q: "Posso indicar de qualquer cidade?", a: "Sim. Atendemos todo o Brasil e parceiros podem atuar 100% online." },
     { q: "O que acontece se o cliente cancelar?", a: "Você recebe enquanto o cliente estiver ativo. Sem letra miúda." },
-    { q: "Existe meta mínima?", a: "Não há meta obrigatória, mas há bônus por performance ao subir de nível." },
+    { q: "Existe meta mínima?", a: "Não há meta obrigatória. Ao subir de nível, as próximas comissões passam a usar o percentual daquele nível." },
   ];
   const [open, setOpen] = useState<number | null>(0);
   return (
@@ -760,17 +819,17 @@ function CTAFinal() {
   );
 }
 
-export function PaginaParceiros() {
+export function PaginaParceiros({ niveis = null }: { niveis?: NiveisPublicos | null }) {
   return (
     <div className="min-h-dvh bg-background text-foreground overflow-x-hidden">
       <main>
         <Hero />
         <ComoFunciona />
-        <Niveis />
-        <Simulador />
-        <PainelPreview />
-        <Ranking />
-        <Depoimentos />
+        <Niveis niveis={niveis} />
+        <Simulador niveis={niveis} />
+        <PainelPreview niveis={niveis} />
+        <Ranking niveis={niveis} />
+        <Depoimentos niveis={niveis} />
         <FAQ />
         <CTAFinal />
       </main>

@@ -3,6 +3,7 @@ import {
   SITUACAO_PARCEIRO,
 } from '../../constants/mock-painel'
 import type { LinkDoParceiro } from '../../lib/link-de-indicacao'
+import type { SituacaoDeNivel } from '../../lib/niveis'
 import { CardDeNiveis } from './CardDeNiveis'
 import { GraficoDeComissoes } from './GraficoDeComissoes'
 import { HeroDoParceiro } from './HeroDoParceiro'
@@ -48,10 +49,13 @@ import {
 export function PainelDoParceiro({
   nome,
   link,
+  situacaoNivel = null,
 }: {
   nome: string
   /** Link real do parceiro; `null` enquanto a conta não ativou. */
   link: LinkDoParceiro | null
+  /** Nível real, da configuração publicada. Nulo quando indisponível. */
+  situacaoNivel?: SituacaoDeNivel | null
 }) {
   const rendaRecorrente =
     KPIS_PARCEIRO.find((kpi) => kpi.id === 'renda-recorrente')?.valor ?? 0
@@ -60,8 +64,7 @@ export function PainelDoParceiro({
     <div className="space-y-6">
       <HeroDoParceiro
         nome={nome}
-        nivel={SITUACAO_PARCEIRO.nivel}
-        recorrentesAtivos={SITUACAO_PARCEIRO.recorrentesAtivos}
+        situacao={situacaoNivel}
         clientesAtivos={SITUACAO_PARCEIRO.clientesAtivos}
         rendaRecorrente={rendaRecorrente}
         mesesConsecutivos={SITUACAO_PARCEIRO.mesesConsecutivos}
@@ -78,16 +81,12 @@ export function PainelDoParceiro({
         <div className="lg:col-span-2 lg:h-full">
           <GraficoDeComissoes />
         </div>
-        <CardDeNiveis
-          nivel={SITUACAO_PARCEIRO.nivel}
-          recorrentesAtivos={SITUACAO_PARCEIRO.recorrentesAtivos}
-          emProtecao={SITUACAO_PARCEIRO.emProtecao}
-        />
+        <CardDeNiveis situacao={situacaoNivel} />
       </div>
 
       <div className="grid items-stretch gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 lg:h-full">
-          <SistemaHibrido />
+          <SistemaHibrido situacao={situacaoNivel} />
         </div>
         <CupomDoParceiro />
       </div>

@@ -12,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { assinaturaCompetencias } from '../assinatura_competencias/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
+import { parceiroNiveis } from '../parceiro_niveis/tabela'
 import { parceiroAtribuicoes } from '../parceiro_atribuicoes/tabela'
 import { parceiros } from '../parceiros/tabela'
 import { usuarios } from '../usuarios/tabela'
@@ -103,6 +104,15 @@ export const parceiroComissoes = pgTable(
     disponivelEm: timestamp('disponivel_em'),
     pagaEm: timestamp('paga_em'),
     canceladaEm: timestamp('cancelada_em'),
+    /**
+     * O nível do parceiro quando a recorrente nasceu, e a versão da
+     * configuração que deu o percentual. Congelados, como o percentual.
+     * Nulos na avulsa, que não depende de nível.
+     */
+    nivelCodigo: varchar('nivel_codigo', { length: 20 }).references(
+      () => parceiroNiveis.codigo,
+    ),
+    nivelConfiguracaoVersao: integer('nivel_configuracao_versao'),
     /** O pagamento que sustentava a recorrente foi estornado. */
     pagamentoEstornadoEm: timestamp('pagamento_estornado_em'),
     createdAt: timestamp('created_at').defaultNow().notNull(),

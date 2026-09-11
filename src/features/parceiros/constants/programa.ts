@@ -1,75 +1,21 @@
 /**
  * Vocabulário do Programa de Parceiros.
  *
- * Aqui moram as regras já decididas — e **só** elas. São três níveis, e o
- * percentual de cada um é a mesma fonte lida pelo card de níveis, pelo bloco do
- * sistema híbrido e pelo texto do Hero: sem isto, "5–10%" e a lista de níveis
- * viram dois lugares capazes de discordar, e o dia em que discordarem o
- * parceiro lê dois percentuais diferentes na mesma tela.
+ * ## Níveis não moram aqui
  *
- * Não existe Diamante. O nível mais alto é Ouro, com 10% — e é por isso que o
- * teto do intervalo recorrente é derivado da tabela (`FAIXA_RECORRENTE`) em vez
- * de escrito à mão.
- *
- * Nada aqui toca banco: o programa ainda não tem persistência. Este arquivo é
- * a regra comercial em forma de constante, para que a tela visual da aprovação
- * já mostre os números certos e a implementação real não precise reescrevê-los.
+ * Bronze, Prata e Ouro — percentual, mínimo de clientes e dias de proteção —
+ * são configuração da Gestão, versionada no banco (`lib/niveis.ts`). Nenhum
+ * desses números existe no código: a tela, o motor e a comissão leem a versão
+ * publicada. Este arquivo guarda o que é regra fixa (a comissão avulsa) e os
+ * formatadores de percentual.
  */
 
-export const NIVEIS_PARCEIRO = [
-  {
-    codigo: 'bronze',
-    nome: 'Bronze',
-    /** Percentual da comissão recorrente, em pontos percentuais. */
-    percentual: 5,
-    /** Mínimo de clientes recorrentes ativos para alcançar o nível. */
-    minimoRecorrentes: 0,
-    descricao: 'Entrada no programa.',
-  },
-  {
-    codigo: 'prata',
-    nome: 'Prata',
-    percentual: 7.5,
-    minimoRecorrentes: 4,
-    descricao: 'A partir de 4 clientes recorrentes ativos.',
-  },
-  {
-    codigo: 'ouro',
-    nome: 'Ouro',
-    percentual: 10,
-    minimoRecorrentes: 10,
-    descricao: 'A partir de 10 clientes recorrentes ativos.',
-  },
-] as const
-
-export type NivelParceiro = (typeof NIVEIS_PARCEIRO)[number]
-export type CodigoNivel = NivelParceiro['codigo']
 
 /** Percentual formatado no padrão brasileiro: `7,5%`. */
 export function percentualFormatado(valor: number): string {
   return `${valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 }
 
-/**
- * O intervalo da comissão recorrente, derivado da tabela.
- *
- * O projeto de referência anunciava "5–15%", número que nunca existiu na regra
- * real. Derivar do primeiro e do último nível é o que impede o texto de
- * envelhecer sozinho quando um percentual mudar.
- */
-export const FAIXA_RECORRENTE = {
-  minimo: NIVEIS_PARCEIRO[0].percentual,
-  maximo: NIVEIS_PARCEIRO[NIVEIS_PARCEIRO.length - 1].percentual,
-} as const
-
-/**
- * O percentual da comissão recorrente enquanto não existem níveis.
- *
- * É o Bronze, lido da tabela. Congelado em cada comissão no instante em que
- * ela nasce: quando Prata e Ouro existirem, a comissão já criada continua com
- * o percentual daquele mês.
- */
-export const PERCENTUAL_RECORRENTE_BASE = NIVEIS_PARCEIRO[0].percentual
 
 /** Comissão fixa dos serviços avulsos. Não depende de nível. */
 export const PERCENTUAL_AVULSO = 10
@@ -112,45 +58,21 @@ export function tipoDoNegocio(
 }
 
 /**
- * Carência antes do rebaixamento, em dias.
+ * Um percentual guardado em centésimos (500 = 5%) como a tela o mostra: `7,5%`.
  *
- * Aparece na tela como conceito — a pílula de proteção no card de níveis. Não
- * há relógio contando nada ainda: a regra existe, a implementação virá com o
- * backend do programa.
+ * É assim que a configuração de níveis guarda percentuais — inteiros, para que
+ * a comissão nunca passe por ponto flutuante. A divisão aqui é só de exibição.
  */
-export const DIAS_PROTECAO_DOWNGRADE = 30
-
-/** Índice do nível na trilha; `-1` para código desconhecido. */
-export function indiceDoNivel(codigo: CodigoNivel): number {
-  return NIVEIS_PARCEIRO.findIndex((nivel) => nivel.codigo === codigo)
+export function formatarPercentualCentesimos(centesimos: number): string {
+  return `${(centesimos / 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
 }
 
-/** O próximo nível depois do atual, ou `null` quando já está no topo. */
-export function proximoNivel(codigo: CodigoNivel): NivelParceiro | null {
-  return NIVEIS_PARCEIRO[indiceDoNivel(codigo) + 1] ?? null
+/** Os mesmos centésimos como texto decimal exato, para a coluna `numeric`: `7.50`. */
+export function percentualEmTextoDecimal(centesimos: number): string {
+  return `${Math.floor(centesimos / 100)}.${String(centesimos % 100).padStart(2, '0')}`
 }
 
-/**
- * Quanto falta para o próximo nível.
- *
- * Devolve o progresso em porcentagem e quantos recorrentes faltam. No topo da
- * trilha não existe "faltam N": o card passa a dizer que o nível é o máximo, em
- * vez de mostrar uma barra parada em 100% sem explicação.
- */
-export function progressoParaProximoNivel(
-  codigo: CodigoNivel,
-  recorrentesAtivos: number,
-): { percentual: number; faltam: number; proximo: NivelParceiro | null } {
-  const proximo = proximoNivel(codigo)
-  if (!proximo) return { percentual: 100, faltam: 0, proximo: null }
-
-  const percentual = Math.min(
-    100,
-    Math.round((recorrentesAtivos / proximo.minimoRecorrentes) * 100),
-  )
-  return {
-    percentual,
-    faltam: Math.max(0, proximo.minimoRecorrentes - recorrentesAtivos),
-    proximo,
-  }
+/** Para campo de formulário, no padrão brasileiro: `7,50`. */
+export function percentualEmTextoDeCampo(centesimos: number): string {
+  return percentualEmTextoDecimal(centesimos).replace('.', ',')
 }

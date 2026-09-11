@@ -9,22 +9,16 @@
  * troca a origem do dado sem que se precise caçar número dentro de JSX — e,
  * enquanto isso, é possível ler numa tela só tudo o que a interface afirma.
  *
- * A persona é coerente com a regra dos níveis: **Prata, 7 clientes recorrentes
- * ativos**, portanto 70% do caminho para Ouro e 3 recorrentes faltando. Os
- * demais números acompanham essa história — um mock que se contradiz faz a
- * tela parecer quebrada quando ela não está.
+ * Nível, percentuais, clientes recorrentes ativos e proteção **não** estão
+ * aqui: vêm da configuração publicada pela Gestão e do estado real do parceiro
+ * (`lib/niveis.ts`).
  */
 
-import type { CodigoNivel } from './programa'
 
 /** Situação do parceiro. Alimenta Hero, KPIs e card de níveis. */
 export const SITUACAO_PARCEIRO = {
-  nivel: 'prata' as CodigoNivel,
-  recorrentesAtivos: 7,
   clientesAtivos: 37,
   mesesConsecutivos: 12,
-  /** A carência de 30 dias está em curso? Conceito visual, sem relógio real. */
-  emProtecao: false,
 }
 
 /**

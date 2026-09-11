@@ -38,10 +38,11 @@ import {
   RANKING,
 } from '../../constants/mock-painel'
 import {
-  FAIXA_RECORRENTE,
   PERCENTUAL_AVULSO,
+  formatarPercentualCentesimos,
   percentualFormatado,
 } from '../../constants/programa'
+import type { SituacaoDeNivel } from '../../lib/niveis'
 import { BotaoCopiar } from './BotaoCopiar'
 
 /**
@@ -86,7 +87,18 @@ function CabecalhoDeBloco({
 
 /* ------------------------------ sistema híbrido ------------------------------ */
 
-export function SistemaHibrido() {
+export function SistemaHibrido({
+  situacao = null,
+}: {
+  /** Os percentuais recorrentes vêm da configuração publicada. */
+  situacao?: SituacaoDeNivel | null
+} = {}) {
+  const percentuais = situacao?.niveis.map((nivel) => nivel.percentualCentesimos) ?? []
+  const faixa = percentuais.length
+    ? Math.min(...percentuais) === Math.max(...percentuais)
+      ? formatarPercentualCentesimos(percentuais[0])
+      : `${formatarPercentualCentesimos(Math.min(...percentuais))}–${formatarPercentualCentesimos(Math.max(...percentuais))}`
+    : '—'
   return (
     <section className="flex h-full flex-col rounded-xl border bg-card p-6">
       <CabecalhoDeBloco
@@ -142,8 +154,7 @@ export function SistemaHibrido() {
             <p className="mt-2 font-serif text-lg font-semibold">Planos recorrentes</p>
             <p className="mt-3 flex items-baseline gap-1.5">
               <span className="whitespace-nowrap font-serif text-4xl font-bold text-info">
-                {percentualFormatado(FAIXA_RECORRENTE.minimo)}–
-                {percentualFormatado(FAIXA_RECORRENTE.maximo)}
+                {faixa}
               </span>
               <span className="text-xs text-muted-foreground">
                 todo mês enquanto elegível

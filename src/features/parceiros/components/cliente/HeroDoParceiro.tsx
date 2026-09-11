@@ -4,13 +4,8 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Flame, Gem, Repeat, Share2, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Pilula } from '@/features/portal-cliente/components/ui/primitivos'
-import {
-  NIVEIS_PARCEIRO,
-  indiceDoNivel,
-  percentualFormatado,
-  progressoParaProximoNivel,
-  type CodigoNivel,
-} from '../../constants/programa'
+import { formatarPercentualCentesimos } from '../../constants/programa'
+import type { SituacaoDeNivel } from '../../lib/niveis'
 import { CUPOM_PARCEIRO, DESTAQUES_HERO } from '../../constants/mock-painel'
 import { NumeroAnimado } from './NumeroAnimado'
 import { BotaoCopiar } from './BotaoCopiar'
@@ -31,25 +26,23 @@ import { BotaoCopiar } from './BotaoCopiar'
  */
 export function HeroDoParceiro({
   nome,
-  nivel,
-  recorrentesAtivos,
+  situacao,
   clientesAtivos,
   rendaRecorrente,
   mesesConsecutivos,
 }: {
   nome: string
-  nivel: CodigoNivel
-  recorrentesAtivos: number
+  /** Nível real, da configuração publicada. Nulo quando indisponível. */
+  situacao: SituacaoDeNivel | null
   clientesAtivos: number
   rendaRecorrente: number
   mesesConsecutivos: number
 }) {
   const semMovimento = useReducedMotion()
-  const nivelAtual = NIVEIS_PARCEIRO[indiceDoNivel(nivel)]
-  const { percentual, faltam, proximo } = progressoParaProximoNivel(
-    nivel,
-    recorrentesAtivos,
-  )
+  const nivelAtual = situacao?.nivel ?? null
+  const proximo = situacao?.proximo ?? null
+  const faltam = proximo?.faltam ?? 0
+  const percentual = situacao?.progresso ?? 0
 
   return (
     <section className="relative overflow-hidden rounded-xl border bg-card p-6 sm:p-8">
@@ -85,7 +78,7 @@ export function HeroDoParceiro({
         <div className="min-w-0">
           <Pilula
             tom="destaque"
-            rotulo={`Parceiro ${nivelAtual.nome} · ${mesesConsecutivos}º mês consecutivo`}
+            rotulo={`${nivelAtual ? `Parceiro ${nivelAtual.nome}` : 'Parceiro'} · ${mesesConsecutivos}º mês consecutivo`}
           />
 
           <h1 className="mt-5 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
@@ -94,7 +87,9 @@ export function HeroDoParceiro({
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            {proximo ? (
+            {!nivelAtual ? (
+              <>Os níveis do programa estão indisponíveis no momento.</>
+            ) : proximo ? (
               <>
                 Mais{' '}
                 <span className="font-semibold text-foreground">
@@ -102,14 +97,14 @@ export function HeroDoParceiro({
                 </span>{' '}
                 e você desbloqueia o nível{' '}
                 <span className="font-semibold text-foreground">{proximo.nome}</span> —
-                comissão de {percentualFormatado(proximo.percentual)}, aplicada a toda
-                a sua carteira elegível.
+                comissão de {formatarPercentualCentesimos(proximo.percentualCentesimos)}{' '}
+                nas próximas comissões de toda a sua carteira elegível.
               </>
             ) : (
               <>
                 Você está no nível mais alto do programa —{' '}
                 <span className="font-semibold text-foreground">
-                  {percentualFormatado(nivelAtual.percentual)}
+                  {formatarPercentualCentesimos(nivelAtual.percentualCentesimos)}
                 </span>{' '}
                 sobre toda a sua carteira elegível.
               </>

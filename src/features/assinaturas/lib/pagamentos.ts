@@ -5,6 +5,7 @@ import {
   assinaturaPagamentoAlocacoes,
   assinaturaPagamentos,
   assinaturas,
+  parceiroAtribuicoes,
 } from '@/db/schema'
 import {
   ACOES_AUDITORIA,
@@ -12,6 +13,7 @@ import {
 } from '@/features/auditoria/lib/registrar-evento'
 import { TIMEZONE_PADRAO } from '@/features/consultorias/constants/consultoria'
 import { dataLocalDoInstante } from '@/features/consultorias/lib/tempo'
+import { recalcularNivelSemDerrubar } from '@/features/parceiros/lib/niveis'
 import { registrarAtribuicaoDaAssinatura } from '@/features/parceiros/lib/registrar-atribuicao'
 import {
   garantirComissaoRecorrenteSemDerrubar,
@@ -245,6 +247,16 @@ async function competenciasDoPagamento(tx: Leitor, pagamentoId: string) {
   ).map((linha) => linha.id)
 }
 
+/** O parceiro que originou a assinatura, se houver, tem o nível refeito. */
+async function recalcularNivelDaAssinatura(tx: Transacao, assinaturaId: string) {
+  const [atribuida] = await tx
+    .select({ parceiroId: parceiroAtribuicoes.parceiroId })
+    .from(parceiroAtribuicoes)
+    .where(eq(parceiroAtribuicoes.assinaturaId, assinaturaId))
+    .limit(1)
+  if (atribuida) await recalcularNivelSemDerrubar(tx, atribuida.parceiroId)
+}
+
 /** Deadlock ou serialização: a transação inteira pode ser tentada de novo. */
 function ehConflitoDeTrava(erro: unknown): boolean {
   const codigo = (e: unknown) =>
@@ -472,6 +484,8 @@ export async function confirmarPagamentoDeAssinatura(
       for (const competencia of alvo) {
         await garantirComissaoRecorrenteSemDerrubar(tx, competencia.id)
       }
+      // O mês coberto agora pode mudar a contagem de clientes ativos.
+      await recalcularNivelDaAssinatura(tx, assinatura.id)
 
       const numeros = alvo.map((competencia) => competencia.numero)
       await registrarEventoAuditoria(
@@ -631,6 +645,8 @@ export async function estornarPagamentoDeAssinatura(
             await revogarComissaoRecorrentePorEstorno(tx, competenciaId, pagamento.id),
           )
         }
+        // Sem o dinheiro, o cliente pode deixar de contar como ativo.
+        await recalcularNivelDaAssinatura(tx, pagamento.assinaturaId)
 
         const [contrato] = await tx
           .select({ clienteUsuarioId: assinaturas.clienteUsuarioId })

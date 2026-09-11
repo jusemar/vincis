@@ -1,5 +1,6 @@
 import { AreaDoParceiro } from '@/features/parceiros/components/cliente/AreaDoParceiro'
 import { SECAO_PADRAO } from '@/features/parceiros/constants/navegacao'
+import { obterSituacaoDeNivel } from '@/features/parceiros/lib/niveis'
 import { obterParceiroDaSessao } from '@/features/parceiros/queries/obter-parceiro'
 import { exigirClienteDaSessao } from '@/features/portal-cliente/lib/sessao-do-cliente'
 
@@ -16,12 +17,15 @@ import { exigirClienteDaSessao } from '@/features/portal-cliente/lib/sessao-do-c
 export default async function ParceirosRoute() {
   const { dados } = await exigirClienteDaSessao()
   const parceiro = await obterParceiroDaSessao()
+  // O nível é refeito agora, pela configuração vigente — nada fixo na tela.
+  const situacaoNivel = parceiro ? await obterSituacaoDeNivel(parceiro.id) : null
 
   return (
     <AreaDoParceiro
       nome={dados.nome}
       secao={SECAO_PADRAO}
       link={parceiro?.link ?? null}
+      situacaoNivel={situacaoNivel}
     />
   )
 }

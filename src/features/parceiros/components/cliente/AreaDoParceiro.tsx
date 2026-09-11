@@ -8,6 +8,7 @@ import type {
 } from '../../queries/listar-comissoes'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import type { RecebimentoDoParceiro } from '../../queries/obter-recebimento'
+import type { SituacaoDeNivel } from '../../lib/niveis'
 import { secaoValida } from '../../constants/navegacao'
 import { SecaoDoParceiro } from './SecoesDoParceiro'
 
@@ -32,6 +33,7 @@ export function AreaDoParceiro({
   baseDoSite = '',
   profissionais = [],
   recebimento = null,
+  situacaoNivel = null,
   resumoComissoes = {
     totalCentavos: 0,
     geradaCentavos: 0,
@@ -66,6 +68,8 @@ export function AreaDoParceiro({
   profissionais?: DestinoProfissional[]
   recebimento?: RecebimentoDoParceiro | null
   resumoComissoes?: ResumoDeComissoes
+  /** Nível real do parceiro, quando a seção aberta o mostra. */
+  situacaoNivel?: SituacaoDeNivel | null
 }) {
   const { primeiroNome, tratamentoComNome } = separarNomeDeTratamento(nome)
   const saudacao = tratamentoComNome ?? primeiroNome ?? 'parceiro'
@@ -73,6 +77,7 @@ export function AreaDoParceiro({
   return (
     <SecaoDoParceiro
       secao={secaoValida(secao)}
+      situacaoNivel={situacaoNivel}
       nome={saudacao}
       link={link}
       indicacoes={indicacoes}

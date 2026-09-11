@@ -449,6 +449,13 @@
       "when": 1789156174744,
       "tag": "0063_parceiro_comissao_recorrente",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1789163365518,
+      "tag": "0064_parceiro_niveis",
+      "breakpoints": true
     }
   ]
 }

@@ -14,8 +14,9 @@ import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
 } from '@/features/auditoria/lib/registrar-evento'
-import { PERCENTUAL_RECORRENTE_BASE } from '../constants/programa'
-import { calcularComissaoCentavos } from './registrar-comissao'
+import { percentualEmTextoDecimal } from '../constants/programa'
+import { ConfiguracaoDeNiveisIndisponivel, recalcularNivelDoParceiro } from './niveis'
+import { calcularComissaoPorCentesimos } from './registrar-comissao'
 
 type Transacao = Parameters<Parameters<typeof Banco.transaction>[0]>[0]
 
@@ -75,6 +76,7 @@ export type MotivoSemComissaoRecorrente =
   | 'sem_parceiro'
   | 'sem_cobertura_confirmada'
   | 'valor_zero'
+  | 'configuracao_indisponivel'
   | 'ja_existia'
   | 'erro'
 
@@ -104,9 +106,14 @@ export type ResultadoDaComissaoRecorrente =
  *
  * ## O valor
  *
- * 5% (o Bronze) sobre o valor **congelado na competência**, arredondado uma vez
- * pelo mesmo cálculo da comissão avulsa. Percentual, base e resultado ficam
- * copiados na linha: um nível futuro não reescreve o mês que já passou.
+ * O percentual do **nível do parceiro agora**, lido da configuração vigente
+ * publicada pela Gestão — nunca de uma constante. O nível é refeito aqui, com a
+ * linha do parceiro travada, então duas comissões nascendo juntas não
+ * discordam. Incide sobre o valor **congelado na competência**, em inteiros.
+ * Percentual, nível, versão da configuração, base e resultado ficam copiados
+ * na linha: nível ou configuração futuros não reescrevem o mês que já passou.
+ * Contratos antigos acompanham o nível nas competências seguintes, sem
+ * atribuição nova. Sem configuração válida, nenhuma comissão nasce.
  *
  * Nasce `disponivel`, porque o serviço daquele mês já terminou e o dinheiro
  * dele já entrou — entra no saldo livre do parceiro como qualquer comissão.
@@ -133,8 +140,24 @@ export async function garantirComissaoRecorrenteDaCompetencia(
     return nao('sem_cobertura_confirmada')
   }
 
-  const percentual = PERCENTUAL_RECORRENTE_BASE
-  const valorCentavos = calcularComissaoCentavos(competencia.valorBaseCentavos, percentual)
+  let nivel: Awaited<ReturnType<typeof recalcularNivelDoParceiro>>
+  try {
+    nivel = await recalcularNivelDoParceiro(tx, atribuicao.parceiroId)
+  } catch (erro) {
+    if (erro instanceof ConfiguracaoDeNiveisIndisponivel) {
+      console.error('[PARCEIROS] comissão recorrente adiada: níveis indisponíveis', {
+        competenciaId,
+        motivo: erro.message,
+      })
+      return nao('configuracao_indisponivel')
+    }
+    throw erro
+  }
+  const centesimos = nivel.nivel.percentualCentesimos
+  const valorCentavos = calcularComissaoPorCentesimos(
+    competencia.valorBaseCentavos,
+    centesimos,
+  )
   if (valorCentavos <= 0) return nao('valor_zero')
 
   const [assinatura] = await tx
@@ -158,7 +181,9 @@ export async function garantirComissaoRecorrenteDaCompetencia(
       profissionalId: assinatura.prestadorId,
       servicoReferencia: null,
       valorBaseCentavos: competencia.valorBaseCentavos,
-      percentual: percentual.toFixed(2),
+      percentual: percentualEmTextoDecimal(centesimos),
+      nivelCodigo: nivel.nivel.codigo,
+      nivelConfiguracaoVersao: nivel.configuracao.versao,
       valorCentavos,
       status: 'disponivel',
       geradaEm: agora,
@@ -180,7 +205,9 @@ export async function garantirComissaoRecorrenteDaCompetencia(
         assinaturaId: competencia.assinaturaId,
         competencia: competencia.numero,
         valorBaseCentavos: competencia.valorBaseCentavos,
-        percentual,
+        percentualCentesimos: centesimos,
+        nivel: nivel.nivel.codigo,
+        configuracaoVersao: nivel.configuracao.versao,
         valorCentavos,
         status: 'disponivel',
       },

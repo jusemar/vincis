@@ -21,6 +21,26 @@ export function calcularComissaoCentavos(
 }
 
 /**
+ * O valor da comissão a partir de um percentual em centésimos (500 = 5%).
+ *
+ * Só inteiros: `base × centésimos` cabe folgado num inteiro seguro, e o
+ * arredondamento é meio-para-cima, feito uma vez. É o cálculo da recorrente,
+ * cujo percentual vem da configuração da Gestão e pode ter duas casas.
+ */
+export function calcularComissaoPorCentesimos(
+  valorBaseCentavos: number,
+  percentualCentesimos: number,
+): number {
+  if (!Number.isInteger(valorBaseCentavos) || valorBaseCentavos < 0) {
+    throw new Error('A base precisa ser um inteiro não negativo de centavos.')
+  }
+  if (!Number.isInteger(percentualCentesimos) || percentualCentesimos < 0) {
+    throw new Error('O percentual precisa ser um inteiro não negativo de centésimos.')
+  }
+  return Math.floor((valorBaseCentavos * percentualCentesimos + 5_000) / 10_000)
+}
+
+/**
  * Registra a comissão que uma contratação efetiva gerou.
  *
  * ## Congelado, porque é direito adquirido
