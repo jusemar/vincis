@@ -2,6 +2,8 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
 import {
+  assinaturaCompetencias,
+  assinaturas,
   contratacoesServico,
   parceiroComissoes,
   parceiroSaqueItens,
@@ -10,13 +12,22 @@ import {
   usuarios,
 } from '@/db/schema'
 import { ROTULO_SAQUE, statusSaqueValido, type StatusSaque } from '../constants/saque'
-import { statusComissaoValido, type StatusComissao } from '../constants/comissao'
+import {
+  statusComissaoValido,
+  tipoComissaoValido,
+  type StatusComissao,
+  type TipoComissao,
+} from '../constants/comissao'
 
 const profissional = alias(usuarios, 'profissional_da_comissao')
 const cliente = alias(usuarios, 'cliente_da_comissao')
 
 export type ComissaoDoParceiro = {
   id: string
+  /** `avulso`: um negócio do catálogo. `recorrente`: um mês de assinatura. */
+  tipo: TipoComissao
+  /** O mês que gerou a recorrente, com o período quando já datado. */
+  competencia: { numero: number; inicio: string | null; fim: string | null } | null
   servico: string | null
   categoria: string | null
   clienteNome: string
@@ -84,7 +95,12 @@ export async function listarComissoesDoParceiro(
   const linhas = await db
     .select({
       id: parceiroComissoes.id,
-      servico: contratacoesServico.nomeServicoSnapshot,
+      tipo: parceiroComissoes.tipo,
+      // O serviço do catálogo na avulsa; o plano congelado na recorrente.
+      servico: sql<string | null>`coalesce(${contratacoesServico.nomeServicoSnapshot}, ${assinaturas.planoNome})`,
+      competenciaNumero: assinaturaCompetencias.numero,
+      competenciaInicio: assinaturaCompetencias.periodoInicio,
+      competenciaFim: assinaturaCompetencias.periodoFim,
       categoria: parceiroComissoes.servicoReferencia,
       clienteNome: cliente.nome,
       profissionalNome: profissional.nome,
@@ -106,17 +122,29 @@ export async function listarComissoesDoParceiro(
       contratacoesServico,
       eq(contratacoesServico.id, parceiroComissoes.contratacaoId),
     )
+    .leftJoin(
+      assinaturaCompetencias,
+      eq(assinaturaCompetencias.id, parceiroComissoes.competenciaId),
+    )
+    .leftJoin(assinaturas, eq(assinaturas.id, assinaturaCompetencias.assinaturaId))
     .where(eq(parceiroComissoes.parceiroId, parceiroId))
     .orderBy(desc(parceiroComissoes.geradaEm))
     .limit(limite)
 
-  const comissoes = linhas.map((linha) => ({
+  const comissoes = linhas.map(
+    ({ competenciaNumero, competenciaInicio, competenciaFim, ...linha }) => ({
     ...linha,
+    tipo: tipoComissaoValido(linha.tipo) ? linha.tipo : ('avulso' as TipoComissao),
+    competencia:
+      competenciaNumero !== null
+        ? { numero: competenciaNumero, inicio: competenciaInicio, fim: competenciaFim }
+        : null,
     percentual: Number(linha.percentual),
     status: statusComissaoValido(linha.status)
       ? linha.status
       : ('gerada' as StatusComissao),
-  }))
+  }),
+  )
 
   const somar = (estados: StatusComissao[]) =>
     comissoes

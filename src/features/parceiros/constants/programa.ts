@@ -62,6 +62,15 @@ export const FAIXA_RECORRENTE = {
   maximo: NIVEIS_PARCEIRO[NIVEIS_PARCEIRO.length - 1].percentual,
 } as const
 
+/**
+ * O percentual da comissão recorrente enquanto não existem níveis.
+ *
+ * É o Bronze, lido da tabela. Congelado em cada comissão no instante em que
+ * ela nasce: quando Prata e Ouro existirem, a comissão já criada continua com
+ * o percentual daquele mês.
+ */
+export const PERCENTUAL_RECORRENTE_BASE = NIVEIS_PARCEIRO[0].percentual
+
 /** Comissão fixa dos serviços avulsos. Não depende de nível. */
 export const PERCENTUAL_AVULSO = 10
 

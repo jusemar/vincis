@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { Pilula } from '@/features/portal-cliente/components/ui/primitivos'
 import {
   ROTULO_COMISSAO,
+  ROTULO_TIPO_COMISSAO,
   STATUS_COMISSAO,
   TOM_COMISSAO,
   type StatusComissao,
@@ -175,6 +176,18 @@ function Indicador({
   )
 }
 
+/** "Mês 2 (11/10–10/11)": o mês da assinatura que gerou a comissão recorrente. */
+function rotuloDaCompetencia(competencia: {
+  numero: number
+  inicio: string | null
+  fim: string | null
+}): string {
+  const base = `Mês ${competencia.numero}`
+  if (!competencia.inicio || !competencia.fim) return base
+  const curta = (data: string) => `${data.slice(8, 10)}/${data.slice(5, 7)}`
+  return `${base} (${curta(competencia.inicio)}–${curta(competencia.fim)})`
+}
+
 /**
  * A área financeira do parceiro.
  *
@@ -245,9 +258,8 @@ export function ComissoesDoParceiro({
 
     return comissoes.filter((comissao) => {
       if (aba !== 'todas' && comissao.status !== aba) return false
-      // Recorrência ainda não existe no catálogo: filtrar por ela devolve vazio,
-      // que é a resposta verdadeira.
-      if (tipo === 'recorrente') return false
+      if (tipo === 'avulsa' && comissao.tipo !== 'avulso') return false
+      if (tipo === 'recorrente' && comissao.tipo !== 'recorrente') return false
       if (limite && comissao.geradaEm < limite) return false
       if (!termo) return true
       return [
@@ -558,6 +570,9 @@ export function ComissoesDoParceiro({
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {comissao.clienteNome}
+                          {comissao.competencia
+                            ? ` · ${rotuloDaCompetencia(comissao.competencia)}`
+                            : ''}
                           {comissao.categoria
                             ? ` · ${rotuloDaReferencia(comissao.categoria)}`
                             : ''}
@@ -581,7 +596,7 @@ export function ComissoesDoParceiro({
                         {reais(comissao.valorCentavos)}
                       </td>
                       <td className="px-5 py-3.5 text-xs text-muted-foreground">
-                        Avulsa
+                        {ROTULO_TIPO_COMISSAO[comissao.tipo]}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted-foreground">
                         {DIA.format(comissao.geradaEm)}
@@ -608,6 +623,9 @@ export function ComissoesDoParceiro({
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {comissao.clienteNome}
+                        {comissao.competencia
+                          ? ` · ${rotuloDaCompetencia(comissao.competencia)}`
+                          : ''}
                       </p>
                     </div>
                     <Pilula
@@ -638,7 +656,7 @@ export function ComissoesDoParceiro({
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Repeat className="size-3" aria-hidden />
-                      Avulsa
+                      {ROTULO_TIPO_COMISSAO[comissao.tipo]}
                     </span>
                     <span className="ml-auto font-serif font-semibold tabular-nums text-primary">
                       {reais(comissao.valorCentavos)}

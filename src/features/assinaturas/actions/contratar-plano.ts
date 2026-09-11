@@ -2,12 +2,15 @@
 
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { db } from '@/db/connection'
 import { assinaturas } from '@/db/schema'
 import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
 } from '@/features/auditoria/lib/registrar-evento'
+import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
+import { vincularOrigemDaConta } from '@/features/parceiros/lib/registrar-atribuicao'
 import { calcularPreco } from '@/features/precificacao/lib/motor'
 import { obterTabelaDaVitrine } from '@/features/precificacao/queries/obter-tabela-precificacao'
 import type {
@@ -163,6 +166,14 @@ export async function contratarPlanoVincis(entrada: unknown) {
     }
   }
 
+  /*
+    A origem do visitante, lida antes da transação: `cookies()` é da
+    requisição. Nenhum id de parceiro vem do cliente — quem resolve a
+    indicação é o servidor. Aqui ela só é ligada à conta; o parceiro fica com
+    a assinatura quando a primeira da conta for ativada por pagamento.
+  */
+  const visitanteToken = (await cookies()).get(COOKIE_INDICACAO)?.value
+
   let assinaturaId: string
   try {
     assinaturaId = await db.transaction(async (tx) => {
@@ -195,6 +206,10 @@ export async function contratarPlanoVincis(entrada: unknown) {
         depende do pagamento, que ainda não existe.
       */
       const competencias = await gerarCompetenciasPrevistas(tx, criada.id)
+
+      // Contratar não consome a origem: só liga à conta o ciclo que a trouxe,
+      // quando a associação do cadastro falhou. A atribuição nasce na ativação.
+      await vincularOrigemDaConta(tx, { usuarioId: sessao.id, visitanteToken })
 
       await registrarEventoAuditoria(
         {

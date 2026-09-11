@@ -33,6 +33,19 @@ export const TOM_COMISSAO: Record<
   cancelada: 'neutro',
 }
 
+/** Avulsa: um negócio do catálogo. Recorrente: um mês de assinatura Vincis. */
+export const TIPOS_COMISSAO = ['avulso', 'recorrente'] as const
+export type TipoComissao = (typeof TIPOS_COMISSAO)[number]
+
+export const ROTULO_TIPO_COMISSAO: Record<TipoComissao, string> = {
+  avulso: 'Avulsa',
+  recorrente: 'Recorrente',
+}
+
+export function tipoComissaoValido(valor: string): valor is TipoComissao {
+  return (TIPOS_COMISSAO as readonly string[]).includes(valor)
+}
+
 export function statusComissaoValido(valor: string): valor is StatusComissao {
   return (STATUS_COMISSAO as readonly string[]).includes(valor)
 }

@@ -94,6 +94,22 @@ export const ACOES_AUDITORIA = {
   assinaturaPagamentoConfirmado: 'assinatura_pagamento_confirmado',
   /** O primeiro pagamento confirmado começou a vigência do contrato. */
   assinaturaAtivada: 'assinatura_ativada',
+  /** O dinheiro confirmado de uma assinatura voltou. */
+  assinaturaPagamentoEstornado: 'assinatura_pagamento_estornado',
+  /** A primeira assinatura da conta nasceu sob o parceiro que a originou. */
+  assinaturaAtribuidaParceiro: 'assinatura_atribuida_parceiro',
+  /** Um mês de assinatura foi prestado. */
+  competenciaAssinaturaCumprida: 'competencia_assinatura_cumprida',
+  /** Mês cumprido e pago: a comissão recorrente nasceu, disponível. */
+  comissaoRecorrenteCriada: 'comissao_recorrente_criada',
+  /** O pagamento do mês foi estornado antes de a comissão ser paga. */
+  comissaoRecorrenteCanceladaPorEstorno: 'comissao_recorrente_cancelada_estorno',
+  /** O pagamento do mês foi estornado depois de a comissão ser paga. */
+  comissaoRecorrentePagaComEstorno: 'comissao_recorrente_paga_estorno',
+  /** Um saque solicitado perdeu comissão por estorno e teve o valor refeito. */
+  saqueParceiroAjustadoPorEstorno: 'saque_parceiro_ajustado_estorno',
+  /** Um saque solicitado perdeu a última comissão por estorno. */
+  saqueParceiroCanceladoPorEstorno: 'saque_parceiro_cancelado_estorno',
 } as const
 
 export type AcaoAuditoria =

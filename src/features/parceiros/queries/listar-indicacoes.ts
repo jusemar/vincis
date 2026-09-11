@@ -1,6 +1,7 @@
-import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
+  assinaturas,
   contratacoesServico,
   parceiroAtribuicoes,
   parceiroComissoes,
@@ -175,9 +176,11 @@ export async function listarIndicacoesDoParceiro(
       iniciadaEm: parceiroAtribuicoes.createdAt,
       prazoDias: parceiroAtribuicoes.prazoDias,
       expiraEm: parceiroAtribuicoes.expiraEm,
-      nome: contratacoesServico.nomeServicoSnapshot,
+      // Na assinatura: o plano e o mensal congelados na contratação.
+      nome: sql<string | null>`coalesce(${contratacoesServico.nomeServicoSnapshot}, ${assinaturas.planoNome})`,
       modeloPreco: contratacoesServico.modeloPrecoSnapshot,
-      valorCentavos: contratacoesServico.valorSnapshotCentavos,
+      valorCentavos: sql<number | null>`coalesce(${contratacoesServico.valorSnapshotCentavos}, ${assinaturas.valorMensalCentavos})`,
+      assinaturaId: parceiroAtribuicoes.assinaturaId,
       statusContratacao: contratacoesServico.status,
       profissionalNome: profissional.nome,
       profissionalCodigo: perfisProfissionais.codigoPublico,
@@ -195,9 +198,15 @@ export async function listarIndicacoesDoParceiro(
       perfisProfissionais,
       eq(perfisProfissionais.usuarioId, contratacoesServico.prestadorId),
     )
+    .leftJoin(assinaturas, eq(assinaturas.id, parceiroAtribuicoes.assinaturaId))
+    // Só a avulsa: a recorrente é uma por mês, e juntá-la aqui repetiria o
+    // negócio uma vez por comissão. As mensais estão na página Comissões.
     .leftJoin(
       parceiroComissoes,
-      eq(parceiroComissoes.atribuicaoId, parceiroAtribuicoes.id),
+      and(
+        eq(parceiroComissoes.atribuicaoId, parceiroAtribuicoes.id),
+        eq(parceiroComissoes.tipo, 'avulso'),
+      ),
     )
     .where(
       inArray(
@@ -217,14 +226,16 @@ export async function listarIndicacoesDoParceiro(
     comissaoCentavos,
     comissaoPercentual,
     comissaoStatus,
+    assinaturaId,
     ...negocio
   } of atribuicoes) {
     const lista = negociosPorCiclo.get(indicacaoId) ?? []
     lista.push({
       ...negocio,
-      tipo: tipoDoNegocio(modeloPreco),
+      tipo: assinaturaId ? 'recorrente' : tipoDoNegocio(modeloPreco),
       contratado:
-        statusContratacao !== null && statusContratacao !== 'aguardando_orcamento',
+        assinaturaId !== null ||
+        (statusContratacao !== null && statusContratacao !== 'aguardando_orcamento'),
       profissional: profissionalNome
         ? { nome: profissionalNome, codigoPublico: profissionalCodigo }
         : null,

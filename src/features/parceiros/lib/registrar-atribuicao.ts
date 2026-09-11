@@ -1,11 +1,16 @@
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, ne } from 'drizzle-orm'
 import type { db as Banco } from '@/db/connection'
 import {
+  assinaturas,
   parceiroAtribuicoes,
   parceiroEventos,
   parceiroIndicacoes,
   usuarios,
 } from '@/db/schema'
+import {
+  ACOES_AUDITORIA,
+  registrarEventoAuditoria,
+} from '@/features/auditoria/lib/registrar-evento'
 import { calcularExpiracao } from '../constants/prazo'
 import { gerarComissaoDaContratacao } from './registrar-comissao'
 import { obterPrazoVigente } from '../queries/obter-prazo'
@@ -334,4 +339,173 @@ export async function registrarAtribuicaoDaContratacao(
     negocio: { contratacaoId },
     evento: efetivada ? 'contratou_servico' : 'demonstrou_interesse',
   })
+}
+
+/**
+ * Liga à conta o ciclo anônimo que a trouxe, na contratação de uma assinatura.
+ *
+ * É só **identidade**, e é o mesmo elo que o avulso já faz: quando a conta
+ * nasceu depois do acesso pelo link e a associação falhou no cadastro, o ciclo
+ * deste navegador passa a apontar para ela. A barreira de data é a de sempre —
+ * conta anterior ao clique não é captada —, e conta que já tem origem não muda.
+ *
+ * Não cria atribuição: contratar não consome a origem. Quem consome é a
+ * ativação da primeira assinatura (`registrarAtribuicaoDaAssinatura`), e ali o
+ * cookie já não existe — a origem é lida da conta.
+ */
+export async function vincularOrigemDaConta(
+  tx: Transacao,
+  {
+    usuarioId,
+    visitanteToken,
+  }: { usuarioId: string; visitanteToken: string | undefined },
+): Promise<boolean> {
+  try {
+    return await tx.transaction(async (interna) => {
+      const indicacao = await resolverIndicacaoVigente(
+        interna,
+        usuarioId,
+        visitanteToken,
+      )
+      // Sem origem, ou a conta já tinha a sua: nada a ligar.
+      if (!indicacao || indicacao.usuarioId !== null) return false
+      const [ligada] = await interna
+        .update(parceiroIndicacoes)
+        .set({ usuarioId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(parceiroIndicacoes.id, indicacao.id),
+            isNull(parceiroIndicacoes.usuarioId),
+          ),
+        )
+        .returning({ id: parceiroIndicacoes.id })
+      return Boolean(ligada)
+    })
+  } catch (erro) {
+    console.error('[PARCEIROS] falha ao ligar a origem da conta', {
+      nome: erro instanceof Error ? erro.name : 'Erro desconhecido',
+      mensagem: erro instanceof Error ? erro.message : undefined,
+    })
+    return false
+  }
+}
+
+/**
+ * A atribuição de uma assinatura Vincis, no instante em que ela é ativada.
+ *
+ * ## O primeiro contrato recorrente efetivamente ativado
+ *
+ * O parceiro origina **um** contrato: a primeira assinatura da conta que for
+ * ativada por pagamento confirmado. Criar uma assinatura e abandoná-la não
+ * consome nada — a próxima que for paga é a que fica com o parceiro. Depois
+ * que uma assinatura da conta foi ativada, a origem acabou: a segunda, a
+ * recontratação após um cancelamento e qualquer contrato futuro nascem sem
+ * parceiro.
+ *
+ * Por isso a condição é "nenhuma **outra** assinatura desta conta já foi
+ * ativada" (`vigencia_inicio` preenchida), e não "nenhuma outra existe".
+ *
+ * ## A origem é a da conta
+ *
+ * Chamada de dentro da confirmação do pagamento, que não tem cookie: a origem
+ * é a indicação ligada à conta — a do cadastro, ou a ligada na contratação por
+ * `vincularOrigemDaConta`. Clique em outro parceiro depois do cadastro não
+ * cria origem nova, e quem já era da base não tem origem nenhuma.
+ *
+ * ## Duas ativações simultâneas
+ *
+ * B e C pagas ao mesmo tempo leem "nenhuma outra ativada" as duas — uma não vê
+ * a outra antes do commit. Quem decide é o índice parcial
+ * `(indicacao_id) where assinatura_id is not null`: uma linha nasce, a outra
+ * encontra o conflito e sai sem parceiro.
+ *
+ * ## Imutável e sem prazo
+ *
+ * `prazo_dias` e `expira_em` ficam nulos: o vínculo vale até o fim daquele
+ * contrato e nada o reescreve. Roda num ponto de salvamento próprio — falhar
+ * aqui nunca derruba o pagamento.
+ */
+export async function registrarAtribuicaoDaAssinatura(
+  tx: Transacao,
+  {
+    assinaturaId,
+    usuarioId,
+    nome,
+  }: {
+    assinaturaId: string
+    /** O cliente dono do contrato. */
+    usuarioId: string
+    /** Nome congelado do plano. */
+    nome: string
+  },
+): Promise<{ parceiroId: string } | null> {
+  try {
+    return await tx.transaction(async (interna) => {
+      const [outraAtivada] = await interna
+        .select({ id: assinaturas.id })
+        .from(assinaturas)
+        .where(
+          and(
+            eq(assinaturas.clienteUsuarioId, usuarioId),
+            ne(assinaturas.id, assinaturaId),
+            isNotNull(assinaturas.vigenciaInicio),
+          ),
+        )
+        .limit(1)
+      if (outraAtivada) return null
+
+      // Só a conta responde: sem cookie, sem captura tardia.
+      const indicacao = await resolverIndicacaoVigente(interna, usuarioId, undefined)
+      if (!indicacao) return null
+
+      const [criada] = await interna
+        .insert(parceiroAtribuicoes)
+        .values({
+          indicacaoId: indicacao.id,
+          parceiroId: indicacao.parceiroId,
+          usuarioId,
+          assinaturaId,
+          resolvidaPor: indicacao.resolvidaPor,
+          servicoReferencia: null,
+          prazoDias: null,
+          expiraEm: null,
+        })
+        // Qualquer das duas travas: a assinatura já atribuída, ou a indicação
+        // que já foi consumida por outra assinatura ativada.
+        .onConflictDoNothing()
+        .returning({ id: parceiroAtribuicoes.id })
+      if (!criada) return null
+
+      await interna.insert(parceiroEventos).values({
+        indicacaoId: indicacao.id,
+        tipo: 'contratou_servico',
+        dados: { servico: null, nome, recorrente: true },
+      })
+
+      await registrarEventoAuditoria(
+        {
+          acao: ACOES_AUDITORIA.assinaturaAtribuidaParceiro,
+          entidade: 'parceiro_atribuicoes',
+          registroAfetado: criada.id,
+          usuarioId,
+          origem: 'sistema',
+          metadados: {
+            assinaturaId,
+            parceiroId: indicacao.parceiroId,
+            momento: 'ativacao',
+          },
+        },
+        interna,
+      )
+
+      return { parceiroId: indicacao.parceiroId }
+    })
+  } catch (erro) {
+    console.error('[PARCEIROS] falha ao registrar atribuição da assinatura', {
+      assinaturaId,
+      nome: erro instanceof Error ? erro.name : 'Erro desconhecido',
+      mensagem: erro instanceof Error ? erro.message : undefined,
+    })
+    return null
+  }
 }

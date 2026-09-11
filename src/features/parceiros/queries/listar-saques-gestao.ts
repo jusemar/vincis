@@ -1,6 +1,8 @@
-import { desc, eq, inArray } from 'drizzle-orm'
+import { desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
+  assinaturaCompetencias,
+  assinaturas,
   contratacoesServico,
   parceiroComissoes,
   parceiroSaqueItens,
@@ -101,7 +103,8 @@ export async function listarSaquesParaGestao(
       saqueId: parceiroSaqueItens.saqueId,
       comissaoId: parceiroSaqueItens.comissaoId,
       valorCentavos: parceiroSaqueItens.valorCentavos,
-      servico: contratacoesServico.nomeServicoSnapshot,
+      // Na recorrente, o plano e o mês que geraram a comissão.
+      servico: sql<string | null>`coalesce(${contratacoesServico.nomeServicoSnapshot}, ${assinaturas.planoNome} || ' · mês ' || ${assinaturaCompetencias.numero})`,
       clienteNome: usuarios.nome,
     })
     .from(parceiroSaqueItens)
@@ -114,6 +117,11 @@ export async function listarSaquesParaGestao(
       contratacoesServico,
       eq(contratacoesServico.id, parceiroComissoes.contratacaoId),
     )
+    .leftJoin(
+      assinaturaCompetencias,
+      eq(assinaturaCompetencias.id, parceiroComissoes.competenciaId),
+    )
+    .leftJoin(assinaturas, eq(assinaturas.id, assinaturaCompetencias.assinaturaId))
     .where(
       inArray(
         parceiroSaqueItens.saqueId,

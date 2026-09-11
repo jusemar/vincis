@@ -57,6 +57,12 @@ export const parceiroSaques = pgTable(
      * pergunta que se faz meses depois.
      */
     recusadoEm: timestamp('recusado_em'),
+    /**
+     * Preenchido quando o pedido deixa de existir sem pagamento nem recusa: hoje,
+     * só quando o estorno de um pagamento de assinatura retira a última
+     * comissão que o sustentava. O motivo vai em `observacao`.
+     */
+    canceladoEm: timestamp('cancelado_em'),
     /** Espaço do Gestor para registrar o que decidiu, na etapa futura. */
     observacao: text('observacao'),
     /*

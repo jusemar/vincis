@@ -12,6 +12,12 @@ import {
 } from '@/features/auditoria/lib/registrar-evento'
 import { TIMEZONE_PADRAO } from '@/features/consultorias/constants/consultoria'
 import { dataLocalDoInstante } from '@/features/consultorias/lib/tempo'
+import { registrarAtribuicaoDaAssinatura } from '@/features/parceiros/lib/registrar-atribuicao'
+import {
+  garantirComissaoRecorrenteSemDerrubar,
+  revogarComissaoRecorrentePorEstorno,
+  type DesfechoDoEstorno,
+} from '@/features/parceiros/lib/comissao-recorrente'
 import {
   MOEDA_ASSINATURA,
   PROVEDOR_HOMOLOGACAO,
@@ -229,6 +235,29 @@ async function iniciarVigencia(tx: Transacao, assinaturaId: string, inicio: Date
     )
 }
 
+/** Os meses que um pagamento cobre, pelo id. */
+async function competenciasDoPagamento(tx: Leitor, pagamentoId: string) {
+  return (
+    await tx
+      .select({ id: assinaturaPagamentoAlocacoes.competenciaId })
+      .from(assinaturaPagamentoAlocacoes)
+      .where(eq(assinaturaPagamentoAlocacoes.pagamentoId, pagamentoId))
+  ).map((linha) => linha.id)
+}
+
+/** Deadlock ou serialização: a transação inteira pode ser tentada de novo. */
+function ehConflitoDeTrava(erro: unknown): boolean {
+  const codigo = (e: unknown) =>
+    typeof e === 'object' && e !== null && 'code' in e
+      ? (e as { code?: string }).code
+      : undefined
+  const causa =
+    typeof erro === 'object' && erro !== null && 'cause' in erro
+      ? (erro as { cause?: unknown }).cause
+      : undefined
+  return ['40P01', '40001'].includes(codigo(erro) ?? codigo(causa) ?? '')
+}
+
 function limpar(valor: string | null | undefined) {
   const texto = valor?.trim()
   return texto ? texto : null
@@ -266,8 +295,10 @@ function limpar(valor: string | null | undefined) {
  *
  * ## O que ela não faz
  *
- * Não cumpre competência, não gera comissão, não mexe em parceiro, saldo,
- * oportunidade ou pagamento simulado.
+ * Não cumpre competência e não mexe em saldo, saque, oportunidade ou pagamento
+ * simulado. Do programa de parceiros, só duas coisas: a primeira ativação da
+ * conta registra o parceiro de origem, e os meses cobertos que já estavam
+ * cumpridos ganham a comissão recorrente.
  */
 export async function confirmarPagamentoDeAssinatura(
   evento: PagamentoConfirmado,
@@ -329,6 +360,7 @@ export async function confirmarPagamentoDeAssinatura(
           clienteUsuarioId: assinaturas.clienteUsuarioId,
           periodicidade: assinaturas.periodicidade,
           status: assinaturas.status,
+          planoNome: assinaturas.planoNome,
         })
         .from(assinaturas)
         .where(eq(assinaturas.id, evento.assinaturaId))
@@ -346,12 +378,18 @@ export async function confirmarPagamentoDeAssinatura(
           throw new Recusa('valor_divergente')
         }
         if (existente.status === 'confirmado') {
+          const competencias = await numerosAlocados(tx, existente.id)
+          // Reprocessar também refaz a pergunta da comissão — idempotente, e
+          // conserta uma comissão que tenha falhado da primeira vez.
+          for (const id of await competenciasDoPagamento(tx, existente.id)) {
+            await garantirComissaoRecorrenteSemDerrubar(tx, id)
+          }
           return {
             ok: true as const,
             pagamentoId: existente.id,
             repetido: true,
             ativou: false,
-            competencias: await numerosAlocados(tx, existente.id),
+            competencias,
           }
         }
         if (existente.status !== 'pendente') {
@@ -411,7 +449,29 @@ export async function confirmarPagamentoDeAssinatura(
       )
 
       const ativou = assinatura.status === 'aguardando_pagamento'
-      if (ativou) await iniciarVigencia(tx, assinatura.id, confirmadoEm)
+      if (ativou) {
+        await iniciarVigencia(tx, assinatura.id, confirmadoEm)
+        /*
+          A primeira assinatura ativada da conta é a que o parceiro de origem
+          originou — e é aqui, e não na contratação, que a origem é consumida.
+          Antes das comissões: um mês já cumprido que esperava este dinheiro
+          precisa encontrar o parceiro.
+        */
+        await registrarAtribuicaoDaAssinatura(tx, {
+          assinaturaId: assinatura.id,
+          usuarioId: assinatura.clienteUsuarioId,
+          nome: assinatura.planoNome,
+        })
+      }
+
+      /*
+        O mês que já estava cumprido e esperava o dinheiro ganha a comissão
+        agora. Os demais — o caso comum do pagamento antecipado — respondem
+        "não cumprida" e esperam o cumprimento.
+      */
+      for (const competencia of alvo) {
+        await garantirComissaoRecorrenteSemDerrubar(tx, competencia.id)
+      }
 
       const numeros = alvo.map((competencia) => competencia.numero)
       await registrarEventoAuditoria(
@@ -461,5 +521,145 @@ export async function confirmarPagamentoDeAssinatura(
   } catch (erro) {
     if (erro instanceof Recusa) return recusa(erro.motivo)
     throw erro
+  }
+}
+
+/** Um evento financeiro que diz: este dinheiro confirmado voltou. */
+export type PagamentoEstornado = {
+  provedor: ProvedorPagamentoAssinatura
+  idExterno?: string | null
+  chaveIdempotencia?: string | null
+  estornadoEm?: Date
+  autorId?: string | null
+}
+
+export type ResultadoDoEstorno =
+  | {
+      ok: true
+      pagamentoId: string
+      /** O estorno já tinha sido processado: nada mudou agora. */
+      repetido: boolean
+      /** O que aconteceu com a comissão de cada mês coberto. */
+      comissoes: DesfechoDoEstorno[]
+    }
+  | {
+      ok: false
+      motivo:
+        | 'provedor_invalido'
+        | 'ambiente_nao_permitido'
+        | 'identificacao_ausente'
+        | 'data_invalida'
+        | 'pagamento_inexistente'
+        | 'pagamento_nao_estornavel'
+    }
+
+/**
+ * Registra que o dinheiro confirmado de uma assinatura voltou.
+ *
+ * ## Só a verdade financeira e as comissões
+ *
+ * O pagamento vira `estornado` — a linha e as alocações ficam, e a cobertura
+ * dos meses, que só conta confirmado, deixa de existir. Cada mês coberto por
+ * ele passa pela revogação da comissão recorrente (`revogarComissaoRecorrente
+ * PorEstorno`): nenhuma comissão fica disponível sobre dinheiro que voltou, e
+ * a que já estava num saque solicitado sai dele.
+ *
+ * Não cancela o contrato, não mexe nos meses nem calcula devolução ao cliente:
+ * isso é o fluxo de cancelamento e reembolso, fatia futura.
+ *
+ * ## Tudo ou nada, e de novo se preciso
+ *
+ * Uma transação, com o pagamento travado. Se cruzar com o pagamento de um
+ * saque e o banco derrubar a transação por deadlock, ela é tentada de novo do
+ * zero — o que foi feito na tentativa anterior foi desfeito. O mesmo evento
+ * processado duas vezes devolve `repetido`.
+ *
+ * Mesma porta da confirmação: a origem `homologacao_manual` só em homologação.
+ */
+export async function estornarPagamentoDeAssinatura(
+  evento: PagamentoEstornado,
+): Promise<ResultadoDoEstorno> {
+  const recusa = (motivo: Extract<ResultadoDoEstorno, { ok: false }>['motivo']) => ({
+    ok: false as const,
+    motivo,
+  })
+
+  if (!(PROVEDORES_PAGAMENTO_ASSINATURA as readonly string[]).includes(evento.provedor)) {
+    return recusa('provedor_invalido')
+  }
+  if (evento.provedor === PROVEDOR_HOMOLOGACAO && !ambientePermiteConfirmacaoManual()) {
+    return recusa('ambiente_nao_permitido')
+  }
+  const idExterno = limpar(evento.idExterno)
+  const chaveIdempotencia = limpar(evento.chaveIdempotencia)
+  if (!idExterno && !chaveIdempotencia) return recusa('identificacao_ausente')
+  const estornadoEm = evento.estornadoEm ?? new Date()
+  if (Number.isNaN(estornadoEm.getTime())) return recusa('data_invalida')
+
+  const identidade = idExterno
+    ? eq(assinaturaPagamentos.idExterno, idExterno)
+    : eq(assinaturaPagamentos.chaveIdempotencia, chaveIdempotencia!)
+
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await db.transaction(async (tx) => {
+        const [pagamento] = await tx
+          .select({
+            id: assinaturaPagamentos.id,
+            assinaturaId: assinaturaPagamentos.assinaturaId,
+            valorCentavos: assinaturaPagamentos.valorCentavos,
+            status: assinaturaPagamentos.status,
+          })
+          .from(assinaturaPagamentos)
+          .where(and(eq(assinaturaPagamentos.provedor, evento.provedor), identidade))
+          .limit(1)
+          .for('update')
+        if (!pagamento) return recusa('pagamento_inexistente')
+        if (pagamento.status === 'estornado') {
+          return { ok: true as const, pagamentoId: pagamento.id, repetido: true, comissoes: [] }
+        }
+        if (pagamento.status !== 'confirmado') return recusa('pagamento_nao_estornavel')
+
+        await tx
+          .update(assinaturaPagamentos)
+          .set({ status: 'estornado', estornadoEm, updatedAt: new Date() })
+          .where(eq(assinaturaPagamentos.id, pagamento.id))
+
+        const comissoes: DesfechoDoEstorno[] = []
+        for (const competenciaId of await competenciasDoPagamento(tx, pagamento.id)) {
+          comissoes.push(
+            await revogarComissaoRecorrentePorEstorno(tx, competenciaId, pagamento.id),
+          )
+        }
+
+        const [contrato] = await tx
+          .select({ clienteUsuarioId: assinaturas.clienteUsuarioId })
+          .from(assinaturas)
+          .where(eq(assinaturas.id, pagamento.assinaturaId))
+          .limit(1)
+        await registrarEventoAuditoria(
+          {
+            acao: ACOES_AUDITORIA.assinaturaPagamentoEstornado,
+            entidade: 'assinatura_pagamentos',
+            registroAfetado: pagamento.id,
+            autorId: evento.autorId ?? null,
+            usuarioId: contrato?.clienteUsuarioId ?? null,
+            origem: 'sistema',
+            metadados: {
+              assinaturaId: pagamento.assinaturaId,
+              provedor: evento.provedor,
+              valorCentavos: pagamento.valorCentavos,
+              comissoes,
+            },
+          },
+          tx,
+        )
+
+        return { ok: true as const, pagamentoId: pagamento.id, repetido: false, comissoes }
+      })
+    } catch (erro) {
+      if (tentativa < 3 && ehConflitoDeTrava(erro)) continue
+      throw erro
+    }
   }
 }

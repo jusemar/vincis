@@ -9,6 +9,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
+import { assinaturas } from '../assinaturas/tabela'
 import { contratacoesServico } from '../contratacoes_servico/tabela'
 import { oportunidades } from '../oportunidades/tabela'
 import { parceiroIndicacoes } from '../parceiro_indicacoes/tabela'
@@ -71,6 +72,16 @@ import { usuarios } from '../usuarios/tabela'
  * são caminhos reais do Cliente, e cobrir só o primeiro fazia o parceiro
  * desaparecer justamente quando o negócio acontecia pelo segundo.
  *
+ * `assinatura_id` é a terceira origem: o plano recorrente da Vincis contratado
+ * em `/precos`. Aqui a regra é **outra**, e mais estreita que a do avulso: o
+ * parceiro origina só a **primeira assinatura ativada** (paga) da conta que
+ * nasceu pelo link dele — não todas as futuras, e não uma assinatura
+ * abandonada antes do pagamento. Por isso a assinatura não tem prazo nem
+ * validade (`prazo_dias` e `expira_em` ficam nulos): o vínculo nasce na
+ * ativação, nunca é reescrito e vale até o fim daquele contrato. O índice
+ * parcial em `indicacao_id` é quem garante, no banco, que uma indicação
+ * origine uma assinatura só — também quando duas são pagas ao mesmo tempo.
+ *
  * Consultoria ainda não entra: o agendamento só nasce **depois do pagamento**,
  * então "quando o negócio começou" é ali uma pergunta de produto, não de
  * esquema. Quando for respondida, é mais uma coluna nulável e mais um braço no
@@ -114,6 +125,14 @@ export const parceiroAtribuicoes = pgTable(
       () => contratacoesServico.id,
     ),
     /**
+     * O negócio originado, quando é a primeira assinatura Vincis ativada da
+     * conta. Gravado na ativação, não na contratação.
+     *
+     * Sem cascata: é a origem da comissão recorrente daquele contrato, mês a
+     * mês, e contrato não se apaga.
+     */
+    assinaturaId: uuid('assinatura_id').references(() => assinaturas.id),
+    /**
      * Como a origem foi reconhecida: `conta` (a pessoa já tinha uma indicação
      * ligada a ela — o caso normal, e o único que sobrevive a troca de
      * aparelho) ou `cookie` (não tinha origem nenhuma e o ciclo anônimo deste
@@ -153,9 +172,18 @@ export const parceiroAtribuicoes = pgTable(
       negócios disputando a mesma atribuição. É a mesma trava que `oportunidades`
       usa para manter visibilidade e destinatário coerentes.
     */
+    porAssinaturaUnica: uniqueIndex('parceiro_atribuicoes_assinatura_unica').on(
+      t.assinaturaId,
+    ),
+    // Uma indicação origina uma assinatura só: a primeira.
+    umaAssinaturaPorIndicacao: uniqueIndex(
+      'parceiro_atribuicoes_indicacao_assinatura_unica',
+    )
+      .on(t.indicacaoId)
+      .where(sql`assinatura_id is not null`),
     origemUnica: check(
       'parceiro_atribuicoes_origem_unica',
-      sql`num_nonnulls(${t.oportunidadeId}, ${t.contratacaoId}) = 1`,
+      sql`num_nonnulls(${t.oportunidadeId}, ${t.contratacaoId}, ${t.assinaturaId}) = 1`,
     ),
     // "Quais negócios vieram de mim?", mais recentes primeiro.
     doParceiroIdx: index('parceiro_atribuicoes_parceiro_idx').on(
