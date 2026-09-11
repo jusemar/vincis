@@ -39,7 +39,7 @@ import { usuarios } from '../usuarios/tabela'
  * `periodicidade` e `meses` dizem **como o cliente contratou** — mensal, 6 ou 12
  * meses pagos de uma vez. As competências mensais de prestação, que depois
  * sustentam a comissão recorrente do parceiro mês a mês, são outra entidade
- * (`assinatura_ciclos`, próxima fatia), e por isso não há "próxima competência"
+ * (`assinatura_competencias`), e por isso não há "próxima competência"
  * aqui: guardar o mesmo estado nos dois lugares faria os dois discordarem.
  *
  * ## O valor daqui é o da oferta aceita

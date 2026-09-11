@@ -18,6 +18,7 @@ import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { periodicidadeDosMeses } from '../constants/assinatura'
+import { gerarCompetenciasPrevistas } from '../lib/competencias'
 import { chaveDaOferta, montarOferta } from '../lib/oferta'
 import { ContratarPlanoSchema } from '../schemas/contratacao'
 
@@ -75,9 +76,9 @@ function recusa(mensagem: string) {
  *
  * ## O que ela não faz
  *
- * Não cobra, não confirma pagamento, não ativa a assinatura, não cria ciclo e
- * não gera comissão de parceiro. A linha nasce `aguardando_pagamento` e fica
- * assim até existir gateway real.
+ * Não cobra, não confirma pagamento, não ativa a assinatura e não gera comissão
+ * de parceiro. A linha nasce `aguardando_pagamento` e fica assim até existir
+ * gateway real; as competências nascem com ela, todas `prevista` e sem datas.
  */
 export async function contratarPlanoVincis(entrada: unknown) {
   const sessao = await obterSessaoServidor()
@@ -185,6 +186,16 @@ export async function contratarPlanoVincis(entrada: unknown) {
         })
         .returning({ id: assinaturas.id })
 
+      /*
+        Os meses que o contrato cobre nascem junto com ele, previstos.
+
+        Na mesma transação: ou o contrato existe com as suas competências, ou
+        não existe nada. Prazo fechado nasce com todos os meses; o mensal, só
+        com o primeiro. Nenhum nasce pago, em andamento ou datado — a vigência
+        depende do pagamento, que ainda não existe.
+      */
+      const competencias = await gerarCompetenciasPrevistas(tx, criada.id)
+
       await registrarEventoAuditoria(
         {
           acao: ACOES_AUDITORIA.assinaturaVincisContratada,
@@ -201,6 +212,7 @@ export async function contratarPlanoVincis(entrada: unknown) {
             valorMensalCentavos: periodo.mensalCentavos,
             valorTotalCentavos: periodo.totalPeriodoCentavos,
             status: 'aguardando_pagamento',
+            competenciasPrevistas: competencias,
           },
         },
         tx,

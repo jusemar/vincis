@@ -428,6 +428,13 @@
       "when": 1789079156250,
       "tag": "0060_assinaturas",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1789087863817,
+      "tag": "0061_assinatura_competencias",
+      "breakpoints": true
     }
   ]
 }

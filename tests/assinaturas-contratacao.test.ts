@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
+  assinaturaCompetencias,
   assinaturas,
+  consultoriaPagamentos,
   eventosAuditoria,
+  oportunidadePagamentos,
   oportunidades,
   parceiroComissoes,
 } from '@/db/schema'
@@ -72,6 +75,19 @@ beforeAll(async () => {
 afterAll(async () => {
   sairDaSessao()
   const ids = Object.values(contas).map((conta) => conta.id)
+  // As competências apontam para a assinatura sem cascata: saem primeiro.
+  const doCenario = await db
+    .select({ id: assinaturas.id })
+    .from(assinaturas)
+    .where(inArray(assinaturas.clienteUsuarioId, ids))
+  if (doCenario.length) {
+    await db.delete(assinaturaCompetencias).where(
+      inArray(
+        assinaturaCompetencias.assinaturaId,
+        doCenario.map((linha) => linha.id),
+      ),
+    )
+  }
   await db.delete(assinaturas).where(inArray(assinaturas.clienteUsuarioId, ids))
   await db.delete(eventosAuditoria).where(inArray(eventosAuditoria.autorId, ids))
   await limparContas(SUFIXO)
@@ -91,7 +107,7 @@ describe('a tabela semeada oferece os três prazos', () => {
  * O que estes testes protegem é a fronteira entre aceite e dinheiro. A linha
  * nasce `aguardando_pagamento`, com a oferta congelada pelo motor, e nada — nem
  * o clique repetido, nem um preço mandado pelo navegador — produz contrato
- * ativo, ciclo, comissão ou segunda linha.
+ * ativo, mês pago, comissão ou segunda linha.
  */
 describe('contratação de um plano da Vincis', () => {
   it('sem sessão, manda entrar e não cria contrato', async () => {
@@ -291,11 +307,24 @@ describe('o que a contratação não faz', () => {
     expect(criadas).toHaveLength(0)
   })
 
-  it('não existe tabela de ciclos nesta fatia', async () => {
-    const [linha] = await db.execute<{ existe: boolean }>(
-      sql`select to_regclass('public.assinatura_ciclos') is not null as existe`,
-    )
-    expect(linha.existe).toBe(false)
+  it('não registra pagamento nenhum', async () => {
+    /*
+      Contratar não é pagar. Os dois registros de pagamento que a plataforma
+      tem — ambos simulados — não recebem linha por causa de uma contratação.
+      (Antes este teste afirmava que a tabela de ciclos ainda não existia; a
+      fatia seguinte a criou, e o que continua verdade é isto.)
+    */
+    const ids = Object.values(contas).map((conta) => conta.id)
+    const deOportunidade = await db
+      .select({ id: oportunidadePagamentos.id })
+      .from(oportunidadePagamentos)
+      .where(inArray(oportunidadePagamentos.clienteUsuarioId, ids))
+    const deConsultoria = await db
+      .select({ id: consultoriaPagamentos.id })
+      .from(consultoriaPagamentos)
+      .where(inArray(consultoriaPagamentos.clienteUsuarioId, ids))
+    expect(deOportunidade).toHaveLength(0)
+    expect(deConsultoria).toHaveLength(0)
   })
 
   it('a contratação fica auditada como contrato, não como pagamento', async () => {
