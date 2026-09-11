@@ -86,6 +86,14 @@ export const ACOES_AUDITORIA = {
    * a descreve.
    */
   assinaturaVincisContratada: 'assinatura_vincis_contratada',
+  /**
+   * Dinheiro confirmado para uma assinatura, por origem financeira válida.
+   * Registra provedor, valor e meses cobertos — nunca identificador ou dado
+   * sensível de gateway.
+   */
+  assinaturaPagamentoConfirmado: 'assinatura_pagamento_confirmado',
+  /** O primeiro pagamento confirmado começou a vigência do contrato. */
+  assinaturaAtivada: 'assinatura_ativada',
 } as const
 
 export type AcaoAuditoria =

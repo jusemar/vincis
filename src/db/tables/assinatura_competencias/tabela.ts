@@ -20,7 +20,8 @@ import { assinaturas } from '../assinaturas/tabela'
  * cobrança, nem pagamento, nem comissão. Um plano semestral pago de uma vez tem
  * seis competências e um só pagamento; um mensal tem uma competência por mês e
  * uma cobrança por mês. As duas coisas só coincidem às vezes, e por isso vivem
- * em entidades diferentes — o pagamento, quando existir, aponta para cá.
+ * em entidades diferentes — `assinatura_pagamento_alocacoes` diz quanto de
+ * qual pagamento cobre cada mês.
  *
  * ## É a unidade da comissão futura
  *
@@ -79,6 +80,13 @@ export const assinaturaCompetencias = pgTable(
       t.assinaturaId,
       t.numero,
     ),
+    /*
+      Alvo da chave estrangeira composta das alocações de pagamento: o mês que
+      um pagamento cobre precisa ser da mesma assinatura do pagamento.
+    */
+    idDaAssinaturaUnico: uniqueIndex(
+      'assinatura_competencias_id_assinatura_unico',
+    ).on(t.id, t.assinaturaId),
     /*
       E, depois de datado, também não tem dois meses começando no mesmo dia.
       Parcial porque antes da vigência as datas não existem.

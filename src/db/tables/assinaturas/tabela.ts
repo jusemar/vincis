@@ -28,11 +28,11 @@ import { usuarios } from '../usuarios/tabela'
  *
  * ## Aceite não é pagamento
  *
- * A linha nasce `aguardando_pagamento` e **fica assim** até existir confirmação
- * real de um gateway — que ainda não existe. Nada nesta fatia a torna `ativa`:
+ * A linha nasce `aguardando_pagamento` e **fica assim** até o primeiro
+ * pagamento confirmado em `assinatura_pagamentos`. Nada mais a torna `ativa`:
  * nem o aceite, nem o pagamento simulado das oportunidades, nem a passagem do
- * tempo. Por isso a vigência (`vigencia_inicio`/`vigencia_fim`) nasce nula: o
- * contrato só começa a correr quando o dinheiro existir.
+ * tempo. Por isso a vigência nasce nula: `vigencia_inicio` é o instante da
+ * primeira confirmação, e o fim de cada mês está nas competências.
  *
  * ## Período comercial não é competência
  *

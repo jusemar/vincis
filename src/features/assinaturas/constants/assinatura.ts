@@ -1,10 +1,10 @@
 /**
  * O vocabulário do contrato recorrente da Vincis.
  *
- * `aguardando_pagamento` é o único estado que esta fatia produz. `ativa` só
- * existe quando um gateway confirmar pagamento real; `cancelada` e `encerrada`
- * são os dois fins possíveis. Estão todos aqui para que as fatias seguintes não
- * precisem de migração de dados — mas nada hoje escreve os três últimos.
+ * O contrato nasce `aguardando_pagamento` e só vira `ativa` pelo primeiro
+ * pagamento confirmado (`lib/pagamentos.ts`) — nunca pelo aceite, pelo tempo
+ * ou por pagamento simulado. `cancelada` e `encerrada` são os dois fins
+ * possíveis; nada hoje escreve esses dois.
  */
 export const STATUS_ASSINATURA = [
   'aguardando_pagamento',
