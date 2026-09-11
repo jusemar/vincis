@@ -6,6 +6,7 @@ import {
   registrarFalha,
 } from "@/features/precificacao/lib/registro";
 import type { TabelaPrecificacao } from "@/features/precificacao/types/precificacao";
+import { obterSessaoServidor } from "@/features/usuarios/lib/sessao-servidor";
 
 /**
  * A configuração comercial é lida a cada visita, no servidor.
@@ -40,5 +41,9 @@ export default async function PrecosRoute() {
   const tabela = await carregarTabela();
   if (!tabela) return <PrecoIndisponivel />;
 
-  return <PricingPage tabela={tabela} />;
+  // Sessão de verdade, lida aqui: o botão Contratar decide entre abrir o login
+  // e a confirmação a partir disto, e não de um palpite do navegador.
+  const sessao = await obterSessaoServidor();
+
+  return <PricingPage tabela={tabela} autenticado={sessao !== null} />;
 }

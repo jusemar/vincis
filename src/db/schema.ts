@@ -182,6 +182,7 @@ export { parceiroEventosRelations } from './tables/parceiro_eventos/relacoes'
 
 export { parceiroComissoes } from './tables/parceiro_comissoes/tabela'
 export { parceiroRecebimentos } from './tables/parceiro_recebimentos/tabela'
+export { assinaturas } from './tables/assinaturas/tabela'
 export { parceiroSaques } from './tables/parceiro_saques/tabela'
 export { parceiroSaqueItens } from './tables/parceiro_saque_itens/tabela'
 export { parceiroAtribuicoes } from './tables/parceiro_atribuicoes/tabela'

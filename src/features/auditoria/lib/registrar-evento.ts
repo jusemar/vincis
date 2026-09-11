@@ -78,6 +78,14 @@ export const ACOES_AUDITORIA = {
    * qual formato".
    */
   recebimentoParceiroAlterado: 'recebimento_parceiro_alterado',
+  /**
+   * O cliente contratou um plano da própria Vincis em `/precos`.
+   *
+   * Registra o ato comercial — plano, período e valores congelados —, não um
+   * pagamento: a assinatura nasce aguardando pagamento, e é assim que a trilha
+   * a descreve.
+   */
+  assinaturaVincisContratada: 'assinatura_vincis_contratada',
 } as const
 
 export type AcaoAuditoria =

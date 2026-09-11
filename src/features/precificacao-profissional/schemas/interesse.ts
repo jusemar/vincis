@@ -15,6 +15,25 @@ import { LIMITE_MENSAGEM_OPORTUNIDADE } from '@/features/oportunidades/constants
  */
 const codigo = z.string().trim().min(1).max(40)
 
+/**
+ * As respostas do configurador de preços, em forma e tamanho.
+ *
+ * Exportadas porque são as mesmas perguntas em qualquer lugar que as receba —
+ * o interesse numa tabela individual e a contratação de um plano da Vincis.
+ * Duas cópias desta forma divergiriam na primeira pergunta nova.
+ */
+export const RespostasSimulacaoSchema = z.object({
+  regime: codigo,
+  atividades: z.array(codigo).min(1).max(10),
+  funcionarios: z.coerce.number().int().min(0).max(100_000),
+  notasFiscais: codigo,
+  emissor: codigo,
+  faturamento: codigo,
+  atendimento: codigo,
+  rotina: codigo,
+  adicionais: z.array(codigo).max(20).default([]),
+})
+
 export const InteresseNaSimulacaoSchema = z.object({
   prestadorId: z.string().uuid('Profissional inválido.'),
   /**
@@ -33,17 +52,7 @@ export const InteresseNaSimulacaoSchema = z.object({
     )
     .optional()
     .default(''),
-  respostas: z.object({
-    regime: codigo,
-    atividades: z.array(codigo).min(1).max(10),
-    funcionarios: z.coerce.number().int().min(0).max(100_000),
-    notasFiscais: codigo,
-    emissor: codigo,
-    faturamento: codigo,
-    atendimento: codigo,
-    rotina: codigo,
-    adicionais: z.array(codigo).max(20).default([]),
-  }),
+  respostas: RespostasSimulacaoSchema,
 })
 
 export type InteresseNaSimulacaoDTO = z.input<typeof InteresseNaSimulacaoSchema>

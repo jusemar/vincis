@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { respostasIniciais } from "@/features/precificacao/lib/respostas";
 import type {
   RespostasPrecificacao,
@@ -8,6 +8,7 @@ import type {
 } from "@/features/precificacao/types/precificacao";
 import type { ServicoTab } from "../types";
 import { ComparisonTable } from "./ComparisonTable";
+import { lerIntencaoGuardada, type IntencaoDeContratacao } from "./ContratarPlano";
 import { Configurador } from "./Configurador";
 import { ResultCards } from "./ResultCards";
 import { ServiceTypeSelector } from "./ServiceTypeSelector";
@@ -21,14 +22,65 @@ import { ServiceTypeSelector } from "./ServiceTypeSelector";
  * cada clique — o motor é puro e roda no navegador sobre a tabela já carregada,
  * sem uma ida ao servidor por resposta do configurador.
  */
-export default function PricingPage({ tabela }: { tabela: TabelaPrecificacao }) {
+/**
+ * Lê a intenção guardada antes do login, uma vez, depois da hidratação.
+ *
+ * Componente à parte de propósito: o efeito só **lê** o armazenamento do
+ * navegador — o sistema externo — e entrega o que achou à vitrine por callback.
+ * Quem muda o estado é a vitrine, fora do corpo do efeito, que é o padrão que o
+ * React recomenda para sincronizar com algo que vive fora dele.
+ */
+function RetomadaDaContratacao({
+  onRetomar,
+}: {
+  onRetomar: (intencao: IntencaoDeContratacao) => void;
+}) {
+  useEffect(() => {
+    const intencao = lerIntencaoGuardada();
+    if (intencao) onRetomar(intencao);
+    // Só na montagem: depois disso quem manda é o que está na tela.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+export default function PricingPage({
+  tabela,
+  autenticado,
+}: {
+  tabela: TabelaPrecificacao;
+  /** Sessão lida no servidor. Decide entre abrir o login e a confirmação. */
+  autenticado: boolean;
+}) {
   const [tab, setTab] = useState<ServicoTab>("consultiva");
   const [respostas, setRespostas] = useState<RespostasPrecificacao>(() =>
     respostasIniciais(tabela),
   );
+  /*
+    O plano que a pessoa ia contratar antes de entrar na conta.
+
+    Restaurado depois da montagem, e não no estado inicial: o servidor não lê
+    `sessionStorage`, e começar diferente do HTML que ele entregou quebraria a
+    hidratação. A vitrine volta à aba, às respostas e ao prazo que ela tinha
+    escolhido, e o card daquele plano reabre a confirmação.
+  */
+  const [retomada, setRetomada] = useState<{
+    planoCodigo: string;
+    periodoCodigo: string;
+  } | null>(null);
+
+  function retomar(intencao: IntencaoDeContratacao) {
+    setTab(intencao.tab);
+    setRespostas(intencao.respostas);
+    setRetomada({
+      planoCodigo: intencao.planoCodigo,
+      periodoCodigo: intencao.periodoCodigo,
+    });
+  }
 
   return (
     <main className="min-h-screen bg-background">
+      <RetomadaDaContratacao onRetomar={retomar} />
       <section className="border-b border-border/60">
         <div className="mx-auto max-w-6xl px-5 pb-12 pt-16 sm:pt-24">
           <h1 className="max-w-3xl text-3xl leading-[1.1] font-bold text-foreground sm:text-5xl">
@@ -60,11 +112,19 @@ export default function PricingPage({ tabela }: { tabela: TabelaPrecificacao }) 
           </div>
 
           <div className="min-w-0" id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`}>
-            <ResultCards tabela={tabela} tab={tab} respostas={respostas} />
+            <ResultCards
+              tabela={tabela}
+              tab={tab}
+              respostas={respostas}
+              autenticado={autenticado}
+              retomada={retomada}
+              onRetomada={() => setRetomada(null)}
+            />
             <ComparisonTable tab={tab} />
             <p className="mt-4 text-xs text-muted-foreground">
-              Valores calculados a partir do perfil informado, com regras ainda demonstrativas — a
-              proposta final é confirmada após a análise dos documentos da empresa.
+              Os valores apresentados são calculados com base nas informações fornecidas e ficam
+              registrados na contratação. A ativação do serviço acontece após a confirmação do
+              pagamento e das demais etapas necessárias.
             </p>
           </div>
         </div>

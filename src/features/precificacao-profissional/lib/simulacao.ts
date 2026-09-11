@@ -69,7 +69,7 @@ export function montarSimulacao({
  * com o próprio código como rótulo. Sumir com a linha faria o retrato afirmar
  * que a pergunta não foi feita, quando o que houve foi a grade ter mudado.
  */
-function itensDoRetrato(
+export function itensDoRetrato(
   tabela: TabelaPrecificacao,
   respostas: RespostasPrecificacao,
 ): ItemDaSimulacao[] {
@@ -139,7 +139,8 @@ export function assinaturaDaSimulacao(simulacao: SimulacaoDaOportunidade) {
   return createHash('sha256').update(canonico).digest('hex')
 }
 
-function ordenar(respostas: RespostasPrecificacao) {
+/** As respostas numa ordem só: a mesma intenção, a mesma impressão digital. */
+export function ordenar(respostas: RespostasPrecificacao) {
   return Object.fromEntries(
     Object.entries(respostas)
       .map(([chave, valor]) => [
