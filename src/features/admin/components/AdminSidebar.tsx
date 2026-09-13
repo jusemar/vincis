@@ -18,6 +18,7 @@ import {
   CalendarClock,
   BadgeDollarSign,
   Landmark,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -100,6 +101,7 @@ const navItems = [
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
   central: Landmark,
+  manual: BookOpen,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,

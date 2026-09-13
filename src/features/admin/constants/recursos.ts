@@ -32,9 +32,9 @@ export type RecursoAdmin = {
   /**
    * Aparece na barra lateral do painel.
    *
-   * Só a Central Vincis aparece. Os cinco módulos da plataforma ocupavam cinco
-   * linhas na barra de quem, no dia a dia, opera o próprio escritório — cinco
-   * linhas para um assunto que não é o trabalho dele. Agora eles ficam um
+   * Só a Central Vincis e o Manual da Vincis aparecem. Os módulos da
+   * plataforma ocupavam cinco linhas na barra de quem, no dia a dia, opera o
+   * próprio escritório — cinco linhas para um assunto que não é o trabalho dele. Agora eles ficam um
    * nível abaixo, dentro da Central.
    */
   noMenuPrincipal: boolean
@@ -56,6 +56,19 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     exclusivoDoGestor: true,
     noMenuPrincipal: true,
     naCentral: true,
+  },
+  {
+    // O manual de treinamento, testes e suporte. Tem linha própria na barra
+    // lateral — e não fica dentro da Central — porque é consulta frequente de
+    // quem está aprendendo a plataforma, não um módulo de configuração. É
+    // exclusivo do Gestor como os demais: menu, middleware e guarda de
+    // servidor leem esta mesma marca.
+    id: 'manual',
+    rota: '/admin/manual',
+    rotulo: 'Manual da Vincis',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: true,
+    naCentral: false,
   },
   {
     id: 'usuarios',
@@ -133,7 +146,8 @@ export function rotaExigeGestor(caminho: string): boolean {
  *
  * Menu de desktop e menu mobile chamam esta função — é o que impede um item de
  * sumir num e continuar aparecendo no outro. Hoje ela devolve, no máximo, a
- * Central Vincis: os módulos da plataforma vivem dentro dela.
+ * Central Vincis e o Manual da Vincis: os módulos da plataforma vivem dentro da
+ * Central.
  */
 export function recursosPermitidos({
   ehGestor,

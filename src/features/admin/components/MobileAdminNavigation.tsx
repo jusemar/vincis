@@ -15,6 +15,7 @@ import {
   Star,
   BadgeDollarSign,
   Landmark,
+  BookOpen,
   Target,
   Ticket,
   User,
@@ -66,6 +67,7 @@ const DEMAIS = [
  */
 const ICONE_DO_RECURSO: Record<string, LucideIcon> = {
   central: Landmark,
+  manual: BookOpen,
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,

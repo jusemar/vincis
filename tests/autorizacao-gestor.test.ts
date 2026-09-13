@@ -74,6 +74,9 @@ describe('registro de recursos administrativos', () => {
     )
     expect(exclusivos).toEqual([
       '/admin/central',
+      // O manual de treinamento descreve a plataforma inteira, inclusive o que
+      // ainda é provisório: é material interno da Vincis.
+      '/admin/manual',
       '/admin/usuarios',
       '/admin/comunicados',
       '/admin/consultorias',
@@ -100,11 +103,13 @@ describe('registro de recursos administrativos', () => {
     expect(rotaExigeGestor('/admin?pagina=clients')).toBe(false)
   })
 
-  it('a barra lateral carrega uma porta, e não cinco', () => {
+  it('a barra lateral carrega a Central e o Manual, e não os cinco módulos', () => {
     // Os módulos da plataforma ocupavam cinco linhas na barra de quem opera o
-    // próprio escritório. Agora existe a Central, e eles moram dentro dela.
+    // próprio escritório. Agora existe a Central, e eles moram dentro dela. O
+    // Manual da Vincis tem linha própria: é consulta, não configuração.
     expect(recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)).toEqual([
       'Central Vincis',
+      'Manual da Vincis',
     ])
     // Nenhum item exclusivo sobra para quem não é Gestor — é o que impede o
     // menu de oferecer uma porta que o servidor vai fechar.
@@ -349,9 +354,10 @@ describe('o Gestor da Plataforma é um usuário completo', () => {
     }
   })
 
-  it('vê o menu do painel e, somado a ele, a Central Vincis', () => {
+  it('vê o menu do painel e, somado a ele, a Central Vincis e o Manual', () => {
     expect(recursosPermitidos({ ehGestor: true }).map((r) => r.rotulo)).toEqual([
       'Central Vincis',
+      'Manual da Vincis',
     ])
     // Quem não administra a plataforma não recebe a porta — nem os módulos.
     expect(recursosPermitidos({ ehGestor: false })).toEqual([])
