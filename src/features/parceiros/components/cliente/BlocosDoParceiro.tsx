@@ -2,7 +2,6 @@ import {
   ArrowUpRight,
   BadgeDollarSign,
   ChevronRight,
-  Clock,
   Download,
   FileText,
   GraduationCap,
@@ -27,7 +26,6 @@ import type { LinkDoParceiro } from '../../lib/link-de-indicacao'
 import { AtivarParceiro } from './AtivarParceiro'
 import {
   ACADEMIA,
-  CAMPANHAS,
   COMUNIDADE,
   CUPOM_PARCEIRO,
   FUNIL,
@@ -395,60 +393,6 @@ export function LinkDeIndicacao({ link }: { link: LinkDoParceiro | null }) {
 
 /* --------------------------------- campanhas -------------------------------- */
 
-export function CampanhasAtivas() {
-  return (
-    <section className="flex h-full flex-col rounded-xl border bg-card p-6">
-      <CabecalhoDeBloco
-        contexto="Campanhas ativas"
-        titulo="Acelere seu crescimento"
-        acao={
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            Ver todas
-            <ChevronRight className="size-3" aria-hidden />
-          </Button>
-        }
-      />
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {CAMPANHAS.map((campanha) => (
-          <article
-            key={campanha.titulo}
-            className="relative rounded-xl border bg-muted/30 p-4 transition-colors hover:border-primary/30"
-          >
-            {campanha.destaque ? (
-              <span className="absolute right-3 top-3">
-                <Pilula rotulo="Em alta" tom="atencao" />
-              </span>
-            ) : null}
-            <p className="pr-24 font-serif font-semibold">{campanha.titulo}</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              {campanha.descricao}
-            </p>
-            <div
-              className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted"
-              role="progressbar"
-              aria-valuenow={campanha.progresso}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Progresso da campanha ${campanha.titulo}`}
-            >
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${campanha.progresso}%` }}
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{campanha.progresso}% concluído</span>
-              <span className="flex items-center gap-1">
-                <Clock className="size-3" aria-hidden /> {campanha.dias}d restantes
-              </span>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
 
 /* ----------------------------------- funil ---------------------------------- */
 

@@ -5,6 +5,7 @@ import {
   assinaturaCompetencias,
   assinaturas,
   contratacoesServico,
+  parceiroBonus,
   parceiroComissoes,
   parceiroSaqueItens,
   parceiroSaques,
@@ -49,8 +50,12 @@ export type ResumoDeComissoes = {
   negocios: number
   /** Comissões liberadas que já estão comprometidas com um saque. */
   reservadoCentavos: number
-  /** O que ainda pode virar um pedido novo: disponível menos reservado. */
+  /** O que ainda pode virar um pedido novo: disponível + bônus disponível − reservado. */
   livreCentavos: number
+  /** Bônus de campanha disponível (não é comissão; entra no mesmo saldo). */
+  bonusDisponivelCentavos: number
+  /** Bônus de campanha já pago em saque. */
+  bonusPagoCentavos: number
 }
 
 export type SaqueDoParceiro = {
@@ -202,6 +207,15 @@ export async function listarComissoesDoParceiro(
       ),
     )
 
+  const [bonus] = await db
+    .select({
+      disponivel: sql<number>`coalesce(sum(${parceiroBonus.valorCentavos}) filter (where ${parceiroBonus.status} = 'disponivel'), 0)::int`,
+      pago: sql<number>`coalesce(sum(${parceiroBonus.valorCentavos}) filter (where ${parceiroBonus.status} = 'paga'), 0)::int`,
+    })
+    .from(parceiroBonus)
+    .where(eq(parceiroBonus.parceiroId, parceiroId))
+  const bonusDisponivelCentavos = Number(bonus?.disponivel ?? 0)
+
   const reservadoCentavos = Number(reserva?.total ?? 0)
   const disponivelCentavos = somar(['disponivel'])
 
@@ -212,7 +226,9 @@ export async function listarComissoesDoParceiro(
       reservadoCentavos,
       // Nunca negativo: se algum dia a reserva passar o disponível, o problema
       // é de dado, e mostrar saldo negativo esconderia isso atrás de um número.
-      livreCentavos: Math.max(disponivelCentavos - reservadoCentavos, 0),
+      livreCentavos: Math.max(disponivelCentavos + bonusDisponivelCentavos - reservadoCentavos, 0),
+      bonusDisponivelCentavos,
+      bonusPagoCentavos: Number(bonus?.pago ?? 0),
       totalCentavos: somar(['gerada', 'disponivel', 'paga']),
       geradaCentavos: somar(['gerada']),
       disponivelCentavos: somar(['disponivel']),

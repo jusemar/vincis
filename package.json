@@ -16,6 +16,7 @@
     "db:local:migrar": "node --env-file=.env.local --import tsx scripts/banco-local/drizzle.ts migrate",
     "db:local:validar-migrations": "node --env-file=.env.local --import tsx scripts/banco-local/validar-migrations.ts",
     "db:local:parceiros": "node --env-file=.env.local --import tsx scripts/banco-local/preparar-parceiros.ts",
+    "db:local:clientes-recorrentes": "node --env-file=.env.local --import tsx scripts/banco-local/clientes-recorrentes.ts",
     "db:online:migrar": "VINCIS_BANCO_ONLINE=1 drizzle-kit migrate"
   },
   "dependencies": {

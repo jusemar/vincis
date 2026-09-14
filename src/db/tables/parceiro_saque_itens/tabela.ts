@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { integer, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { check, integer, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { parceiroBonus } from '../parceiro_bonus/tabela'
 import { parceiroComissoes } from '../parceiro_comissoes/tabela'
 import { parceiroSaques } from '../parceiro_saques/tabela'
 
@@ -48,10 +49,12 @@ export const parceiroSaqueItens = pgTable(
     saqueId: uuid('saque_id')
       .notNull()
       .references(() => parceiroSaques.id, { onDelete: 'cascade' }),
-    /** Sem cascata: comissão é histórico financeiro, não se apaga. */
-    comissaoId: uuid('comissao_id')
-      .notNull()
-      .references(() => parceiroComissoes.id),
+    /**
+     * A origem do dinheiro: uma comissão **ou** um bônus de campanha — nunca os
+     * dois, nunca nenhum (`check` abaixo). Sem cascata: é histórico financeiro.
+     */
+    comissaoId: uuid('comissao_id').references(() => parceiroComissoes.id),
+    bonusId: uuid('bonus_id').references(() => parceiroBonus.id),
     valorCentavos: integer('valor_centavos').notNull(),
     /**
      * Quando a reserva deixou de valer.
@@ -68,5 +71,13 @@ export const parceiroSaqueItens = pgTable(
     porComissaoUnica: uniqueIndex('parceiro_saque_itens_comissao_unica')
       .on(t.comissaoId)
       .where(sql`liberado_em is null`),
+    // A mesma trava para o bônus: um bônus paga um saque só.
+    porBonusUnico: uniqueIndex('parceiro_saque_itens_bonus_unico')
+      .on(t.bonusId)
+      .where(sql`liberado_em is null and bonus_id is not null`),
+    origemUnica: check(
+      'parceiro_saque_itens_origem_unica',
+      sql`num_nonnulls(${t.comissaoId}, ${t.bonusId}) = 1`,
+    ),
   }),
 )

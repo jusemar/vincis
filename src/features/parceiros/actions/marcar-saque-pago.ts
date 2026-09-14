@@ -4,7 +4,12 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db/connection'
-import { parceiroComissoes, parceiroSaqueItens, parceiroSaques } from '@/db/schema'
+import {
+  parceiroBonus,
+  parceiroComissoes,
+  parceiroSaqueItens,
+  parceiroSaques,
+} from '@/db/schema'
 import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
@@ -93,11 +98,15 @@ export async function marcarSaquePago(entrada: unknown) {
       }
 
       const itens = await tx
-        .select({ comissaoId: parceiroSaqueItens.comissaoId })
+        .select({
+          comissaoId: parceiroSaqueItens.comissaoId,
+          bonusId: parceiroSaqueItens.bonusId,
+        })
         .from(parceiroSaqueItens)
         .where(eq(parceiroSaqueItens.saqueId, pago.id))
 
-      const comissoes = itens.map((item) => item.comissaoId)
+      const comissoes = itens.flatMap((item) => (item.comissaoId ? [item.comissaoId] : []))
+      const bonus = itens.flatMap((item) => (item.bonusId ? [item.bonusId] : []))
       if (comissoes.length) {
         await tx
           .update(parceiroComissoes)
@@ -111,6 +120,13 @@ export async function marcarSaquePago(entrada: unknown) {
             ),
           )
       }
+      // Bônus de campanha sai no mesmo saque, e com a mesma regra.
+      if (bonus.length) {
+        await tx
+          .update(parceiroBonus)
+          .set({ status: 'paga', pagaEm: agora, updatedAt: agora })
+          .where(and(inArray(parceiroBonus.id, bonus), eq(parceiroBonus.status, 'disponivel')))
+      }
 
       await registrarEventoAuditoria(
         {
@@ -123,6 +139,7 @@ export async function marcarSaquePago(entrada: unknown) {
             parceiroId: pago.parceiroId,
             valorCentavos: pago.valorCentavos,
             comissoes,
+            bonus,
             // O pagamento é externo: a trilha registra o ato, não a operação
             // bancária, que a Vincis não executa nem conhece.
             formaDePagamento: 'externa',

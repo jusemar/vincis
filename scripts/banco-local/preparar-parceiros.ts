@@ -33,56 +33,13 @@ process.env.VINCIS_AMBIENTE ??= 'homologacao'
 
 const { eq } = await import('drizzle-orm')
 const { conexaoPostgres, db } = await import('../../src/db/connection')
-const { assinaturas, parceiroIndicacoes, parceiros, perfis, usuarios, usuariosPerfis } =
-  await import('../../src/db/schema')
-const { gerarHash } = await import('../../src/features/usuarios/lib/hash-senha')
+const { parceiros } = await import('../../src/db/schema')
 const { gerarCodigoDoParceiro } = await import('../../src/features/parceiros/lib/codigo-do-parceiro')
-const { gerarCompetenciasPrevistas } = await import('../../src/features/assinaturas/lib/competencias')
-const { confirmarPagamentoDeAssinatura } = await import('../../src/features/assinaturas/lib/pagamentos')
-const { PROVEDOR_HOMOLOGACAO } = await import('../../src/features/assinaturas/constants/pagamento')
 const { contarClientesRecorrentesAtivos, obterConfiguracaoVigente, obterSituacaoDeNivel } =
   await import('../../src/features/parceiros/lib/niveis')
-const { calcularPreco } = await import('../../src/features/precificacao/lib/motor')
-const { respostasIniciais } = await import('../../src/features/precificacao/lib/respostas')
-const { obterTabelaDaVitrine } = await import(
-  '../../src/features/precificacao/queries/obter-tabela-precificacao'
-)
+const { clienteRecorrenteLocal, contaLocal } = await import('./fixtures')
 
-const senhaHash = await gerarHash(senha)
-let sequenciaTelefone = 0
-
-async function conta(email: string, nome: string, perfilNome: string) {
-  const [existente] = await db
-    .select({ id: usuarios.id })
-    .from(usuarios)
-    .where(eq(usuarios.email, email))
-  if (existente) return existente.id
-
-  await db.insert(perfis).values({ nome: perfilNome }).onConflictDoNothing()
-  const [perfil] = await db.select({ id: perfis.id }).from(perfis).where(eq(perfis.nome, perfilNome))
-  for (;;) {
-    const whatsapp = `11977${String(++sequenciaTelefone).padStart(6, '0')}`
-    const [ocupado] = await db
-      .select({ id: usuarios.id })
-      .from(usuarios)
-      .where(eq(usuarios.whatsapp, whatsapp))
-    if (ocupado) continue
-    const [criado] = await db
-      .insert(usuarios)
-      .values({
-        nome,
-        email,
-        whatsapp,
-        senhaHash,
-        status: 'ativo',
-        emailVerificado: true,
-        emailVerificadoEm: new Date(),
-      })
-      .returning({ id: usuarios.id })
-    await db.insert(usuariosPerfis).values({ usuarioId: criado.id, perfilId: perfil.id })
-    return criado.id
-  }
-}
+const conta = (email: string, nome: string, perfil: string) => contaLocal(email, nome, perfil, senha!)
 
 async function ativarParceiro(usuarioId: string) {
   const [existente] = await db
@@ -105,55 +62,10 @@ if (!vigente.ok) {
 }
 const configuracao = vigente.configuracao
 
-// O preço vem do motor e da tabela publicada, como numa contratação real.
-const tabela = await obterTabelaDaVitrine()
-const semestral = calcularPreco(tabela, 'padrao', respostasIniciais(tabela)).periodos.find(
-  (p) => p.meses === 6,
-)!
-
 await conta('gestor.local@vincis.local', 'Gestor Local', 'gestor_vincis')
 await conta('cliente.sem-parceria@vincis.local', 'Cliente Sem Parceria', 'cliente')
 
-let proximoCliente = 0
-async function clienteRecorrente(parceiroId: string) {
-  for (;;) {
-    const email = `cliente.recorrente.${String(++proximoCliente).padStart(3, '0')}@vincis.local`
-    const [ja] = await db.select({ id: usuarios.id }).from(usuarios).where(eq(usuarios.email, email))
-    if (ja) continue
-    const clienteId = await conta(email, `Cliente Recorrente ${proximoCliente}`, 'cliente')
-    await db.insert(parceiroIndicacoes).values({
-      parceiroId,
-      visitanteHash: crypto.randomUUID().replace(/-/g, '').padEnd(64, '0'),
-      usuarioId: clienteId,
-    })
-    const [contrato] = await db
-      .insert(assinaturas)
-      .values({
-        clienteUsuarioId: clienteId,
-        planoCodigo: 'padrao',
-        planoNome: tabela.servicos.find((s) => s.codigo === 'padrao')?.nome ?? 'Plano padrão',
-        periodoCodigo: semestral.periodo,
-        periodicidade: 'semestral',
-        meses: semestral.meses,
-        valorMensalCheioCentavos: semestral.mensalCentavos,
-        descontoMilesimos: semestral.descontoMilesimos,
-        valorMensalCentavos: semestral.mensalCentavos,
-        valorTotalCentavos: semestral.totalPeriodoCentavos,
-        oferta: { origem: 'dados-de-desenvolvimento-local' },
-        chaveIntencao: `dev-local-${crypto.randomUUID()}`,
-      })
-      .returning({ id: assinaturas.id })
-    await gerarCompetenciasPrevistas(db, contrato.id)
-    const pago = await confirmarPagamentoDeAssinatura({
-      assinaturaId: contrato.id,
-      provedor: PROVEDOR_HOMOLOGACAO,
-      chaveIdempotencia: `dev-local-${contrato.id}`,
-      valorCentavos: semestral.totalPeriodoCentavos,
-    })
-    if (!pago.ok) throw new Error(`pagamento de desenvolvimento recusado: ${pago.motivo}`)
-    return
-  }
-}
+const clienteRecorrente = (parceiroId: string) => clienteRecorrenteLocal(parceiroId, senha!)
 
 for (const nivel of configuracao.niveis) {
   const email = `parceiro.${nivel.codigo}@vincis.local`

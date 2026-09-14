@@ -1,9 +1,10 @@
 'use server'
 
-import { and, asc, eq, isNull, notInArray } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, notInArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
 import {
+  parceiroBonus,
   parceiroComissoes,
   parceiroRecebimentos,
   parceiroSaqueItens,
@@ -108,10 +109,12 @@ export async function solicitarSaque() {
         resultado, mas por outro caminho: duas noções de "reservado" acabariam
         divergindo no dia em que uma mudasse sem a outra.
       */
+      // `is not null`: item de bônus tem `comissao_id` nulo, e um nulo dentro
+      // de `not in` esconderia todas as comissões.
       const reservadas = tx
         .select({ id: parceiroSaqueItens.comissaoId })
         .from(parceiroSaqueItens)
-        .where(isNull(parceiroSaqueItens.liberadoEm))
+        .where(and(isNull(parceiroSaqueItens.liberadoEm), isNotNull(parceiroSaqueItens.comissaoId)))
 
       const livres = await tx
         .select({
@@ -129,11 +132,34 @@ export async function solicitarSaque() {
         .orderBy(asc(parceiroComissoes.disponivelEm))
         .for('update')
 
-      if (!livres.length) {
+      /*
+        Bônus de campanha entra no mesmo saldo: disponível e fora de saque,
+        travado até o commit, com a mesma trava única de reserva.
+      */
+      const bonusReservados = tx
+        .select({ id: parceiroSaqueItens.bonusId })
+        .from(parceiroSaqueItens)
+        .where(and(isNull(parceiroSaqueItens.liberadoEm), isNotNull(parceiroSaqueItens.bonusId)))
+      const bonusLivres = await tx
+        .select({ id: parceiroBonus.id, valorCentavos: parceiroBonus.valorCentavos })
+        .from(parceiroBonus)
+        .where(
+          and(
+            eq(parceiroBonus.parceiroId, parceiro.id),
+            eq(parceiroBonus.status, 'disponivel'),
+            notInArray(parceiroBonus.id, bonusReservados),
+          ),
+        )
+        .orderBy(asc(parceiroBonus.disponivelEm))
+        .for('update')
+
+      if (!livres.length && !bonusLivres.length) {
         return { sucesso: false as const, mensagem: 'Nenhum saldo disponível para saque.' }
       }
 
-      const total = livres.reduce((soma, linha) => soma + linha.valorCentavos, 0)
+      const total =
+        livres.reduce((soma, linha) => soma + linha.valorCentavos, 0) +
+        bonusLivres.reduce((soma, linha) => soma + linha.valorCentavos, 0)
 
       /*
         O destino entra copiado no pedido, não por referência.
@@ -156,13 +182,18 @@ export async function solicitarSaque() {
 
       // Se qualquer uma destas linhas colidir, a transação inteira cai: não
       // existe saque com metade das comissões reservadas.
-      await tx.insert(parceiroSaqueItens).values(
-        livres.map((comissao) => ({
+      await tx.insert(parceiroSaqueItens).values([
+        ...livres.map((comissao) => ({
           saqueId: saque.id,
           comissaoId: comissao.id,
           valorCentavos: comissao.valorCentavos,
         })),
-      )
+        ...bonusLivres.map((bonus) => ({
+          saqueId: saque.id,
+          bonusId: bonus.id,
+          valorCentavos: bonus.valorCentavos,
+        })),
+      ])
 
       /*
         A comissão **não** muda de status aqui.
@@ -183,6 +214,7 @@ export async function solicitarSaque() {
             parceiroId: parceiro.id,
             valorCentavos: total,
             comissoes: livres.map((comissao) => comissao.id),
+            bonus: bonusLivres.map((bonus) => bonus.id),
             // O destino fica identificável sem a chave inteira entrar na trilha.
             recebimentoTipoChave: destino.tipoChave,
             recebimentoFinalDaChave: destino.chave.slice(-4),

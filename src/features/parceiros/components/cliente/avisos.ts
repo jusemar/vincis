@@ -7,6 +7,6 @@
  */
 export const AVISO_DADO_REAL = 'Os números desta tela vêm dos seus dados reais na Vincis.'
 export const AVISO_MISTO =
-  'Nível, percentuais e clientes recorrentes vêm dos seus dados reais na Vincis. Os demais números desta tela ainda são demonstrativos.'
+  'Nível, percentuais, clientes recorrentes, campanhas e pontos vêm dos seus dados reais na Vincis. Os demais números desta tela ainda são demonstrativos.'
 export const AVISO_PREVIA =
   'Prévia visual do Programa de Parceiros. Os números desta tela são demonstrativos.'

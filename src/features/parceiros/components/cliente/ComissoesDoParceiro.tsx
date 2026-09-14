@@ -421,6 +421,11 @@ export function ComissoesDoParceiro({
           <p className="mt-1 font-serif text-3xl font-semibold tracking-tight tabular-nums">
             {reais(resumo.livreCentavos)}
           </p>
+          {resumo.bonusDisponivelCentavos > 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Inclui {reais(resumo.bonusDisponivelCentavos)} em bônus de campanhas
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-muted-foreground">
             {reais(resumo.geradaCentavos)} aguardando conclusão
           </p>

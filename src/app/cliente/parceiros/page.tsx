@@ -1,5 +1,6 @@
 import { AreaDoParceiro } from '@/features/parceiros/components/cliente/AreaDoParceiro'
 import { SECAO_PADRAO } from '@/features/parceiros/constants/navegacao'
+import { listarCampanhasDoParceiro, obterExtratoDePontos } from '@/features/parceiros/lib/campanhas'
 import { obterSituacaoDeNivelDaConta } from '@/features/parceiros/lib/niveis'
 import { obterParceiroDaSessao } from '@/features/parceiros/queries/obter-parceiro'
 import { exigirClienteDaSessao } from '@/features/portal-cliente/lib/sessao-do-cliente'
@@ -20,6 +21,10 @@ export default async function ParceirosRoute() {
   // O nível é refeito agora, pela configuração vigente — nada fixo na tela.
   // Com ou sem programa ativado: quem ainda não ativou vê a trilha vigente.
   const situacaoNivel = await obterSituacaoDeNivelDaConta(parceiro?.id ?? null)
+  // Campanhas e pontos reais para o bloco do Dashboard.
+  const [campanhas, pontos] = parceiro
+    ? await Promise.all([listarCampanhasDoParceiro(parceiro.id), obterExtratoDePontos(parceiro.id, 10)])
+    : [[], null]
 
   return (
     <AreaDoParceiro
@@ -27,6 +32,8 @@ export default async function ParceirosRoute() {
       secao={SECAO_PADRAO}
       link={parceiro?.link ?? null}
       situacaoNivel={situacaoNivel}
+      campanhas={campanhas}
+      pontos={pontos}
     />
   )
 }

@@ -113,7 +113,10 @@ export async function recusarSaque(entrada: unknown) {
             isNull(parceiroSaqueItens.liberadoEm),
           ),
         )
-        .returning({ comissaoId: parceiroSaqueItens.comissaoId })
+        .returning({
+          comissaoId: parceiroSaqueItens.comissaoId,
+          bonusId: parceiroSaqueItens.bonusId,
+        })
 
       await registrarEventoAuditoria(
         {
@@ -125,7 +128,8 @@ export async function recusarSaque(entrada: unknown) {
           metadados: {
             parceiroId: recusado.parceiroId,
             valorCentavos: recusado.valorCentavos,
-            comissoes: liberados.map((item) => item.comissaoId),
+            comissoes: liberados.flatMap((item) => (item.comissaoId ? [item.comissaoId] : [])),
+            bonus: liberados.flatMap((item) => (item.bonusId ? [item.bonusId] : [])),
             motivo: motivo && motivo.length ? motivo : null,
           },
         },

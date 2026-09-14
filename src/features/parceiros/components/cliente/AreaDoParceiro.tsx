@@ -9,6 +9,7 @@ import type {
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import type { RecebimentoDoParceiro } from '../../queries/obter-recebimento'
 import type { SituacaoDeNivel } from '../../lib/niveis'
+import type { CampanhaDoParceiro, ExtratoDePontos } from '../../lib/campanhas'
 import { secaoValida } from '../../constants/navegacao'
 import { SecaoDoParceiro } from './SecoesDoParceiro'
 
@@ -34,6 +35,8 @@ export function AreaDoParceiro({
   profissionais = [],
   recebimento = null,
   situacaoNivel = null,
+  campanhas = [],
+  pontos = null,
   resumoComissoes = {
     totalCentavos: 0,
     geradaCentavos: 0,
@@ -43,6 +46,8 @@ export function AreaDoParceiro({
     negocios: 0,
     reservadoCentavos: 0,
     livreCentavos: 0,
+    bonusDisponivelCentavos: 0,
+    bonusPagoCentavos: 0,
   },
 }: {
   nome: string
@@ -70,6 +75,8 @@ export function AreaDoParceiro({
   resumoComissoes?: ResumoDeComissoes
   /** Nível real do parceiro, quando a seção aberta o mostra. */
   situacaoNivel?: SituacaoDeNivel | null
+  campanhas?: CampanhaDoParceiro[]
+  pontos?: ExtratoDePontos | null
 }) {
   const { primeiroNome, tratamentoComNome } = separarNomeDeTratamento(nome)
   const saudacao = tratamentoComNome ?? primeiroNome ?? 'parceiro'
@@ -78,6 +85,9 @@ export function AreaDoParceiro({
     <SecaoDoParceiro
       secao={secaoValida(secao)}
       situacaoNivel={situacaoNivel}
+      campanhas={campanhas}
+      pontos={pontos}
+      parceiroAtivo={link !== null}
       nome={saudacao}
       link={link}
       indicacoes={indicacoes}

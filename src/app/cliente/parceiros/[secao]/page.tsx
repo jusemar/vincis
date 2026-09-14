@@ -4,6 +4,7 @@ import {
   SECOES_PARCEIRO,
   SECAO_PADRAO,
 } from '@/features/parceiros/constants/navegacao'
+import { listarCampanhasDoParceiro, obterExtratoDePontos } from '@/features/parceiros/lib/campanhas'
 import { obterSituacaoDeNivelDaConta } from '@/features/parceiros/lib/niveis'
 import { obterParceiroDaSessao } from '@/features/parceiros/queries/obter-parceiro'
 import { listarIndicacoesDoParceiro } from '@/features/parceiros/queries/listar-indicacoes'
@@ -73,12 +74,20 @@ export default async function SecaoParceirosRoute({
       ? await obterSituacaoDeNivelDaConta(parceiro?.id ?? null)
       : null
 
+  // Só a seção de Campanhas lê campanhas e pontos.
+  const [campanhas, pontos] =
+    secao === 'campanhas' && parceiro
+      ? await Promise.all([listarCampanhasDoParceiro(parceiro.id), obterExtratoDePontos(parceiro.id)])
+      : [[], null]
+
   return (
     <AreaDoParceiro
       nome={dados.nome}
       secao={secao}
       link={parceiro?.link ?? null}
       situacaoNivel={situacaoNivel}
+      campanhas={campanhas}
+      pontos={pontos}
       indicacoes={indicacoes}
       comissoes={financeiro?.comissoes ?? []}
       saques={financeiro?.saques ?? []}

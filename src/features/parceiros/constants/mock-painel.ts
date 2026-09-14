@@ -180,29 +180,6 @@ export const PREVISAO_RENDA = {
   ],
 }
 
-export const CAMPANHAS = [
-  {
-    titulo: 'Sprint Ouro',
-    descricao: 'Indique 5 clientes este mês e desbloqueie +2% por 60 dias.',
-    progresso: 60,
-    dias: 8,
-    destaque: true,
-  },
-  {
-    titulo: 'Indique e ganhe duplo',
-    descricao: 'Pague R$ 0 nos primeiros 3 meses do seu plano.',
-    progresso: 35,
-    dias: 21,
-    destaque: false,
-  },
-  {
-    titulo: 'Onboarding express',
-    descricao: 'Bônus de R$ 250 ao ativar 2 clientes em 7 dias.',
-    progresso: 80,
-    dias: 3,
-    destaque: false,
-  },
-]
 
 export const FUNIL = [
   { etapa: 'Visitas no link', valor: 4820, percentual: 100 },

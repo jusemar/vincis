@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import type { db as Banco } from '@/db/connection'
 import { contratacoesServico, parceiroComissoes } from '@/db/schema'
 import { PERCENTUAL_AVULSO } from '../constants/programa'
+import { sincronizarCampanhasSemDerrubar } from './campanhas'
 
 type Transacao = Parameters<Parameters<typeof Banco.transaction>[0]>[0]
 
@@ -131,13 +132,15 @@ export async function gerarComissaoDaContratacao(
  * prestador, e não pode falhar porque o programa de parceiros tropeçou.
  */
 export async function moverComissaoDaContratacao(
-  executor: Pick<typeof Banco, 'update'>,
+  executor: Pick<typeof Banco, 'update'> & {
+    transaction: <T>(fn: (tx: Transacao) => Promise<T>) => Promise<T>
+  },
   contratacaoId: string,
   destino: 'disponivel' | 'cancelada',
 ): Promise<void> {
   const agora = new Date()
   try {
-    await executor
+    const movidas = await executor
       .update(parceiroComissoes)
       .set({
         status: destino,
@@ -152,6 +155,15 @@ export async function moverComissaoDaContratacao(
           eq(parceiroComissoes.status, 'gerada'),
         ),
       )
+      .returning({ parceiroId: parceiroComissoes.parceiroId })
+
+    // Serviço concluído é fato de campanha (serviços avulsos, valor gerado).
+    // Num ponto de salvamento próprio: a conclusão nunca falha por causa dela.
+    if (destino === 'disponivel') {
+      for (const { parceiroId } of movidas) {
+        await sincronizarCampanhasSemDerrubar(executor, parceiroId)
+      }
+    }
   } catch (erro) {
     console.error('[PARCEIROS] falha ao mover comissão', {
       contratacaoId,

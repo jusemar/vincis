@@ -4,6 +4,8 @@ import {
 } from '../../constants/mock-painel'
 import type { LinkDoParceiro } from '../../lib/link-de-indicacao'
 import type { SituacaoDeNivel } from '../../lib/niveis'
+import type { CampanhaDoParceiro, ExtratoDePontos } from '../../lib/campanhas'
+import { CampanhaEmDestaque } from './CampanhasDoParceiro'
 import { CardDeNiveis } from './CardDeNiveis'
 import { AVISO_MISTO } from './avisos'
 import { GraficoDeComissoes } from './GraficoDeComissoes'
@@ -11,7 +13,6 @@ import { HeroDoParceiro } from './HeroDoParceiro'
 import { IndicadoresDoParceiro } from './IndicadoresDoParceiro'
 import {
   AcademiaVincis,
-  CampanhasAtivas,
   ComunidadeVincis,
   CupomDoParceiro,
   FunilDeConversao,
@@ -51,12 +52,16 @@ export function PainelDoParceiro({
   nome,
   link,
   situacaoNivel = null,
+  campanhas = [],
+  pontos = null,
 }: {
   nome: string
   /** Link real do parceiro; `null` enquanto a conta não ativou. */
   link: LinkDoParceiro | null
   /** Nível real, da configuração publicada. Nulo quando indisponível. */
   situacaoNivel?: SituacaoDeNivel | null
+  campanhas?: CampanhaDoParceiro[]
+  pontos?: ExtratoDePontos | null
 }) {
   const rendaRecorrente =
     KPIS_PARCEIRO.find((kpi) => kpi.id === 'renda-recorrente')?.valor ?? 0
@@ -101,7 +106,7 @@ export function PainelDoParceiro({
 
       <div className="grid items-stretch gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 lg:h-full">
-          <CampanhasAtivas />
+          <CampanhaEmDestaque campanhas={campanhas} pontos={pontos} />
         </div>
         <FunilDeConversao />
       </div>

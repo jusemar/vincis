@@ -185,12 +185,12 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
 
         <div className="mt-4 border-t pt-4">
           <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-            Origem do valor · {saque.origens.length} comissão(ões)
+            Origem do valor · {saque.origens.length} item(ns)
           </p>
           <ul className="mt-2 space-y-1.5">
             {saque.origens.map((origem) => (
               <li
-                key={origem.comissaoId}
+                key={origem.id}
                 className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-muted/40 px-3 py-2 text-sm"
               >
                 <span className="flex min-w-0 items-center gap-2">
@@ -200,10 +200,9 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
                   />
                   <span className="truncate">
                     {origem.servico ?? 'Serviço'}
-                    <span className="text-muted-foreground">
-                      {' '}
-                      · {origem.clienteNome}
-                    </span>
+                    {origem.clienteNome ? (
+                      <span className="text-muted-foreground"> · {origem.clienteNome}</span>
+                    ) : null}
                   </span>
                 </span>
                 <span className="tabular-nums">{reais(origem.valorCentavos)}</span>
@@ -279,7 +278,7 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
                 Confirme apenas depois de ter transferido o valor a{' '}
                 {saque.parceiroNome} pelo seu banco. A Vincis não envia dinheiro
                 — este registro marca o saque como pago e quita as{' '}
-                {saque.origens.length} comissão(ões) que o compõem.
+                {saque.origens.length} item(ns) que o compõem.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -308,7 +307,7 @@ function CartaoDeSaque({ saque }: { saque: SaqueParaGestao }) {
                 O pedido é encerrado sem pagamento e{' '}
                 {reais(saque.valorCentavos)} voltam ao saldo de{' '}
                 {saque.parceiroNome}, que poderá solicitar de novo. As{' '}
-                {saque.origens.length} comissão(ões) continuam válidas.
+                {saque.origens.length} item(ns) continuam válidas.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-1.5">

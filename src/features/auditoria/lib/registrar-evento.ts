@@ -114,6 +114,19 @@ export const ACOES_AUDITORIA = {
   parceiroNiveisConfigurados: 'parceiro_niveis_configurados',
   /** O nível de um parceiro mudou — subida, queda ou efeito de configuração. */
   parceiroNivelAlterado: 'parceiro_nivel_alterado',
+  /** A Gestão criou, editou, publicou ou cancelou uma campanha de parceiros. */
+  campanhaParceiroCriada: 'campanha_parceiro_criada',
+  campanhaParceiroEditada: 'campanha_parceiro_editada',
+  campanhaParceiroPublicada: 'campanha_parceiro_publicada',
+  campanhaParceiroCancelada: 'campanha_parceiro_cancelada',
+  /** Meta atingida com fatos válidos: recompensa gerada. */
+  recompensaCampanhaConcedida: 'recompensa_campanha_concedida',
+  /** A meta deixou de estar sustentada antes do pagamento: recompensa desfeita. */
+  recompensaCampanhaRevertida: 'recompensa_campanha_revertida',
+  /** A meta deixou de estar sustentada depois do pagamento: compensação pendente. */
+  recompensaCampanhaPagaInvalidada: 'recompensa_campanha_paga_invalidada',
+  pontosParceiroCreditados: 'pontos_parceiro_creditados',
+  pontosParceiroRevertidos: 'pontos_parceiro_revertidos',
 } as const
 
 export type AcaoAuditoria =

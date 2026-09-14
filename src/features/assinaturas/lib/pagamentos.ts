@@ -13,6 +13,10 @@ import {
 } from '@/features/auditoria/lib/registrar-evento'
 import { TIMEZONE_PADRAO } from '@/features/consultorias/constants/consultoria'
 import { dataLocalDoInstante } from '@/features/consultorias/lib/tempo'
+import {
+  sincronizarCampanhasDaAssinatura,
+  sincronizarCampanhasDaAssinaturaSemDerrubar,
+} from '@/features/parceiros/lib/campanhas'
 import { recalcularNivelSemDerrubar } from '@/features/parceiros/lib/niveis'
 import { registrarAtribuicaoDaAssinatura } from '@/features/parceiros/lib/registrar-atribuicao'
 import {
@@ -486,6 +490,8 @@ export async function confirmarPagamentoDeAssinatura(
       }
       // O mês coberto agora pode mudar a contagem de clientes ativos.
       await recalcularNivelDaAssinatura(tx, assinatura.id)
+      // Assinatura ativada e dinheiro confirmado são fatos de campanha.
+      await sincronizarCampanhasDaAssinaturaSemDerrubar(tx, assinatura.id)
 
       const numeros = alvo.map((competencia) => competencia.numero)
       await registrarEventoAuditoria(
@@ -647,6 +653,8 @@ export async function estornarPagamentoDeAssinatura(
         }
         // Sem o dinheiro, o cliente pode deixar de contar como ativo.
         await recalcularNivelDaAssinatura(tx, pagamento.assinaturaId)
+        // Sem ponto de salvamento: bônus sobre dinheiro que voltou não fica.
+        await sincronizarCampanhasDaAssinatura(tx, pagamento.assinaturaId)
 
         const [contrato] = await tx
           .select({ clienteUsuarioId: assinaturas.clienteUsuarioId })

@@ -13,6 +13,8 @@ import { CentralDeCompartilhamento } from './CentralDeCompartilhamento'
 import type { DestinoProfissional } from '../../queries/listar-destinos-profissionais'
 import { rotuloDaSecao } from '../../constants/navegacao'
 import type { SituacaoDeNivel } from '../../lib/niveis'
+import type { CampanhaDoParceiro, ExtratoDePontos } from '../../lib/campanhas'
+import { CampanhasDoParceiro } from './CampanhasDoParceiro'
 import { CardDeNiveis } from './CardDeNiveis'
 import { AVISO_DADO_REAL, AVISO_MISTO, AVISO_PREVIA } from './avisos'
 import { IndicacoesRecebidas } from './IndicacoesRecebidas'
@@ -20,7 +22,6 @@ import { PainelDoParceiro } from './PainelDoParceiro'
 import { SecaoEmPreparo } from './SecaoEmPreparo'
 import {
   AcademiaVincis,
-  CampanhasAtivas,
   ComunidadeVincis,
   CupomDoParceiro,
   FunilDeConversao,
@@ -48,6 +49,7 @@ const SECOES_COM_DADO_REAL = new Set([
   'meu-link',
   'configuracoes',
   'niveis',
+  'campanhas',
 ])
 
 /** Seções com o nível real ao lado de blocos que ainda são demonstração. */
@@ -76,6 +78,9 @@ export function SecaoDoParceiro({
   profissionais,
   recebimento,
   situacaoNivel = null,
+  campanhas = [],
+  pontos = null,
+  parceiroAtivo = false,
 }: {
   secao: string
   nome: string
@@ -90,9 +95,20 @@ export function SecaoDoParceiro({
   profissionais: DestinoProfissional[]
   recebimento: RecebimentoDoParceiro | null
   situacaoNivel?: SituacaoDeNivel | null
+  campanhas?: CampanhaDoParceiro[]
+  pontos?: ExtratoDePontos | null
+  parceiroAtivo?: boolean
 }) {
   if (secao === 'dashboard') {
-    return <PainelDoParceiro nome={nome} link={link} situacaoNivel={situacaoNivel} />
+    return (
+      <PainelDoParceiro
+        nome={nome}
+        link={link}
+        situacaoNivel={situacaoNivel}
+        campanhas={campanhas}
+        pontos={pontos}
+      />
+    )
   }
 
   return (
@@ -108,6 +124,7 @@ export function SecaoDoParceiro({
         profissionais,
         recebimento,
         situacaoNivel,
+        { campanhas, pontos: pontos ?? { saldo: 0, lancamentos: [] }, parceiroAtivo },
       )}
       {/*
         O aviso segue a seção, porque nem toda seção é maquete.
@@ -139,6 +156,7 @@ function conteudoDaSecao(
   profissionais: DestinoProfissional[],
   recebimento: RecebimentoDoParceiro | null,
   situacaoNivel: SituacaoDeNivel | null,
+  programa: { campanhas: CampanhaDoParceiro[]; pontos: ExtratoDePontos; parceiroAtivo: boolean },
 ) {
   switch (secao) {
     case 'meu-link':
@@ -277,9 +295,13 @@ function conteudoDaSecao(
         <>
           <Titulo
             secao={secao}
-            descricao="Ações por tempo limitado para acelerar a sua carteira."
+            descricao="Metas por tempo limitado: seu progresso real, as recompensas e os seus pontos."
           />
-          <CampanhasAtivas />
+          <CampanhasDoParceiro
+            campanhas={programa.campanhas}
+            pontos={programa.pontos}
+            parceiroAtivo={programa.parceiroAtivo}
+          />
         </>
       )
 

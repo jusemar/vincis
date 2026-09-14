@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { Flag } from 'lucide-react'
 import { exigirGestorDaPlataforma } from '@/features/admin/lib/exigir-gestor'
 import { NiveisDeParceiroPage } from '@/features/parceiros/components/gestao/NiveisDeParceiroPage'
 import { obterConfiguracaoVigente } from '@/features/parceiros/lib/niveis'
@@ -41,6 +43,23 @@ export default async function ParceirosGestaoRoute() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8">
+      <Link
+        href="/admin/parceiros/campanhas"
+        className="flex items-center justify-between gap-3 rounded-xl border bg-card/90 p-4 text-sm transition-colors hover:border-primary/40"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Flag className="size-4" aria-hidden />
+          </span>
+          <span>
+            <span className="block font-semibold">Campanhas</span>
+            <span className="block text-xs text-muted-foreground">
+              Metas por tempo limitado com bônus em dinheiro e pontos.
+            </span>
+          </span>
+        </span>
+        <span className="text-xs text-primary">Abrir</span>
+      </Link>
       <NiveisDeParceiroPage
         configuracao={niveis.ok ? niveis.configuracao : null}
         estruturais={

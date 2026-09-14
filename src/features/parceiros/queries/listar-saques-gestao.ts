@@ -4,6 +4,8 @@ import {
   assinaturaCompetencias,
   assinaturas,
   contratacoesServico,
+  parceiroBonus,
+  parceiroCampanhas,
   parceiroComissoes,
   parceiroSaqueItens,
   parceiroSaques,
@@ -13,9 +15,14 @@ import {
 import { statusSaqueValido, type StatusSaque } from '../constants/saque'
 
 export type OrigemDoSaque = {
-  comissaoId: string
+  /** O item do saque. */
+  id: string
+  /** Uma das duas origens: comissão ou bônus de campanha. */
+  comissaoId: string | null
+  bonusId: string | null
   servico: string | null
-  clienteNome: string
+  /** Nulo no bônus de campanha, que não é de um cliente. */
+  clienteNome: string | null
   valorCentavos: number
 }
 
@@ -100,19 +107,22 @@ export async function listarSaquesParaGestao(
 
   const origens = await db
     .select({
+      id: parceiroSaqueItens.id,
       saqueId: parceiroSaqueItens.saqueId,
       comissaoId: parceiroSaqueItens.comissaoId,
+      bonusId: parceiroSaqueItens.bonusId,
       valorCentavos: parceiroSaqueItens.valorCentavos,
       // Na recorrente, o plano e o mês que geraram a comissão.
-      servico: sql<string | null>`coalesce(${contratacoesServico.nomeServicoSnapshot}, ${assinaturas.planoNome} || ' · mês ' || ${assinaturaCompetencias.numero})`,
+      // No bônus, a campanha que o gerou — nunca confundido com comissão.
+      servico: sql<string | null>`coalesce(${contratacoesServico.nomeServicoSnapshot}, ${assinaturas.planoNome} || ' · mês ' || ${assinaturaCompetencias.numero}, 'Bônus de campanha · ' || ${parceiroCampanhas.titulo})`,
       clienteNome: usuarios.nome,
     })
     .from(parceiroSaqueItens)
-    .innerJoin(
+    .leftJoin(
       parceiroComissoes,
       eq(parceiroComissoes.id, parceiroSaqueItens.comissaoId),
     )
-    .innerJoin(usuarios, eq(usuarios.id, parceiroComissoes.clienteUsuarioId))
+    .leftJoin(usuarios, eq(usuarios.id, parceiroComissoes.clienteUsuarioId))
     .leftJoin(
       contratacoesServico,
       eq(contratacoesServico.id, parceiroComissoes.contratacaoId),
@@ -122,6 +132,8 @@ export async function listarSaquesParaGestao(
       eq(assinaturaCompetencias.id, parceiroComissoes.competenciaId),
     )
     .leftJoin(assinaturas, eq(assinaturas.id, assinaturaCompetencias.assinaturaId))
+    .leftJoin(parceiroBonus, eq(parceiroBonus.id, parceiroSaqueItens.bonusId))
+    .leftJoin(parceiroCampanhas, eq(parceiroCampanhas.id, parceiroBonus.campanhaId))
     .where(
       inArray(
         parceiroSaqueItens.saqueId,

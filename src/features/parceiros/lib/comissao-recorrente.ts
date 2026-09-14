@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { db as Banco } from '@/db/connection'
 import {
   assinaturaCompetencias,
@@ -7,8 +7,6 @@ import {
   assinaturas,
   parceiroAtribuicoes,
   parceiroComissoes,
-  parceiroSaqueItens,
-  parceiroSaques,
 } from '@/db/schema'
 import {
   ACOES_AUDITORIA,
@@ -17,6 +15,7 @@ import {
 import { percentualEmTextoDecimal } from '../constants/programa'
 import { ConfiguracaoDeNiveisIndisponivel, recalcularNivelDoParceiro } from './niveis'
 import { calcularComissaoPorCentesimos } from './registrar-comissao'
+import { retirarDaReservaDeSaque } from './reserva-de-saque'
 
 type Transacao = Parameters<Parameters<typeof Banco.transaction>[0]>[0]
 
@@ -338,80 +337,28 @@ export async function revogarComissaoRecorrentePorEstorno(
     return 'paga_sinalizada'
   }
 
-  const [reserva] = await tx
-    .select({ itemId: parceiroSaqueItens.id, saqueId: parceiroSaqueItens.saqueId })
-    .from(parceiroSaqueItens)
-    .where(
-      and(
-        eq(parceiroSaqueItens.comissaoId, comissao.id),
-        isNull(parceiroSaqueItens.liberadoEm),
-      ),
-    )
-    .limit(1)
-
-  let desfecho: DesfechoDoEstorno = 'cancelada'
-  if (reserva) {
-    const [saque] = await tx
-      .select({ id: parceiroSaques.id, status: parceiroSaques.status })
-      .from(parceiroSaques)
-      .where(eq(parceiroSaques.id, reserva.saqueId))
-      .limit(1)
-      .for('update')
-
-    if (saque?.status === 'solicitado') {
-      await tx
-        .update(parceiroSaqueItens)
-        .set({ liberadoEm: agora })
-        .where(eq(parceiroSaqueItens.id, reserva.itemId))
-
-      const [restante] = await tx
-        .select({
-          total: sql<number>`coalesce(sum(${parceiroSaqueItens.valorCentavos}), 0)`.mapWith(
-            Number,
-          ),
-        })
-        .from(parceiroSaqueItens)
-        .where(
-          and(
-            eq(parceiroSaqueItens.saqueId, saque.id),
-            isNull(parceiroSaqueItens.liberadoEm),
-          ),
-        )
-
-      if (restante.total > 0) {
-        await tx
-          .update(parceiroSaques)
-          .set({ valorCentavos: restante.total, updatedAt: agora })
-          .where(eq(parceiroSaques.id, saque.id))
-        await auditar(
-          ACOES_AUDITORIA.saqueParceiroAjustadoPorEstorno,
-          'parceiro_saques',
-          saque.id,
-          { valorRetiradoCentavos: comissao.valorCentavos, novoValorCentavos: restante.total },
-        )
-        desfecho = 'cancelada_saque_ajustado'
-      } else {
-        // O valor fica como estava: é o retrato do que foi pedido, e o
-        // `check` do saque não admite zero. O status diz que acabou.
-        await tx
-          .update(parceiroSaques)
-          .set({
-            status: 'cancelado',
-            canceladoEm: agora,
-            observacao: MOTIVO_SAQUE_CANCELADO_POR_ESTORNO,
-            updatedAt: agora,
-          })
-          .where(eq(parceiroSaques.id, saque.id))
-        await auditar(
-          ACOES_AUDITORIA.saqueParceiroCanceladoPorEstorno,
-          'parceiro_saques',
-          saque.id,
-          { valorRetiradoCentavos: comissao.valorCentavos, motivo: 'estorno_do_pagamento' },
-        )
-        desfecho = 'cancelada_saque_cancelado'
-      }
-    }
-  }
+  const retirada = await retirarDaReservaDeSaque(
+    tx,
+    { comissaoId: comissao.id },
+    {
+      valorCentavos: comissao.valorCentavos,
+      observacaoSeEsvaziar: MOTIVO_SAQUE_CANCELADO_POR_ESTORNO,
+      metadados: {
+        parceiroId: comissao.parceiroId,
+        comissaoId: comissao.id,
+        assinaturaId: competencia.assinaturaId,
+        competencia: competencia.numero,
+        pagamentoId,
+        motivo: 'estorno_do_pagamento',
+      },
+    },
+  )
+  const desfecho: DesfechoDoEstorno =
+    retirada === 'saque_ajustado'
+      ? 'cancelada_saque_ajustado'
+      : retirada === 'saque_cancelado'
+        ? 'cancelada_saque_cancelado'
+        : 'cancelada'
 
   await tx
     .update(parceiroComissoes)
