@@ -89,9 +89,15 @@ function CabecalhoDeBloco({
 
 export function SistemaHibrido({
   situacao = null,
+  estimativas = true,
 }: {
   /** Os percentuais recorrentes vêm da configuração publicada. */
   situacao?: SituacaoDeNivel | null
+  /**
+   * Mostra as médias e a projeção de demonstração. Desligado onde a tela é de
+   * dado real (Níveis): ali um "R$ 8.450/mês" inventado passaria por verdade.
+   */
+  estimativas?: boolean
 } = {}) {
   const percentuais = situacao?.niveis.map((nivel) => nivel.percentualCentesimos) ?? []
   const faixa = percentuais.length
@@ -133,11 +139,13 @@ export function SistemaHibrido({
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
               Comissão imediata em consultorias, projetos pontuais e serviços únicos.
             </p>
-            <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <BadgeDollarSign className="size-4 text-primary" aria-hidden />
-              Média parceiros Ouro:{' '}
-              <span className="font-medium text-foreground">{MEDIAS_HIBRIDO.avulso}</span>
-            </p>
+            {estimativas ? (
+              <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <BadgeDollarSign className="size-4 text-primary" aria-hidden />
+                Média parceiros Ouro:{' '}
+                <span className="font-medium text-foreground">{MEDIAS_HIBRIDO.avulso}</span>
+              </p>
+            ) : null}
           </div>
         </article>
 
@@ -164,13 +172,15 @@ export function SistemaHibrido({
               Cada cliente recorrente paga sua comissão mês após mês. O percentual
               acompanha o seu nível.
             </p>
-            <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <TrendingUp className="size-4 text-info" aria-hidden />
-              Sua projeção em 12m:{' '}
-              <span className="font-medium text-foreground">
-                {MEDIAS_HIBRIDO.recorrente}
-              </span>
-            </p>
+            {estimativas ? (
+              <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <TrendingUp className="size-4 text-info" aria-hidden />
+                Sua projeção em 12m:{' '}
+                <span className="font-medium text-foreground">
+                  {MEDIAS_HIBRIDO.recorrente}
+                </span>
+              </p>
+            ) : null}
           </div>
         </article>
       </div>

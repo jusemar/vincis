@@ -11,7 +11,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:matriz": "vitest run matriz",
-    "db:seed": "node --env-file=.env --import tsx src/db/seed.ts"
+    "db:seed": "node --env-file=.env.local --import tsx scripts/banco-local/seed.ts",
+    "db:local:drizzle": "node --env-file=.env.local --import tsx scripts/banco-local/drizzle.ts",
+    "db:local:migrar": "node --env-file=.env.local --import tsx scripts/banco-local/drizzle.ts migrate",
+    "db:local:validar-migrations": "node --env-file=.env.local --import tsx scripts/banco-local/validar-migrations.ts",
+    "db:local:parceiros": "node --env-file=.env.local --import tsx scripts/banco-local/preparar-parceiros.ts",
+    "db:online:migrar": "VINCIS_BANCO_ONLINE=1 drizzle-kit migrate"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.92.2",

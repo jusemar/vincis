@@ -1,6 +1,6 @@
 import { AreaDoParceiro } from '@/features/parceiros/components/cliente/AreaDoParceiro'
 import { SECAO_PADRAO } from '@/features/parceiros/constants/navegacao'
-import { obterSituacaoDeNivel } from '@/features/parceiros/lib/niveis'
+import { obterSituacaoDeNivelDaConta } from '@/features/parceiros/lib/niveis'
 import { obterParceiroDaSessao } from '@/features/parceiros/queries/obter-parceiro'
 import { exigirClienteDaSessao } from '@/features/portal-cliente/lib/sessao-do-cliente'
 
@@ -18,7 +18,8 @@ export default async function ParceirosRoute() {
   const { dados } = await exigirClienteDaSessao()
   const parceiro = await obterParceiroDaSessao()
   // O nível é refeito agora, pela configuração vigente — nada fixo na tela.
-  const situacaoNivel = parceiro ? await obterSituacaoDeNivel(parceiro.id) : null
+  // Com ou sem programa ativado: quem ainda não ativou vê a trilha vigente.
+  const situacaoNivel = await obterSituacaoDeNivelDaConta(parceiro?.id ?? null)
 
   return (
     <AreaDoParceiro

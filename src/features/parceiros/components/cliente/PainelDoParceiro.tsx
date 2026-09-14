@@ -5,6 +5,7 @@ import {
 import type { LinkDoParceiro } from '../../lib/link-de-indicacao'
 import type { SituacaoDeNivel } from '../../lib/niveis'
 import { CardDeNiveis } from './CardDeNiveis'
+import { AVISO_MISTO } from './avisos'
 import { GraficoDeComissoes } from './GraficoDeComissoes'
 import { HeroDoParceiro } from './HeroDoParceiro'
 import { IndicadoresDoParceiro } from './IndicadoresDoParceiro'
@@ -114,14 +115,11 @@ export function PainelDoParceiro({
       <MateriaisDeDivulgacao />
 
       {/*
-        A tela inteira é demonstração. Dizer isso na própria tela evita que
-        alguém leia "R$ 48.230" como saldo — e some no dia em que os dados
-        forem reais.
+        O nível e os percentuais do Hero e do card de níveis são reais; KPIs,
+        gráfico, ranking e demais blocos ainda são demonstração. O aviso diz as
+        duas coisas — nem chama dado real de demonstrativo, nem o contrário.
       */}
-      <p className="pb-2 text-center text-xs text-muted-foreground">
-        Prévia visual do Programa de Parceiros. Os números desta tela são
-        demonstrativos.
-      </p>
+      <p className="pb-2 text-center text-xs text-muted-foreground">{AVISO_MISTO}</p>
     </div>
   )
 }

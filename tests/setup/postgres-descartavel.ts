@@ -10,13 +10,15 @@ const BANCO = 'vincis_testes'
 /**
  * Porta do Postgres de teste.
  *
- * 55432 continua o padrão. A variável existe como saída para um caso real: a
+ * 5434 é o padrão: fora da faixa de portas efêmeras e longe de 55432, que é a
+ * porta do PostgreSQL local persistente de desenvolvimento (compartilhado com
+ * outro projeto nesta máquina). A variável continua como saída para um caso real: a
  * faixa alta é também a faixa de portas efêmeras do sistema, e o `next dev`
  * rodando ao lado pode ter pegado justamente esta como porta de origem da
  * conexão dele com o banco — aí o Docker não consegue publicar e a suíte nem
  * começa. `PORTA_POSTGRES_TESTES=55433 npm test` resolve sem derrubar nada.
  */
-const PORTA = Number(process.env.PORTA_POSTGRES_TESTES ?? 55432)
+const PORTA = Number(process.env.PORTA_POSTGRES_TESTES ?? 5434)
 
 export const URL_BANCO_TESTES = `postgresql://postgres:${SENHA}@127.0.0.1:${PORTA}/${BANCO}`
 

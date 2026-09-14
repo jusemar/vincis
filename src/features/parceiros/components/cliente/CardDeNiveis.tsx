@@ -69,7 +69,8 @@ export function CardDeNiveis({ situacao }: { situacao: SituacaoDeNivel | null })
         </p>
         <p className="mt-1 flex items-center gap-2 font-serif text-xl font-semibold">
           <Crown className="size-5 text-primary" aria-hidden />
-          Você é <span className="text-primary">{nivel.nome}</span>
+          {situacao.parceiroAtivo ? 'Você é' : 'Você começa no'}{' '}
+          <span className="text-primary">{nivel.nome}</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           {formatarPercentualCentesimos(nivel.percentualCentesimos)} de comissão

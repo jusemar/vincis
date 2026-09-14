@@ -187,6 +187,17 @@ src/db/
     │   └── relacoes.ts
 ```
 
+## Ambientes de banco
+
+* **Desenvolvimento e testes: PostgreSQL local.** `DATABASE_URL` fica em `.env.local` (não versionado) e aponta para o banco `vincis_dev` no PostgreSQL local da máquina (127.0.0.1:55432, banco próprio da Vincis). `npm run dev` já usa `.env.local`.
+  * `npm run db:local:migrar` — aplica as migrations no banco local.
+  * `npm run db:local:drizzle -- <comando>` — demais comandos do drizzle-kit (ex.: `generate --name x`).
+  * `npm run db:local:validar-migrations` — cadeia inteira do zero em banco local temporário, apagado ao fim.
+  * `npm run db:local:parceiros` — contas e dados de desenvolvimento do Programa de Parceiros.
+  * `npm test` — banco descartável próprio em Docker (porta 5434).
+* **Online: Neon**, somente para migration aprovada e deploy: `npm run db:online:migrar`. Nunca criar branch Neon para teste.
+* Os comandos locais recusam host que não seja loopback; `drizzle.config.ts` recusa host remoto sem `VINCIS_BANCO_ONLINE=1`.
+
 ---
 
 ## Convenções de Nomenclatura

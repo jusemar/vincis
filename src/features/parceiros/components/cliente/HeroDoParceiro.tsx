@@ -78,7 +78,7 @@ export function HeroDoParceiro({
         <div className="min-w-0">
           <Pilula
             tom="destaque"
-            rotulo={`${nivelAtual ? `Parceiro ${nivelAtual.nome}` : 'Parceiro'} · ${mesesConsecutivos}º mês consecutivo`}
+            rotulo={`${!nivelAtual ? 'Parceiro' : situacao?.parceiroAtivo ? `Parceiro ${nivelAtual.nome}` : `Comece no ${nivelAtual.nome}`} · ${mesesConsecutivos}º mês consecutivo`}
           />
 
           <h1 className="mt-5 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">

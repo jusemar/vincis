@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { eq, inArray, sql as sqlBruto } from 'drizzle-orm'
+import { and, eq, inArray, sql as sqlBruto } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   atendimentos,
@@ -368,13 +368,25 @@ describe('atribuição nascida da contratação direta', () => {
   })
 
   it('concluir a contratação libera a comissão; cancelar a encerra', async () => {
+    // Carlos tem duas comissões (contábil e jurídica). Esta prova mexe na
+    // contábil: sem dizer qual, `limit 1` devolvia qualquer uma — e, quando
+    // vinha a jurídica, o teste de "Contrato Social" logo abaixo falhava.
     const [comissao] = await db
       .select({
         id: parceiroComissoes.id,
         contratacaoId: parceiroComissoes.contratacaoId,
       })
       .from(parceiroComissoes)
-      .where(eq(parceiroComissoes.clienteUsuarioId, carlos.id))
+      .innerJoin(
+        contratacoesServico,
+        eq(contratacoesServico.id, parceiroComissoes.contratacaoId),
+      )
+      .where(
+        and(
+          eq(parceiroComissoes.clienteUsuarioId, carlos.id),
+          eq(contratacoesServico.nomeServicoSnapshot, 'Abertura de Empresa MEI'),
+        ),
+      )
       .limit(1)
 
     await moverComissaoDaContratacao(db, comissao.contratacaoId, 'disponivel')

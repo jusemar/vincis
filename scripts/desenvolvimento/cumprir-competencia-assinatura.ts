@@ -10,7 +10,7 @@
  * `--confirmar`, cumpre o mês pedido. Repetir não duplica nada.
  *
  * Uso:
- *   VINCIS_AMBIENTE=homologacao node --env-file=.env --import tsx \
+ *   VINCIS_AMBIENTE=homologacao node --env-file=.env.local --import tsx \
  *     scripts/desenvolvimento/cumprir-competencia-assinatura.ts \
  *     <assinatura-id> <numero-do-mes> [--confirmar]
  */

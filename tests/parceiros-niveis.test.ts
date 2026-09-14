@@ -31,6 +31,7 @@ import {
   obterConfiguracaoVigente,
   obterNiveisPublicos,
   obterSituacaoDeNivel,
+  obterSituacaoDeNivelDaConta,
   publicarConfiguracaoDeNiveis,
   recalcularNivelDoParceiro,
   validarConfiguracaoDeNiveis,
@@ -923,5 +924,93 @@ describe('a vitrine pública lê a mesma configuração', () => {
     // Sem pré-render estático: a mudança da Gestão aparece sem novo deploy.
     expect(rota).toMatch(/force-dynamic/)
     expect(rota).toMatch(/obterNiveisPublicos/)
+  })
+})
+
+/* ------------------------------------- Área do Cliente: Níveis e benefícios */
+
+describe('a tela de níveis nunca confunde "sem clientes" com "indisponível"', () => {
+  it('parceiro ativado com zero clientes: base, zero ativos e progresso até o próximo', async () => {
+    await publicar(INICIAL)
+    const [novo] = Object.entries(parceiro).filter(([chave]) => chave === 'caio')
+    // Caio perdeu os clientes: cancelamos as assinaturas dele e expiramos a proteção.
+    const deCaio = await db
+      .select({ id: assinaturas.id })
+      .from(parceiroAtribuicoes)
+      .innerJoin(assinaturas, eq(assinaturas.id, parceiroAtribuicoes.assinaturaId))
+      .where(eq(parceiroAtribuicoes.parceiroId, novo[1]))
+    for (const a of deCaio) await cancelar(a.id)
+    await nivel('caio')
+    await expirarProtecao('caio')
+
+    const situacao = await obterSituacaoDeNivelDaConta(parceiro.caio)
+    expect(situacao).not.toBeNull()
+    expect(situacao).toMatchObject({
+      parceiroAtivo: true,
+      clientesAtivos: 0,
+      progresso: 0,
+      nivel: { codigo: 'bronze', percentualCentesimos: 500 },
+      proximo: { codigo: 'prata', minimoClientes: 4, faltam: 4 },
+    })
+  })
+
+  it('conta que ainda não ativou o programa vê a trilha vigente, sem gravar estado', async () => {
+    const estadosAntes = await db.select({ id: parceiroNivelEstados.parceiroId }).from(parceiroNivelEstados)
+    const situacao = await obterSituacaoDeNivelDaConta(null)
+    expect(situacao).toMatchObject({
+      parceiroAtivo: false,
+      clientesAtivos: 0,
+      progresso: 0,
+      protegidoAte: null,
+      nivel: { codigo: 'bronze' },
+      proximo: { codigo: 'prata', faltam: 4 },
+    })
+    expect(situacao!.niveis.map((n) => n.percentualCentesimos)).toEqual([500, 750, 1_000])
+    const estadosDepois = await db.select({ id: parceiroNivelEstados.parceiroId }).from(parceiroNivelEstados)
+    expect(estadosDepois).toHaveLength(estadosAntes.length)
+  })
+
+  it('e acompanha a configuração publicada', async () => {
+    await publicar(configuracao({ bronze: 400, prata: [6, 800], ouro: [15, 1_200], protecao: 45 }))
+    const situacao = await obterSituacaoDeNivelDaConta(null)
+    expect(situacao).toMatchObject({
+      nivel: { percentualCentesimos: 400 },
+      proximo: { minimoClientes: 6, faltam: 6 },
+      protecaoDias: 45,
+    })
+    await publicar(INICIAL)
+  })
+
+  it('só é nula com configuração ausente ou inválida, para parceiro e para não parceiro', async () => {
+    const [ultima] = await db
+      .select({ versao: parceiroNivelConfiguracoes.versao })
+      .from(parceiroNivelConfiguracoes)
+      .orderBy(desc(parceiroNivelConfiguracoes.versao))
+      .limit(1)
+    const [quebrada] = await db
+      .insert(parceiroNivelConfiguracoes)
+      .values({ versao: ultima.versao + 1, protecaoDias: 30 })
+      .returning({ id: parceiroNivelConfiguracoes.id })
+    await db.insert(parceiroNivelRegras).values([
+      { configuracaoId: quebrada.id, nivelCodigo: 'bronze', minimoClientes: 0, percentualCentesimos: 500 },
+    ])
+    expect(await obterSituacaoDeNivelDaConta(null)).toBeNull()
+    expect(await obterSituacaoDeNivelDaConta(parceiro.caio)).toBeNull()
+    await publicar(INICIAL)
+    expect(await obterSituacaoDeNivelDaConta(null)).not.toBeNull()
+  })
+
+  it('o rodapé de Níveis diz dado real; as rotas não exigem parceiro para calcular', () => {
+    const secoes = readFileSync(
+      path.resolve(process.cwd(), 'src/features/parceiros/components/cliente/SecoesDoParceiro.tsx'),
+      'utf8',
+    )
+    const conjunto = /SECOES_COM_DADO_REAL = new Set\(\[([\s\S]*?)\]\)/.exec(secoes)![1]
+    expect(conjunto).toMatch(/'niveis'/)
+    expect(secoes).toMatch(/SistemaHibrido situacao=\{situacaoNivel\} estimativas=\{false\}/)
+    for (const rota of ['src/app/cliente/parceiros/page.tsx', 'src/app/cliente/parceiros/[secao]/page.tsx']) {
+      const fonte = readFileSync(path.resolve(process.cwd(), rota), 'utf8')
+      expect(fonte, rota).toMatch(/obterSituacaoDeNivelDaConta\(parceiro\?\.id \?\? null\)/)
+    }
   })
 })

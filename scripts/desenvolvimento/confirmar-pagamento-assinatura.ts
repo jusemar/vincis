@@ -12,7 +12,7 @@
  * rodar de novo com a mesma chave devolve o mesmo pagamento, sem duplicar.
  *
  * Uso:
- *   VINCIS_AMBIENTE=homologacao node --env-file=.env --import tsx \
+ *   VINCIS_AMBIENTE=homologacao node --env-file=.env.local --import tsx \
  *     scripts/desenvolvimento/confirmar-pagamento-assinatura.ts \
  *     <assinatura-id> <valor-centavos> <chave> [--confirmar]
  */

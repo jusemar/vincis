@@ -592,11 +592,17 @@ export type SituacaoDeNivel = {
   niveis: RegraDeNivel[]
   protecaoDias: number
   configuracaoVersao: number
+  /**
+   * A conta já ativou o programa. Sem isso, a trilha é a mesma — a regra
+   * vigente —, mas mostrada como ponto de partida: base, zero clientes.
+   */
+  parceiroAtivo: boolean
 }
 
 export function montarSituacaoDeNivel(
   calculado: NivelCalculado,
   agora: Date = new Date(),
+  parceiroAtivo = true,
 ): SituacaoDeNivel {
   const { configuracao, nivel, clientesAtivos } = calculado
   const seguinte = configuracao.niveis.find((n) => n.ordem > nivel.ordem) ?? null
@@ -616,6 +622,7 @@ export function montarSituacaoDeNivel(
     niveis: configuracao.niveis,
     protecaoDias: configuracao.protecaoDias,
     configuracaoVersao: configuracao.versao,
+    parceiroAtivo,
   }
 }
 
@@ -641,4 +648,36 @@ export async function obterSituacaoDeNivel(
     }
     throw erro
   }
+}
+
+/**
+ * A situação de nível que a Área do Cliente mostra, para qualquer conta.
+ *
+ * Parceiro ativado: o nível real, refeito agora (`obterSituacaoDeNivel`).
+ * Conta que ainda não ativou o programa: a trilha da configuração vigente a
+ * partir da base, com zero clientes — sem gravar estado para quem não é
+ * parceiro. "Sem parceria" e "sem clientes" não são "sistema indisponível":
+ * nulo só quando a configuração publicada está ausente ou inválida.
+ */
+export async function obterSituacaoDeNivelDaConta(
+  parceiroId: string | null,
+  agora: Date = new Date(),
+): Promise<SituacaoDeNivel | null> {
+  if (parceiroId) return obterSituacaoDeNivel(parceiroId, agora)
+  const lida = await obterConfiguracaoVigente()
+  if (!lida.ok) {
+    console.error('[PARCEIROS] níveis indisponíveis', { motivo: lida.motivo })
+    return null
+  }
+  return montarSituacaoDeNivel(
+    {
+      nivel: lida.configuracao.niveis[0],
+      clientesAtivos: 0,
+      protegidoAte: null,
+      configuracao: lida.configuracao,
+      mudou: false,
+    },
+    agora,
+    false,
+  )
 }

@@ -14,6 +14,7 @@ import type { DestinoProfissional } from '../../queries/listar-destinos-profissi
 import { rotuloDaSecao } from '../../constants/navegacao'
 import type { SituacaoDeNivel } from '../../lib/niveis'
 import { CardDeNiveis } from './CardDeNiveis'
+import { AVISO_DADO_REAL, AVISO_MISTO, AVISO_PREVIA } from './avisos'
 import { IndicacoesRecebidas } from './IndicacoesRecebidas'
 import { PainelDoParceiro } from './PainelDoParceiro'
 import { SecaoEmPreparo } from './SecaoEmPreparo'
@@ -46,7 +47,12 @@ const SECOES_COM_DADO_REAL = new Set([
   'comissoes',
   'meu-link',
   'configuracoes',
+  'niveis',
 ])
+
+/** Seções com o nível real ao lado de blocos que ainda são demonstração. */
+const SECOES_MISTAS = new Set(['clientes-indicados'])
+
 
 function Titulo({ secao, descricao }: { secao: string; descricao: string }) {
   return (
@@ -113,8 +119,10 @@ export function SecaoDoParceiro({
       */}
       <p className="pb-2 text-center text-xs text-muted-foreground">
         {SECOES_COM_DADO_REAL.has(secao)
-          ? 'Os números desta tela vêm dos seus dados reais na Vincis.'
-          : 'Prévia visual do Programa de Parceiros. Os números desta tela são demonstrativos.'}
+          ? AVISO_DADO_REAL
+          : SECOES_MISTAS.has(secao)
+            ? AVISO_MISTO
+            : AVISO_PREVIA}
       </p>
     </div>
   )
@@ -258,7 +266,7 @@ function conteudoDaSecao(
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <CardDeNiveis situacao={situacaoNivel} />
             <div className="lg:col-span-2 lg:h-full">
-              <SistemaHibrido situacao={situacaoNivel} />
+              <SistemaHibrido situacao={situacaoNivel} estimativas={false} />
             </div>
           </div>
         </>
