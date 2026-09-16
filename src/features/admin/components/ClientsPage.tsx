@@ -57,6 +57,7 @@ import type {
   PermissoesCliente,
 } from "@/features/clientes/lib/permissoes-cliente";
 import { consultarCep } from "@/features/usuarios/actions/consultar-cep";
+import { formatarIdentificacaoFiscal } from "@/features/documentos-fiscais/lib/identidade-fiscal";
 
 type StatusCliente = "ativo" | "pendente" | "inativo";
 type AreaCliente = "contabil" | "juridico" | "ambos";
@@ -68,6 +69,8 @@ type ClienteLista = {
   email: string;
   telefone: string;
   empresaNome: string | null;
+  tipoIdentificacaoFiscal?: string | null;
+  identificacaoFiscal?: string | null;
   area: string;
   status: string;
   tipoAtendimento: string;
@@ -100,6 +103,8 @@ const VALORES_INICIAIS: ClienteDTO = {
   email: "",
   telefone: "",
   empresaNome: "",
+  tipoIdentificacaoFiscal: "",
+  identificacaoFiscal: "",
   area: "contabil",
   status: "ativo",
   tipoAtendimento: "mensal",
@@ -287,6 +292,10 @@ export default function ClientsPage() {
       email: cliente.email,
       telefone: formatarTelefone(cliente.telefone),
       empresaNome: cliente.empresaNome ?? "",
+      tipoIdentificacaoFiscal:
+        (cliente.tipoIdentificacaoFiscal as "cpf" | "cnpj" | "estrangeiro" | null) ?? "",
+      // Guardado sem máscara; exibido com ela.
+      identificacaoFiscal: formatarIdentificacaoFiscal(cliente.identificacaoFiscal),
       area: cliente.area as AreaCliente,
       status: cliente.status as StatusCliente,
       tipoAtendimento: cliente.tipoAtendimento as "mensal" | "avulso",
@@ -642,6 +651,9 @@ export default function ClientsPage() {
                     </DialogTitle>
                     <DialogDescription>
                       {clienteDetalhe.empresaNome || "Pessoa física"}
+                      {clienteDetalhe.identificacaoFiscal
+                        ? ` · ${formatarIdentificacaoFiscal(clienteDetalhe.identificacaoFiscal)}`
+                        : ""}
                     </DialogDescription>
                     <div className="mt-2">
                       <BadgeStatus status={clienteDetalhe.status} />
@@ -855,6 +867,50 @@ export default function ClientsPage() {
                     {...register("empresaNome")}
                   />
                   {erro("empresaNome")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-tipo-identificacao">
+                    Tipo de identificação
+                  </Label>
+                  <select
+                    id="cliente-tipo-identificacao"
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    {...register("tipoIdentificacaoFiscal")}
+                  >
+                    <option value="">Não informado</option>
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                  </select>
+                  {erro("tipoIdentificacaoFiscal")}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cliente-identificacao">
+                    CPF/CNPJ (opcional)
+                  </Label>
+                  <Controller
+                    control={control}
+                    name="identificacaoFiscal"
+                    render={({ field }) => (
+                      <Input
+                        id="cliente-identificacao"
+                        placeholder="Usado para classificar as notas fiscais"
+                        maxLength={30}
+                        className={
+                          errors.identificacaoFiscal ? "border-destructive" : ""
+                        }
+                        value={field.value ?? ""}
+                        // Enquanto digita, o texto é do usuário; ao sair do
+                        // campo, aparece formatado — o valor gravado é sempre o
+                        // canônico, resolvido no servidor.
+                        onChange={(evento) => field.onChange(evento.target.value)}
+                        onBlur={() => {
+                          field.onChange(formatarIdentificacaoFiscal(field.value ?? ""));
+                          field.onBlur();
+                        }}
+                      />
+                    )}
+                  />
+                  {erro("identificacaoFiscal")}
                 </div>
               </div>
             </section>

@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  IdentidadeFiscalSchema,
+  TipoIdentificacaoFiscalSchema,
+} from '@/features/documentos-fiscais/schemas/identidade-fiscal'
 
 export const AREAS_CLIENTE = ['contabil', 'juridico', 'ambos'] as const
 export const STATUS_CLIENTE = ['ativo', 'pendente', 'inativo'] as const
@@ -69,6 +73,16 @@ export const ClienteSchema = z.object({
     .max(255, 'A empresa deve ter no máximo 255 caracteres.')
     .optional()
     .default(''),
+  /**
+   * Identidade fiscal do contribuinte (CPF ou CNPJ). Opcional: cliente sem ela
+   * continua sendo cadastrado normalmente — só não dá para dizer se uma NF-e
+   * foi emitida ou recebida por ele.
+   */
+  tipoIdentificacaoFiscal: z
+    .union([TipoIdentificacaoFiscalSchema, z.literal('')])
+    .optional()
+    .default(''),
+  identificacaoFiscal: z.string().trim().max(30).optional().default(''),
   area: z.enum(AREAS_CLIENTE, {
     error: 'Selecione uma área de atendimento.',
   }),
@@ -96,6 +110,18 @@ export const ClienteSchema = z.object({
   cidade: z.string().trim().min(2, 'Informe a cidade.').max(120),
   estado: z.string().trim().length(2, 'Informe o estado com 2 letras.').transform((valor) => valor.toUpperCase()),
 }).superRefine((dados, contexto) => {
+  // A regra do CPF/CNPJ é a mesma do escritório e a mesma que o módulo fiscal
+  // usa para comparar identidades: uma definição só.
+  const identidade = IdentidadeFiscalSchema.safeParse({
+    tipoIdentificacaoFiscal: dados.tipoIdentificacaoFiscal,
+    identificacaoFiscal: dados.identificacaoFiscal,
+  })
+  if (!identidade.success) {
+    for (const problema of identidade.error.issues) {
+      contexto.addIssue({ code: 'custom', path: problema.path, message: problema.message })
+    }
+  }
+
   if (dados.area === 'juridico') return
 
   const valor = converterValorParaCentavos(dados.valorReferencia)

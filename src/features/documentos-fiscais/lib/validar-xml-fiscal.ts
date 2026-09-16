@@ -86,6 +86,14 @@ export function limparNomeOriginal(nome: string): string {
   return base.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 255)
 }
 
+/**
+ * Bytes aprovados → texto para o parser. O BOM é marca de codificação, não
+ * conteúdo: sai daqui e continua no arquivo original, que nunca é reescrito.
+ */
+export function textoDoXmlFiscal(bytes: Uint8Array): string {
+  return new TextDecoder('utf-8').decode(bytes).replace(/^\ufeff/, '')
+}
+
 const recusa = (codigo: CodigoRecusaArquivo, motivo: string): XmlFiscalRecusado => ({
   valido: false,
   codigo,

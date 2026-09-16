@@ -30,6 +30,8 @@ import type {
   FilterState,
   Professional,
 } from "@/features/profissionais/types/profissionais";
+import { formatarIdentificacaoFiscal } from "@/features/documentos-fiscais/lib/identidade-fiscal";
+import { atualizarIdentidadeFiscalEscritorio } from "../actions/identidade-fiscal";
 import {
   carregarEquipe,
   alterarAtribuicaoCliente,
@@ -49,6 +51,9 @@ import type {
 type Escritorio = {
   empresaId: string;
   nome: string;
+  /** Identidade fiscal do escritório — usada para classificar as notas dele. */
+  tipoIdentificacaoFiscal: string | null;
+  identificacaoFiscal: string | null;
   funcao: string | null;
   papel: PapelEscritorio | null;
   /** Matriz vinda do servidor — a mesma que autoriza as Server Actions. */
@@ -306,6 +311,43 @@ export default function EquipeEscritorioPage() {
     (item) => item.empresaId === empresaId,
   );
 
+  // Identidade fiscal do escritório: o que está em edição vale enquanto for do
+  // escritório selecionado; trocar de escritório (ou recarregar) volta ao que o
+  // servidor trouxe, sem efeito nenhum.
+  const [edicaoIdentidade, setEdicaoIdentidade] = useState<{
+    chave: string;
+    tipo: string;
+    numero: string;
+  } | null>(null);
+  const [salvandoIdentidade, setSalvandoIdentidade] = useState(false);
+  const chaveIdentidade = `${empresaId}:${escritorioAtual?.identificacaoFiscal ?? ""}`;
+  const identidadeFiscal =
+    edicaoIdentidade?.chave === chaveIdentidade
+      ? edicaoIdentidade
+      : {
+          chave: chaveIdentidade,
+          tipo: escritorioAtual?.tipoIdentificacaoFiscal ?? "",
+          numero: formatarIdentificacaoFiscal(escritorioAtual?.identificacaoFiscal ?? ""),
+        };
+
+  async function salvarIdentidadeFiscal() {
+    if (!empresaId) return;
+    setSalvandoIdentidade(true);
+    const resultado = await atualizarIdentidadeFiscalEscritorio({
+      empresaId,
+      tipoIdentificacaoFiscal: identidadeFiscal.tipo,
+      identificacaoFiscal: identidadeFiscal.numero,
+    });
+    setSalvandoIdentidade(false);
+    if (!resultado.sucesso) {
+      toast.error(resultado.mensagem);
+      return;
+    }
+    toast.success(resultado.mensagem);
+    setEdicaoIdentidade(null);
+    setVersao((atual) => atual + 1);
+  }
+
   useEffect(() => {
     let ativo = true;
     if (!empresaId || !escritorioAtual?.permissoes.convidarMembro) {
@@ -534,6 +576,66 @@ export default function EquipeEscritorioPage() {
               Seu papel no escritório:{" "}
               {FUNCOES[escritorioAtual?.funcao ?? "proprietario"] ?? "Membro"}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {escritorioAtual?.permissoes.administrar && (
+        <Card className="border-amber-500/15 shadow-card">
+          <CardContent className="space-y-3 p-4">
+            <div>
+              <p className="font-serif text-lg font-semibold">
+                Identificação fiscal do escritório
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Usada para saber se uma nota fiscal do próprio escritório foi
+                emitida ou recebida por ele. Opcional.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="space-y-2 sm:w-52">
+                <Label htmlFor="escritorio-tipo-identificacao">
+                  Tipo de identificação
+                </Label>
+                <select
+                  id="escritorio-tipo-identificacao"
+                  value={identidadeFiscal.tipo}
+                  onChange={(evento) =>
+                    setEdicaoIdentidade({ ...identidadeFiscal, tipo: evento.target.value })
+                  }
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                >
+                  <option value="">Não informado</option>
+                  <option value="cpf">CPF</option>
+                  <option value="cnpj">CNPJ</option>
+                </select>
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="escritorio-identificacao">CPF/CNPJ</Label>
+                <input
+                  id="escritorio-identificacao"
+                  value={identidadeFiscal.numero}
+                  maxLength={30}
+                  onChange={(evento) =>
+                    setEdicaoIdentidade({ ...identidadeFiscal, numero: evento.target.value })
+                  }
+                  onBlur={() =>
+                    setEdicaoIdentidade({
+                      ...identidadeFiscal,
+                      numero: formatarIdentificacaoFiscal(identidadeFiscal.numero),
+                    })
+                  }
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                disabled={salvandoIdentidade}
+                onClick={() => void salvarIdentidadeFiscal()}
+              >
+                {salvandoIdentidade ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

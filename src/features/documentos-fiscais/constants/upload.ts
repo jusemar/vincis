@@ -87,6 +87,7 @@ export type CodigoRecusaLote = (typeof CODIGOS_RECUSA_LOTE)[number]
 export const CODIGOS_RESULTADO_ARQUIVO = [
   'ACEITO',
   'DOCUMENTO_DUPLICADO',
+  'ARQUIVO_DUPLICADO',
   'DOCUMENTO_NAO_INTERPRETADO',
   'ARQUIVO_NAO_PERMITIDO',
   'ARQUIVO_VAZIO',
@@ -99,7 +100,19 @@ export const CODIGOS_RESULTADO_ARQUIVO = [
 ] as const
 export type CodigoResultadoArquivo = (typeof CODIGOS_RESULTADO_ARQUIVO)[number]
 /** Códigos que descrevem um documento gravado — não uma recusa do arquivo. */
-export const CODIGOS_COM_DOCUMENTO = ['ACEITO', 'DOCUMENTO_DUPLICADO', 'DOCUMENTO_NAO_INTERPRETADO'] as const
+export const CODIGOS_COM_DOCUMENTO = [
+  'ACEITO',
+  'DOCUMENTO_DUPLICADO',
+  'ARQUIVO_DUPLICADO',
+  'DOCUMENTO_NAO_INTERPRETADO',
+] as const
+
+/**
+ * As duas formas de repetição, distintas por dentro e iguais para quem envia:
+ * `ARQUIVO_DUPLICADO` é o mesmo arquivo de novo (mesmo SHA-256);
+ * `DOCUMENTO_DUPLICADO` é a mesma NF-e (mesma chave de acesso) em outro arquivo.
+ */
+export const CODIGOS_DUPLICIDADE = ['DOCUMENTO_DUPLICADO', 'ARQUIVO_DUPLICADO'] as const
 export type CodigoRecusaArquivo = Exclude<CodigoResultadoArquivo, (typeof CODIGOS_COM_DOCUMENTO)[number]>
 
 export const MENSAGENS_UPLOAD_FISCAL: Record<CodigoRecusaLote | CodigoResultadoArquivo, string> = {
@@ -111,7 +124,8 @@ export const MENSAGENS_UPLOAD_FISCAL: Record<CodigoRecusaLote | CodigoResultadoA
   LOTE_MUITO_GRANDE: `Envie no máximo ${QUANTIDADE_MAXIMA_LOTE_XML_FISCAL} arquivos e ${emMegabytes(TAMANHO_MAXIMO_LOTE_XML_FISCAL)} por vez.`,
   REQUISICAO_INVALIDA: 'Não foi possível ler o envio. Tente novamente.',
   ACEITO: 'Documento importado e pronto para revisão.',
-  DOCUMENTO_DUPLICADO: 'Este documento já foi importado para este cliente.',
+  DOCUMENTO_DUPLICADO: 'Este documento já foi importado para este contribuinte.',
+  ARQUIVO_DUPLICADO: 'Este arquivo já foi importado para este contribuinte.',
   DOCUMENTO_NAO_INTERPRETADO:
     'O arquivo foi guardado, mas a NF-e ainda não pôde ser interpretada. Nenhum dado fiscal foi registrado.',
   ARQUIVO_NAO_PERMITIDO: 'Envie somente arquivos XML de NF-e.',

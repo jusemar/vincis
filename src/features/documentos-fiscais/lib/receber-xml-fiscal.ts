@@ -5,6 +5,7 @@ import { documentosFiscais } from '@/db/schema'
 import { ehAcessoInterno, resolverAcessoCliente } from '@/features/clientes/lib/acesso-cliente'
 import { PERMISSOES_DOCUMENTOS_FISCAIS } from '../constants/permissoes'
 import {
+  CODIGOS_DUPLICIDADE,
   CONCORRENCIA_LOTE_XML_FISCAL,
   excedeLimitesDoLote,
   MENSAGENS_UPLOAD_FISCAL,
@@ -27,7 +28,7 @@ import {
   gravarOriginalPrivado,
   montarChaveOriginal,
 } from './armazenamento-fiscal'
-import { limparNomeOriginal, validarXmlFiscal } from './validar-xml-fiscal'
+import { limparNomeOriginal, textoDoXmlFiscal, validarXmlFiscal } from './validar-xml-fiscal'
 
 /** O mínimo de `File` que o recebimento usa — permite testar sem navegador. */
 export type ArquivoDoLote = {
@@ -49,7 +50,14 @@ export type ResultadoArquivoFiscal =
       /** Código do erro do parser — estrutura, nunca conteúdo do XML. */
       motivo: CodigoErroInterpretacao
     }
-  | { indice: number; nome: string; codigo: 'DOCUMENTO_DUPLICADO'; mensagem: string; documentoId: string | null }
+  | {
+      indice: number
+      nome: string
+      /** `ARQUIVO_DUPLICADO`: mesmo arquivo. `DOCUMENTO_DUPLICADO`: mesma NF-e. */
+      codigo: (typeof CODIGOS_DUPLICIDADE)[number]
+      mensagem: string
+      documentoId: string | null
+    }
   | { indice: number; nome: string; codigo: CodigoRecusaArquivo; mensagem: string }
 
 export type ResultadoLoteFiscal =
@@ -85,6 +93,24 @@ const recusarLote = (codigo: CodigoRecusaLote): ResultadoLoteFiscal => ({
  * **vê** o documento depois. Por isso quem não administra precisa informar um
  * cliente: documento sem cliente é do escritório, e ele não o enxergaria.
  * Cliente inexistente e cliente de outro escritório recebem a mesma resposta.
+ *
+ * ## Identidade da NF-e
+ *
+ * O documento fiscal é identificado por **escritório + contribuinte + chave de
+ * acesso**, e o arquivo por **escritório + contribuinte + SHA-256**. O
+ * contribuinte (`clienteId`, ou o próprio escritório quando nulo) faz parte da
+ * identidade porque a escrituração é dele: a mesma NF-e é legitimamente a saída
+ * do cliente A e a entrada do cliente B dentro do mesmo escritório, e cada um
+ * tem a sua revisão, o seu sentido e a sua classificação. Tirar o contribuinte
+ * da regra faria o segundo contribuinte perder a nota por ela já existir para o
+ * primeiro. Reenviar o mesmo documento para o mesmo contribuinte, por outro
+ * lado, nunca cria documento, item, tributo ou parte novos — é duplicidade, e a
+ * garantia final são os índices únicos do banco.
+ *
+ * Isso vale só para o documento principal: eventos da mesma chave
+ * (cancelamento, carta de correção, manifestação) moram em
+ * `documentos_fiscais_eventos`, ligados a este documento, e nenhum índice daqui
+ * os alcança.
  *
  * ## Um arquivo não derruba o lote
  *
@@ -144,10 +170,10 @@ export async function receberXmlsFiscais(entrada: {
     resumo: {
       total: resultados.length,
       aceitos: resultados.filter((r) => r.codigo === 'ACEITO').length,
-      duplicados: resultados.filter((r) => r.codigo === 'DOCUMENTO_DUPLICADO').length,
+      duplicados: resultados.filter((r) => (CODIGOS_DUPLICIDADE as readonly string[]).includes(r.codigo)).length,
       naoInterpretados: resultados.filter((r) => r.codigo === 'DOCUMENTO_NAO_INTERPRETADO').length,
       recusados: resultados.filter(
-        (r) => !['ACEITO', 'DOCUMENTO_DUPLICADO', 'DOCUMENTO_NAO_INTERPRETADO'].includes(r.codigo),
+        (r) => !['ACEITO', ...CODIGOS_DUPLICIDADE, 'DOCUMENTO_NAO_INTERPRETADO'].includes(r.codigo),
       ).length,
     },
     arquivos: resultados,
@@ -181,14 +207,16 @@ async function receberArquivo(
   const validacao = validarXmlFiscal({ nome: arquivo.name, tipoMime: arquivo.type, bytes })
   if (!validacao.valido) return recusar(validacao.codigo)
 
-  type FiltroDocumento = { sha256?: string; chaveAcesso?: string }
-  const duplicado = async (filtro: FiltroDocumento): Promise<ResultadoArquivoFiscal> => ({
-    indice,
-    nome,
-    codigo: 'DOCUMENTO_DUPLICADO',
-    mensagem: MENSAGENS_UPLOAD_FISCAL.DOCUMENTO_DUPLICADO,
-    documentoId: await referenciaSegura(acesso, entrada.clienteId, filtro, entrada.usuarioId),
-  })
+  const duplicado = async (filtro: FiltroDocumento): Promise<ResultadoArquivoFiscal> => {
+    const codigo = filtro.sha256 ? 'ARQUIVO_DUPLICADO' : 'DOCUMENTO_DUPLICADO'
+    return {
+      indice,
+      nome,
+      codigo,
+      mensagem: MENSAGENS_UPLOAD_FISCAL[codigo],
+      documentoId: await referenciaSegura(acesso, entrada.clienteId, filtro, entrada.usuarioId),
+    }
+  }
 
   // Caminho rápido: nem grava no storage, nem interpreta, o que já existe. Não é
   // a garantia — a garantia são os índices únicos, conferidos de novo na transação.
@@ -196,7 +224,7 @@ async function receberArquivo(
   if (await buscarDocumento(acesso.empresaId, entrada.clienteId, porArquivo)) return duplicado(porArquivo)
 
   // Interpretação fiscal: pura, em memória, antes de gravar qualquer byte.
-  const interpretacao = interpretarNfe(textoDoXml(bytes))
+  const interpretacao = interpretarNfe(textoDoXmlFiscal(bytes))
 
   // A mesma NF-e pode voltar em outro arquivo (novo download, outro
   // espaçamento): a chave identifica o documento; o hash, o arquivo. Reenviar o
@@ -249,7 +277,8 @@ async function receberArquivo(
       // ser encontrável para limpeza. A chave vai só para o log do servidor.
       console.error('[DOCUMENTOS_FISCAIS_ORFAO]', { chave, nome: falha instanceof Error ? falha.name : 'desconhecido' })
     })
-    if (ehDocumentoJaRegistrado(erro)) return duplicado(porChave ?? porArquivo)
+    const jaRegistrado = motivoDeJaRegistrado(erro)
+    if (jaRegistrado) return duplicado(jaRegistrado === 'chave' && porChave ? porChave : porArquivo)
     console.error('[DOCUMENTOS_FISCAIS_REGISTRO]', { nome: erro instanceof Error ? erro.name : 'desconhecido' })
     return recusar('FALHA_REGISTRO')
   }
@@ -279,14 +308,6 @@ async function receberArquivo(
 }
 
 type FiltroDocumento = { sha256?: string; chaveAcesso?: string }
-
-/**
- * Texto do XML para o parser. O BOM é marca de codificação, não conteúdo: sai
- * daqui, mas continua no arquivo original, que segue intocado no storage.
- */
-function textoDoXml(bytes: Uint8Array) {
-  return new TextDecoder('utf-8').decode(bytes).replace(/^\ufeff/, '')
-}
 
 /** Documento da mesma perspectiva (empresa + cliente) pelo arquivo ou pela chave. */
 async function buscarDocumento(empresaId: string, clienteId: string | null, filtro: FiltroDocumento) {
@@ -323,13 +344,13 @@ async function referenciaSegura(
   return pode ? existente.id : null
 }
 
-/** Mesmo arquivo ou mesma NF-e já registrados nesta perspectiva. */
-function ehDocumentoJaRegistrado(erro: unknown) {
+/** Qual índice recusou: o do arquivo (SHA-256) ou o da NF-e (chave de acesso). */
+function motivoDeJaRegistrado(erro: unknown): 'arquivo' | 'chave' | null {
   const causa =
     (erro as { cause?: { code?: string; constraint_name?: string } })?.cause ??
     (erro as { code?: string; constraint_name?: string })
-  return (
-    causa?.code === '23505' &&
-    ['documentos_fiscais_origem_unica', 'documentos_fiscais_chave_unica'].includes(causa?.constraint_name ?? '')
-  )
+  if (causa?.code !== '23505') return null
+  if (causa.constraint_name === 'documentos_fiscais_chave_unica') return 'chave'
+  if (causa.constraint_name === 'documentos_fiscais_origem_unica') return 'arquivo'
+  return null
 }

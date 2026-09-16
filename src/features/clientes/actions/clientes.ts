@@ -20,6 +20,7 @@ import {
   atualizarClienteDoProfissional,
   restaurarClienteDoProfissional,
 } from '../lib/persistir-cliente-proprietario'
+import { identidadeFiscalCanonica } from '@/features/documentos-fiscais/schemas/identidade-fiscal'
 import {
   ClienteIdSchema,
   ClienteSchema,
@@ -126,6 +127,7 @@ export async function criarCliente(dados: ClienteDTO) {
     email: valor.email.toLowerCase(),
     telefone: valor.telefone,
     empresaNome: valor.empresaNome || null,
+    ...identidadeFiscalCanonica(valor),
     area: valor.area,
     status: valor.status,
     tipoAtendimento: valor.area === 'juridico' ? 'mensal' : valor.tipoAtendimento,

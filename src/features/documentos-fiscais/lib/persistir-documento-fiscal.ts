@@ -11,7 +11,11 @@ import {
 } from '@/db/schema'
 import { ACOES_AUDITORIA, registrarEventoAuditoria } from '@/features/auditoria/lib/registrar-evento'
 import { PARSER_FISCAL } from '../constants/nfe'
-import type { OrigemDocumentoFiscal, TipoEventoFiscal } from '../constants/dominio'
+import type {
+  OrigemDocumentoFiscal,
+  SentidoDocumentoFiscal,
+  TipoEventoFiscal,
+} from '../constants/dominio'
 import type {
   DocumentoFiscalInterpretado,
   ItemInterpretado,
@@ -20,6 +24,12 @@ import type {
 } from '../schemas/documento-interpretado'
 import type { ResultadoInterpretacao } from './parser-fiscal/interpretar-nfe'
 import { ENTIDADES_AUDITORIA_FISCAL, metadadosAuditoriaFiscal } from './auditoria'
+import { resolverContribuinteFiscal } from './contribuinte-fiscal'
+import {
+  classificarIdentificacaoFiscal,
+  determinarSentidoFiscal,
+  normalizarIdentificacaoFiscal,
+} from './identidade-fiscal'
 
 /**
  * Persistência do documento fiscal interpretado (Fase 1.4).
@@ -96,13 +106,34 @@ const EVENTOS_POR_STATUS: Record<string, TipoEventoFiscal> = {
 const soDados = (dados: Record<string, string> | null | undefined) =>
   dados && Object.keys(dados).length > 0 ? dados : null
 
+/**
+ * Identificação gravada da parte: normalizada (sem máscara, em caixa alta) e com
+ * o tipo que o formato sustenta.
+ *
+ * O leiaute não prevê máscara, mas emissor mal-comportado manda. Normalizar aqui
+ * — com a mesma função que compara identidades — evita que um CNPJ pontuado
+ * derrube a importação inteira no `check` da tabela, e mantém a busca por
+ * contribuinte previsível. Quando a normalização muda o texto, o valor como
+ * veio fica em `dados_especificos`: nada do documento se perde.
+ */
+function identificacaoDaParte(parte: ParteInterpretada) {
+  const identificacao = normalizarIdentificacaoFiscal(parte.identificacao)
+  if (!identificacao) return { tipoIdentificacao: null, identificacao: null, original: null }
+  return {
+    tipoIdentificacao: classificarIdentificacaoFiscal(identificacao),
+    identificacao,
+    original: identificacao === parte.identificacao ? null : parte.identificacao,
+  }
+}
+
 function linhaDeParte(parte: ParteInterpretada, extracaoId: string) {
+  const identidade = identificacaoDaParte(parte)
   return {
     extracaoId,
     papel: parte.papel,
     sequencia: 1,
-    tipoIdentificacao: parte.tipoIdentificacao,
-    identificacao: parte.identificacao,
+    tipoIdentificacao: identidade.tipoIdentificacao,
+    identificacao: identidade.identificacao,
     nome: parte.nome,
     nomeFantasia: parte.nomeFantasia,
     inscricaoEstadual: parte.inscricaoEstadual,
@@ -120,7 +151,10 @@ function linhaDeParte(parte: ParteInterpretada, extracaoId: string) {
     pais: parte.pais,
     telefone: parte.telefone,
     email: parte.email,
-    dadosEspecificos: soDados(parte.dadosEspecificos),
+    dadosEspecificos: soDados({
+      ...(parte.dadosEspecificos ?? {}),
+      ...(identidade.original ? { identificacaoComoRecebida: identidade.original } : {}),
+    }),
   }
 }
 
@@ -183,11 +217,20 @@ function linhaDeTributo(tributo: TributoInterpretado, extracaoId: string, itemId
   }
 }
 
+/** A transação do Drizzle, como o `db.transaction` a entrega. */
+export type TransacaoFiscal = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 /** Cabeçalho vigente do documento, a partir da leitura. */
-function cabecalhoDoDocumento(documento: DocumentoFiscalInterpretado) {
+export function cabecalhoDoDocumento(
+  documento: DocumentoFiscalInterpretado,
+  sentido: SentidoDocumentoFiscal,
+) {
   const { identificacao, totais, emitente, destinatario } = documento
   return {
     tipo: documento.origem.tipo,
+    // Emitida ou recebida pelo contribuinte — decidido pela identidade fiscal,
+    // nunca por CFOP ou por semelhança de nome.
+    sentido,
     chaveAcesso: identificacao.chaveAcesso,
     modelo: identificacao.modelo,
     serie: identificacao.serie,
@@ -196,9 +239,9 @@ function cabecalhoDoDocumento(documento: DocumentoFiscalInterpretado) {
     emitidoEm: identificacao.emitidoEm ? new Date(identificacao.emitidoEm) : null,
     // O dia continua o do emitente: converter fuso poderia mudar a competência.
     dataEmissao: identificacao.dataEmissao,
-    emitenteIdentificacao: emitente.identificacao,
+    emitenteIdentificacao: identificacaoDaParte(emitente).identificacao,
     emitenteNome: emitente.nome,
-    destinatarioIdentificacao: destinatario?.identificacao ?? null,
+    destinatarioIdentificacao: destinatario ? identificacaoDaParte(destinatario).identificacao : null,
     destinatarioNome: destinatario?.nome ?? null,
     valorTotal: totais.valorTotal,
     valorProdutos: totais.valorProdutos,
@@ -208,6 +251,100 @@ function cabecalhoDoDocumento(documento: DocumentoFiscalInterpretado) {
     valorSeguro: totais.valorSeguro,
     valorOutrasDespesas: totais.valorOutrasDespesas,
   }
+}
+
+
+/**
+ * Grava uma leitura do documento: a extração e, quando ela deu certo, partes,
+ * itens, tributos e o evento do protocolo.
+ *
+ * Usada tanto na importação quanto no reprocessamento — por isso recebe a
+ * transação de quem chama: a atomicidade é sempre do fluxo inteiro, nunca
+ * daqui. Partes, itens e tributos pertencem à extração, então uma leitura nova
+ * traz linhas novas e **não** soma às da leitura anterior.
+ */
+export async function gravarExtracaoInterpretada(
+  tx: TransacaoFiscal,
+  entrada: {
+    documentoId: string
+    arquivoId: string
+    interpretacao: ResultadoInterpretacao
+    origem: OrigemDocumentoFiscal
+    usuarioId: string | null
+    extracaoId?: string
+  },
+): Promise<string> {
+  const { interpretacao } = entrada
+  const extracaoId = entrada.extracaoId ?? randomUUID()
+  const agora = new Date()
+
+  await tx.insert(documentosFiscaisExtracoes).values({
+    id: extracaoId,
+    documentoFiscalId: entrada.documentoId,
+    arquivoId: entrada.arquivoId,
+    metodo: 'parser_xml',
+    provedor: PARSER_FISCAL.provedor,
+    versao: PARSER_FISCAL.versao,
+    status: interpretacao.sucesso ? 'concluida' : 'falhou',
+    // Só leitura concluída alimenta o cabeçalho do documento.
+    vigente: interpretacao.sucesso,
+    // Proveniência, não cópia: contagens e versão, nunca o XML.
+    dados: interpretacao.sucesso ? resumoDaExtracao(interpretacao.documento) : null,
+    erros: interpretacao.sucesso
+      ? null
+      : {
+          codigo: interpretacao.codigo,
+          caminho: interpretacao.caminho,
+          versaoEncontrada: interpretacao.versaoEncontrada,
+        },
+    criadaPorId: entrada.usuarioId,
+    finalizadaEm: agora,
+  })
+
+  if (!interpretacao.sucesso) return extracaoId
+
+  const documento = interpretacao.documento
+  const partes = [documento.emitente, ...(documento.destinatario ? [documento.destinatario] : [])]
+  await tx.insert(documentosFiscaisPartes).values(partes.map((parte) => linhaDeParte(parte, extracaoId)))
+
+  const linhasDeItens = documento.itens.map((item) => linhaDeItem(item, extracaoId))
+  if (linhasDeItens.length > 0) await tx.insert(documentosFiscaisItens).values(linhasDeItens)
+
+  const tributos = [
+    ...documento.tributos.map((tributo) => linhaDeTributo(tributo, extracaoId, null)),
+    ...documento.itens.flatMap((item, indice) =>
+      item.tributos.map((tributo) => linhaDeTributo(tributo, extracaoId, linhasDeItens[indice].id)),
+    ),
+  ]
+  if (tributos.length > 0) await tx.insert(documentosFiscaisTributos).values(tributos)
+
+  // O protocolo é o que o arquivo declara — não uma consulta à SEFAZ. O evento
+  // é do documento, não da extração: reler o mesmo XML não o duplica, e o
+  // índice único da tabela é quem garante isso.
+  const protocolo = documento.protocolo
+  if (protocolo?.numero) {
+    await tx
+      .insert(documentosFiscaisEventos)
+      .values({
+        documentoFiscalId: entrada.documentoId,
+        tipo: EVENTOS_POR_STATUS[protocolo.codigoStatus ?? ''] ?? 'outro',
+        sequencia: 1,
+        protocolo: protocolo.numero,
+        ocorridoEm: protocolo.recebidoEm ? new Date(protocolo.recebidoEm) : null,
+        origem: entrada.origem,
+        registradoPorId: entrada.usuarioId,
+        dadosEspecificos: {
+          codigoStatus: protocolo.codigoStatus,
+          motivo: protocolo.motivo,
+          digestValue: protocolo.digestValue,
+          ambiente: protocolo.ambiente,
+          versaoAplicacao: protocolo.versaoAplicacao,
+        },
+      })
+      .onConflictDoNothing()
+  }
+
+  return extracaoId
 }
 
 /**
@@ -229,6 +366,15 @@ export async function persistirDocumentoFiscal(entrada: {
   const agora = new Date()
   const interpretado = interpretacao.sucesso
 
+  // Cadastro do contribuinte (cliente atendido ou o próprio escritório): é ele
+  // que diz se a nota foi emitida ou recebida.
+  const contribuinte = interpretacao.sucesso
+    ? await resolverContribuinteFiscal(contexto.empresaId, contexto.clienteId)
+    : null
+  const sentido = interpretacao.sucesso
+    ? determinarSentidoFiscal(interpretacao.documento, contribuinte)
+    : null
+
   await db.transaction(async (tx) => {
     await tx.insert(documentosFiscais).values({
       id: documentoId,
@@ -243,7 +389,7 @@ export async function persistirDocumentoFiscal(entrada: {
       statusRevisao: 'pendente',
       // Sem consulta à autoridade fiscal, nada é afirmado sobre a situação.
       situacao: 'nao_verificada',
-      ...(interpretacao.sucesso ? cabecalhoDoDocumento(interpretacao.documento) : {}),
+      ...(interpretacao.sucesso ? cabecalhoDoDocumento(interpretacao.documento, sentido ?? 'nao_determinado') : {}),
     })
 
     await tx.insert(documentosFiscaisArquivos).values({
@@ -259,65 +405,14 @@ export async function persistirDocumentoFiscal(entrada: {
       enviadoPorId: contexto.usuarioId,
     })
 
-    await tx.insert(documentosFiscaisExtracoes).values({
-      id: extracaoId,
-      documentoFiscalId: documentoId,
+    await gravarExtracaoInterpretada(tx, {
+      documentoId,
       arquivoId,
-      metodo: 'parser_xml',
-      provedor: PARSER_FISCAL.provedor,
-      versao: PARSER_FISCAL.versao,
-      status: interpretado ? 'concluida' : 'falhou',
-      // Só leitura concluída alimenta o cabeçalho do documento.
-      vigente: interpretado,
-      // Proveniência, não cópia: contagens e versão, nunca o XML.
-      dados: interpretacao.sucesso ? resumoDaExtracao(interpretacao.documento) : null,
-      erros: interpretacao.sucesso
-        ? null
-        : {
-            codigo: interpretacao.codigo,
-            caminho: interpretacao.caminho,
-            versaoEncontrada: interpretacao.versaoEncontrada,
-          },
-      finalizadaEm: agora,
+      extracaoId,
+      interpretacao,
+      origem: contexto.origem,
+      usuarioId: contexto.usuarioId,
     })
-
-    if (interpretacao.sucesso) {
-      const documento = interpretacao.documento
-      const partes = [documento.emitente, ...(documento.destinatario ? [documento.destinatario] : [])]
-      await tx.insert(documentosFiscaisPartes).values(partes.map((parte) => linhaDeParte(parte, extracaoId)))
-
-      const linhasDeItens = documento.itens.map((item) => linhaDeItem(item, extracaoId))
-      if (linhasDeItens.length > 0) await tx.insert(documentosFiscaisItens).values(linhasDeItens)
-
-      const tributos = [
-        ...documento.tributos.map((tributo) => linhaDeTributo(tributo, extracaoId, null)),
-        ...documento.itens.flatMap((item, indice) =>
-          item.tributos.map((tributo) => linhaDeTributo(tributo, extracaoId, linhasDeItens[indice].id)),
-        ),
-      ]
-      if (tributos.length > 0) await tx.insert(documentosFiscaisTributos).values(tributos)
-
-      // O protocolo é o que o arquivo declara — não uma consulta à SEFAZ.
-      const protocolo = documento.protocolo
-      if (protocolo?.numero) {
-        await tx.insert(documentosFiscaisEventos).values({
-          documentoFiscalId: documentoId,
-          tipo: EVENTOS_POR_STATUS[protocolo.codigoStatus ?? ''] ?? 'outro',
-          sequencia: 1,
-          protocolo: protocolo.numero,
-          ocorridoEm: protocolo.recebidoEm ? new Date(protocolo.recebidoEm) : null,
-          origem: contexto.origem,
-          registradoPorId: contexto.usuarioId,
-          dadosEspecificos: {
-            codigoStatus: protocolo.codigoStatus,
-            motivo: protocolo.motivo,
-            digestValue: protocolo.digestValue,
-            ambiente: protocolo.ambiente,
-            versaoAplicacao: protocolo.versaoAplicacao,
-          },
-        })
-      }
-    }
 
     const metadadosComuns = {
       origem: contexto.origem,

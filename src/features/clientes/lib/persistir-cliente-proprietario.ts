@@ -5,6 +5,7 @@ import {
   permissoesCliente,
   type AcessoCliente,
 } from './acesso-cliente'
+import { identidadeFiscalCanonica } from '@/features/documentos-fiscais/schemas/identidade-fiscal'
 import {
   converterValorParaCentavos,
   type ClienteValidado,
@@ -32,6 +33,10 @@ export async function atualizarClienteDoProfissional(
       email: valor.email.toLowerCase(),
       telefone: valor.telefone,
       empresaNome: valor.empresaNome || null,
+      // Alterar o CPF/CNPJ vale daqui para a frente: documentos já processados
+      // guardam o snapshot da própria nota e não são reclassificados sozinhos —
+      // para isso existe o reprocessamento explícito.
+      ...identidadeFiscalCanonica(valor),
       area: valor.area,
       status: valor.status,
       tipoAtendimento: valor.area === 'juridico' ? 'mensal' : valor.tipoAtendimento,

@@ -143,9 +143,10 @@ async function limparFiscal() {
   const docs = await db.select({ id: documentosFiscais.id }).from(documentosFiscais).where(inArray(documentosFiscais.empresaId, empresas))
   const ids = docs.map(({ id }) => id)
   if (ids.length) {
-    await db.delete(documentosFiscaisEventos).where(inArray(documentosFiscaisEventos.documentoFiscalId, ids))
+    // Ordem das FKs: extração → arquivo (que pode apontar para evento) → evento.
     await db.delete(documentosFiscaisExtracoes).where(inArray(documentosFiscaisExtracoes.documentoFiscalId, ids))
     await db.delete(documentosFiscaisArquivos).where(inArray(documentosFiscaisArquivos.documentoFiscalId, ids))
+    await db.delete(documentosFiscaisEventos).where(inArray(documentosFiscaisEventos.documentoFiscalId, ids))
     await db.delete(documentosFiscais).where(inArray(documentosFiscais.id, ids))
   }
   await db.delete(eventosAuditoria).where(and(like(eventosAuditoria.acao, 'documento_fiscal_%'), inArray(eventosAuditoria.empresaId, empresas)))
@@ -407,7 +408,8 @@ describe('duplicidade e idempotência', () => {
     const depoisDoPrimeiro = await contagens()
 
     const segundo = await importar(xml)
-    expect(segundo).toMatchObject({ codigo: 'DOCUMENTO_DUPLICADO', documentoId: primeiro.documentoId })
+    // Mesmo arquivo: repetição identificada pelo SHA-256.
+    expect(segundo).toMatchObject({ codigo: 'ARQUIVO_DUPLICADO', documentoId: primeiro.documentoId })
     expect(await contagens()).toEqual(depoisDoPrimeiro)
   })
 
@@ -456,7 +458,7 @@ describe('lote com resultados independentes', () => {
     if (!resultado.sucesso) return
     expect(resultado.arquivos.map((r) => [r.nome, r.codigo])).toEqual([
       ['nova.xml', 'ACEITO'],
-      ['repetida.xml', 'DOCUMENTO_DUPLICADO'],
+      ['repetida.xml', 'ARQUIVO_DUPLICADO'],
       ['antiga.xml', 'DOCUMENTO_NAO_INTERPRETADO'],
       ['quebrada.xml', 'XML_INVALIDO'],
     ])

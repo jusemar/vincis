@@ -141,9 +141,10 @@ async function limparFiscal() {
   if (ids.length) {
     // Ordem das FKs: evento → extração (que cascateia partes, itens e tributos)
     // → arquivo → documento.
-    await db.delete(documentosFiscaisEventos).where(inArray(documentosFiscaisEventos.documentoFiscalId, ids))
+    // Ordem das FKs: extração → arquivo (que pode apontar para evento) → evento.
     await db.delete(documentosFiscaisExtracoes).where(inArray(documentosFiscaisExtracoes.documentoFiscalId, ids))
     await db.delete(documentosFiscaisArquivos).where(inArray(documentosFiscaisArquivos.documentoFiscalId, ids))
+    await db.delete(documentosFiscaisEventos).where(inArray(documentosFiscaisEventos.documentoFiscalId, ids))
     await db.delete(documentosFiscais).where(inArray(documentosFiscais.id, ids))
   }
   await db.delete(eventosAuditoria).where(and(like(eventosAuditoria.acao, 'documento_fiscal_%'), inArray(eventosAuditoria.empresaId, empresas)))
@@ -381,21 +382,21 @@ describe('recebimento, metadados e armazenamento privado', () => {
 })
 
 describe('duplicidade', () => {
-  it('mesmo arquivo + mesmo cliente → DOCUMENTO_DUPLICADO com referência, sem nova cópia', async () => {
+  it('mesmo arquivo + mesmo cliente → ARQUIVO_DUPLICADO com referência, sem nova cópia', async () => {
     const conteudo = xmlNfe()
     const primeiro = await enviar('proprietario', [arquivo(conteudo)], cenario.clienteA)
     const objetos = armazenamento.objetos.size
     const segundo = await enviar('proprietario', [arquivo(conteudo, 'outro-nome.xml')], cenario.clienteA)
     const idPrimeiro = primeiro.sucesso && primeiro.arquivos[0].codigo === 'ACEITO' ? primeiro.arquivos[0].documentoId : 'x'
-    expect(segundo).toMatchObject({ sucesso: true, arquivos: [{ codigo: 'DOCUMENTO_DUPLICADO', documentoId: idPrimeiro }] })
+    expect(segundo).toMatchObject({ sucesso: true, arquivos: [{ codigo: 'ARQUIVO_DUPLICADO', documentoId: idPrimeiro }] })
     expect(armazenamento.objetos.size).toBe(objetos)
     expect(await documentosComHash(calcularSha256(bytesDe(conteudo)))).toHaveLength(1)
   })
 
-  it('mesmo arquivo + sem cliente + mesma empresa → DOCUMENTO_DUPLICADO', async () => {
+  it('mesmo arquivo + sem cliente + mesma empresa → ARQUIVO_DUPLICADO', async () => {
     const conteudo = xmlNfe()
     await enviar('proprietario', [arquivo(conteudo)], null)
-    expect(await enviar('adminProfissional', [arquivo(conteudo)], null)).toMatchObject({ arquivos: [{ codigo: 'DOCUMENTO_DUPLICADO' }] })
+    expect(await enviar('adminProfissional', [arquivo(conteudo)], null)).toMatchObject({ arquivos: [{ codigo: 'ARQUIVO_DUPLICADO' }] })
     expect(await documentosComHash(calcularSha256(bytesDe(conteudo)))).toHaveLength(1)
   })
 
@@ -413,8 +414,8 @@ describe('duplicidade', () => {
     await enviar('proprietario', [arquivo(conteudo)], cenario.clienteA)
     // Colaborador atribuído tem visualizar: recebe a referência.
     const resultado = await enviar('colaboradorMembro', [arquivo(conteudo)], cenario.clienteA)
-    expect(resultado).toMatchObject({ arquivos: [{ codigo: 'DOCUMENTO_DUPLICADO' }] })
-    expect(resultado.sucesso && resultado.arquivos[0].codigo === 'DOCUMENTO_DUPLICADO' && resultado.arquivos[0].documentoId).toBeTruthy()
+    expect(resultado).toMatchObject({ arquivos: [{ codigo: 'ARQUIVO_DUPLICADO' }] })
+    expect(resultado.sucesso && resultado.arquivos[0].codigo === 'ARQUIVO_DUPLICADO' && resultado.arquivos[0].documentoId).toBeTruthy()
   })
 
   it('uploads simultâneos do mesmo arquivo não duplicam', async () => {
@@ -424,7 +425,7 @@ describe('duplicidade', () => {
       enviar('adminProfissional', [arquivo(conteudo)], cenario.clienteA),
     ])
     const codigos = [a, b].map((r) => (r.sucesso ? r.arquivos[0].codigo : r.codigo)).sort()
-    expect(codigos).toEqual(['ACEITO', 'DOCUMENTO_DUPLICADO'])
+    expect(codigos).toEqual(['ACEITO', 'ARQUIVO_DUPLICADO'])
     expect(await documentosComHash(calcularSha256(bytesDe(conteudo)))).toHaveLength(1)
     expect(await objetosSemRegistro()).toEqual([])
   })
@@ -438,7 +439,7 @@ describe('duplicidade', () => {
       await db.insert(documentosFiscais).values({ empresaId: cenario.empresaId, clienteId: null, origem: 'envio_usuario', sha256Original: sha })
     }
     const resultado = await enviar('proprietario', [arquivo(conteudo)], null)
-    expect(resultado).toMatchObject({ arquivos: [{ codigo: 'DOCUMENTO_DUPLICADO' }] })
+    expect(resultado).toMatchObject({ arquivos: [{ codigo: 'ARQUIVO_DUPLICADO' }] })
     expect(armazenamento.objetos.size).toBe(antes)
     expect(await documentosComHash(sha)).toHaveLength(1)
     expect(await objetosSemRegistro()).toEqual([])
@@ -474,7 +475,7 @@ describe('lote', () => {
     expect(resultado.arquivos.map((r) => [r.indice, r.nome, r.codigo])).toEqual([
       [0, 'ok-1.xml', 'ACEITO'],
       [1, 'quebrado.xml', 'XML_INVALIDO'],
-      [2, 'repetido.xml', 'DOCUMENTO_DUPLICADO'],
+      [2, 'repetido.xml', 'ARQUIVO_DUPLICADO'],
       [3, 'programa.xml', 'ARQUIVO_NAO_PERMITIDO'],
       [4, 'xxe.xml', 'XML_INSEGURO'],
       [5, 'vazio.xml', 'ARQUIVO_VAZIO'],

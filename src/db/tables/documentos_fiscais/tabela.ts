@@ -82,7 +82,13 @@ export const documentosFiscais = pgTable(
       .default('pendente'),
     /** Situação na autoridade fiscal, derivada dos eventos conhecidos. */
     situacao: varchar('situacao', { length: 20 }).notNull().default('nao_verificada'),
-    /** Emitido pelo contribuinte ou recebido por ele. Nulo se indeterminado. */
+    /**
+     * Emitido pelo contribuinte ou recebido por ele, decidido pela identidade
+     * fiscal (`features/documentos-fiscais/lib/identidade-fiscal`).
+     * `nao_determinado` é leitura feita sem conseguir decidir — o contribuinte
+     * não tem identidade cadastrada, ou nenhuma das partes é ele. Nulo é
+     * documento que ainda não foi interpretado.
+     */
     sentido: varchar('sentido', { length: 20 }),
     chaveAcesso: varchar('chave_acesso', { length: 60 }),
     /**
@@ -222,7 +228,7 @@ export const documentosFiscais = pgTable(
     ),
     sentidoValido: check(
       'documentos_fiscais_sentido_valido',
-      sql`${t.sentido} is null or ${t.sentido} in ('emitido', 'recebido')`,
+      sql`${t.sentido} is null or ${t.sentido} in ('emitido', 'recebido', 'nao_determinado')`,
     ),
     sha256OriginalFormato: check(
       'documentos_fiscais_sha256_original_formato',

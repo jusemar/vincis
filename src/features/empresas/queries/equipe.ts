@@ -60,6 +60,10 @@ export async function listarVinculosAtivos(usuarioId: string) {
     .select({
       empresaId: empresas.id,
       nome: empresas.nome,
+      // Identidade fiscal do escritório: é o contribuinte dos documentos
+      // fiscais que não são de cliente nenhum.
+      tipoIdentificacaoFiscal: empresas.tipoIdentificacaoFiscal,
+      identificacaoFiscal: empresas.identificacaoFiscal,
       funcao: empresaMembros.funcao,
       empresaLegadaId: usuarios.empresaId,
     })

@@ -28,6 +28,8 @@ export async function obterClienteDoProfissional(
       email: clientes.email,
       telefone: clientes.telefone,
       empresaNome: clientes.empresaNome,
+      tipoIdentificacaoFiscal: clientes.tipoIdentificacaoFiscal,
+      identificacaoFiscal: clientes.identificacaoFiscal,
       area: clientes.area,
       status: clientes.status,
       tipoAtendimento: clientes.tipoAtendimento,

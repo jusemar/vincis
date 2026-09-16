@@ -39,8 +39,12 @@ export const SITUACOES_DOCUMENTO_FISCAL = [
 ] as const
 export type SituacaoDocumentoFiscal = (typeof SITUACOES_DOCUMENTO_FISCAL)[number]
 
-/** Do ponto de vista do contribuinte (cliente ou escritório) dono do documento. */
-export const SENTIDOS_DOCUMENTO_FISCAL = ['emitido', 'recebido'] as const
+/**
+ * Do ponto de vista do contribuinte (cliente ou escritório) dono do documento.
+ * `nao_determinado` é resposta legítima: o documento foi lido, mas a identidade
+ * fiscal do contribuinte não permitiu decidir. Nunca se adivinha por nome.
+ */
+export const SENTIDOS_DOCUMENTO_FISCAL = ['emitido', 'recebido', 'nao_determinado'] as const
 export type SentidoDocumentoFiscal = (typeof SENTIDOS_DOCUMENTO_FISCAL)[number]
 
 export const TIPOS_EVENTO_FISCAL = [

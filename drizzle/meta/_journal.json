@@ -477,6 +477,13 @@
       "when": 1789450479191,
       "tag": "0067_documentos_fiscais_origem",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1789550578120,
+      "tag": "0068_identidade_fiscal_contribuinte",
+      "breakpoints": true
     }
   ]
 }
