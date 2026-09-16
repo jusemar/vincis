@@ -75,6 +75,7 @@ export function ImportarXmlDialog({
   const entrada = useRef<HTMLInputElement>(null);
   const [selecionados, setSelecionados] = useState<File[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState<{ lote: number; total: number } | null>(null);
   const [resultados, setResultados] = useState<ResultadoArquivo[] | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
 
@@ -82,6 +83,7 @@ export function ImportarXmlDialog({
     setSelecionados([]);
     setResultados(null);
     setErroGeral(null);
+    setProgresso(null);
     if (entrada.current) entrada.current.value = "";
   }
 
@@ -99,8 +101,11 @@ export function ImportarXmlDialog({
       mensagem: MENSAGENS_UPLOAD_FISCAL.ARQUIVO_MUITO_GRANDE,
     }));
 
+    const lotes = dividirEmLotesDeUpload(enviaveis);
     try {
-      for (const lote of dividirEmLotesDeUpload(enviaveis)) {
+      for (const [indice, lote] of lotes.entries()) {
+        // Progresso lógico: quantos envios já foram, sem inventar infraestrutura.
+        setProgresso({ lote: indice + 1, total: lotes.length });
         const formulario = new FormData();
         for (const arquivo of lote) formulario.append("arquivos", arquivo);
         if (clienteId) formulario.append("clienteId", clienteId);
@@ -132,6 +137,7 @@ export function ImportarXmlDialog({
       setErroGeral("Não foi possível falar com o servidor. Tente novamente.");
     } finally {
       setEnviando(false);
+      setProgresso(null);
     }
   }
 
@@ -183,6 +189,12 @@ export function ImportarXmlDialog({
               </p>
             )}
           </div>
+
+          {progresso && (
+            <p className="text-sm text-muted-foreground" role="status">
+              Enviando lote {progresso.lote} de {progresso.total}...
+            </p>
+          )}
 
           {erroGeral && (
             <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{erroGeral}</p>

@@ -161,7 +161,14 @@ describe('escopo e isolamento da listagem', () => {
   it('lista vazia enquanto nada foi importado', async () => {
     const vazia = await listar('proprietario')
     expect(vazia.documentos).toEqual([])
-    expect(vazia.resumo).toEqual({ total: 0, emitidas: 0, recebidas: 0, naoDeterminadas: 0, comFalha: 0 })
+    expect(vazia.resumo).toEqual({
+      total: 0,
+      emitidas: 0,
+      recebidas: 0,
+      naoDeterminadas: 0,
+      comFalha: 0,
+      pendentesRevisao: 0,
+    })
     expect(vazia.totalPaginas).toBe(1)
   })
 
@@ -351,6 +358,8 @@ describe('filtros da URL', () => {
       ate: '2026-08-31',
       busca: 'nota 300',
       cliente: 'sem_cliente',
+      atencao: false,
+      ordem: null,
     })
 
     expect(
@@ -364,6 +373,8 @@ describe('filtros da URL', () => {
       ate: null,
       busca: null,
       cliente: null,
+      atencao: false,
+      ordem: null,
     })
   })
 

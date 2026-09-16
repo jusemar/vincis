@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gte, ilike, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { clientes, documentosFiscais, documentosFiscaisArquivos, empresas } from '@/db/schema'
+import { type OrdemDocumentosFiscais } from '../constants/operacao-fiscal'
 import {
   condicaoEscopoDocumentosFiscais,
   type AcessoDocumentosFiscais,
@@ -45,6 +46,9 @@ export type FiltrosDocumentosFiscais = {
   de: string | null
   ate: string | null
   busca: string | null
+  /** Só o que precisa de atenção: sem leitura, sem sentido ou sem revisão. */
+  atencao: boolean
+  ordem: OrdemDocumentosFiscais | null
 }
 
 export type DocumentoFiscalDaLista = {
@@ -78,6 +82,8 @@ export type ResumoDocumentosFiscais = {
   recebidas: number
   naoDeterminadas: number
   comFalha: number
+  /** Trabalho a fazer: leitura pronta, revisão humana ainda não. */
+  pendentesRevisao: number
 }
 
 const arquivoOriginal = sql<string | null>`(
@@ -106,6 +112,17 @@ function condicoesDosFiltros(filtros: FiltrosDocumentosFiscais): SQL[] {
   } else if (filtros.sentido) condicoes.push(eq(documentosFiscais.sentido, filtros.sentido))
   if (filtros.processamento) condicoes.push(eq(documentosFiscais.statusProcessamento, filtros.processamento))
   if (filtros.revisao) condicoes.push(eq(documentosFiscais.statusRevisao, filtros.revisao))
+  if (filtros.atencao) {
+    // Classificação derivada dos estados que já existem — sem status novo.
+    condicoes.push(
+      or(
+        eq(documentosFiscais.statusProcessamento, 'falhou'),
+        isNull(documentosFiscais.sentido),
+        eq(documentosFiscais.sentido, 'nao_determinado'),
+        eq(documentosFiscais.statusRevisao, 'pendente'),
+      )!,
+    )
+  }
   if (filtros.de) condicoes.push(gte(documentosFiscais.dataEmissao, filtros.de))
   if (filtros.ate) condicoes.push(lte(documentosFiscais.dataEmissao, filtros.ate))
 
@@ -131,6 +148,28 @@ function condicoesDosFiltros(filtros: FiltrosDocumentosFiscais): SQL[] {
     )
   }
   return condicoes
+}
+
+/**
+ * Ordem da listagem, sempre no banco e sempre determinística: o critério
+ * escolhido, depois a importação e, por fim, o id — sem isso duas páginas
+ * poderiam repetir ou perder uma linha com valores empatados.
+ */
+function ordenacao(ordem: OrdemDocumentosFiscais | null) {
+  const desempate = [desc(documentosFiscais.createdAt), asc(documentosFiscais.id)]
+  switch (ordem) {
+    case 'emissao_asc':
+      return [sql`${documentosFiscais.dataEmissao} asc nulls last`, ...desempate]
+    case 'importacao_desc':
+      return [desc(documentosFiscais.createdAt), asc(documentosFiscais.id)]
+    case 'valor_desc':
+      return [sql`${documentosFiscais.valorTotal} desc nulls last`, ...desempate]
+    case 'valor_asc':
+      return [sql`${documentosFiscais.valorTotal} asc nulls last`, ...desempate]
+    default:
+      // Documento sem emissão (o que ainda não foi lido) vai para o fim, mas aparece.
+      return [sql`${documentosFiscais.dataEmissao} desc nulls last`, ...desempate]
+  }
 }
 
 export async function listarDocumentosFiscais(
@@ -173,11 +212,7 @@ export async function listarDocumentosFiscais(
       .leftJoin(clientes, eq(clientes.id, documentosFiscais.clienteId))
       .leftJoin(empresas, eq(empresas.id, documentosFiscais.empresaId))
       .where(where)
-      .orderBy(
-        sql`${documentosFiscais.dataEmissao} desc nulls last`,
-        desc(documentosFiscais.createdAt),
-        asc(documentosFiscais.id),
-      )
+      .orderBy(...ordenacao(filtros.ordem))
       .limit(DOCUMENTOS_FISCAIS_POR_PAGINA)
       .offset(offset),
     // O resumo respeita exatamente o mesmo escopo e os mesmos filtros.
@@ -188,6 +223,7 @@ export async function listarDocumentosFiscais(
         recebidas: sql<number>`count(*) filter (where ${documentosFiscais.sentido} = 'recebido')::int`,
         naoDeterminadas: sql<number>`count(*) filter (where ${documentosFiscais.sentido} is null or ${documentosFiscais.sentido} = 'nao_determinado')::int`,
         comFalha: sql<number>`count(*) filter (where ${documentosFiscais.statusProcessamento} = 'falhou')::int`,
+        pendentesRevisao: sql<number>`count(*) filter (where ${documentosFiscais.statusRevisao} = 'pendente')::int`,
       })
       .from(documentosFiscais)
       .leftJoin(clientes, eq(clientes.id, documentosFiscais.clienteId))
@@ -203,6 +239,7 @@ export async function listarDocumentosFiscais(
       recebidas: totais?.recebidas ?? 0,
       naoDeterminadas: totais?.naoDeterminadas ?? 0,
       comFalha: totais?.comFalha ?? 0,
+      pendentesRevisao: totais?.pendentesRevisao ?? 0,
     } satisfies ResumoDocumentosFiscais,
     pagina,
     totalPaginas: Math.max(1, Math.ceil(total / DOCUMENTOS_FISCAIS_POR_PAGINA)),

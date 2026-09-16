@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ORDENS_DOCUMENTOS_FISCAIS } from '../constants/operacao-fiscal'
 import {
   SENTIDOS_DOCUMENTO_FISCAL,
   STATUS_PROCESSAMENTO_FISCAL,
@@ -57,6 +58,12 @@ export const FiltrosDocumentosFiscaisSchema = z.object({
       const texto = valor?.trim().slice(0, 60)
       return texto ? texto : null
     }),
+  /** `1` liga o recorte "precisa de atenção". */
+  atencao: z
+    .string()
+    .optional()
+    .transform((valor) => valor === '1'),
+  ordem: opcional(ORDENS_DOCUMENTOS_FISCAIS),
 })
 
 export type FiltrosDocumentosFiscaisDTO = z.input<typeof FiltrosDocumentosFiscaisSchema>
@@ -74,13 +81,14 @@ export function lerFiltrosDocumentosFiscais(
 
 /** Filtros → query string, sem carregar parâmetro vazio. */
 export function montarBuscaDocumentosFiscais(
-  filtros: Partial<Record<keyof FiltrosDocumentosFiscaisValidados, string | number | null>>,
+  filtros: Partial<Record<keyof FiltrosDocumentosFiscaisValidados, string | number | boolean | null>>,
 ): string {
   const parametros = new URLSearchParams()
   for (const [chave, valor] of Object.entries(filtros)) {
-    if (valor === null || valor === undefined || valor === '') continue
+    if (valor === null || valor === undefined || valor === '' || valor === false) continue
     if (chave === 'pagina' && Number(valor) <= 1) continue
-    parametros.set(chave, String(valor))
+    // Marcas ligadas viajam como `1`, não como `true`.
+    parametros.set(chave, valor === true ? '1' : String(valor))
   }
   const texto = parametros.toString()
   return texto ? `?${texto}` : ''

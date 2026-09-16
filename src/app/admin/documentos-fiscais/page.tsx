@@ -62,6 +62,8 @@ export default async function DocumentosFiscaisRoute({
       de: filtros.de,
       ate: filtros.ate,
       busca: filtros.busca,
+      atencao: filtros.atencao,
+      ordem: filtros.ordem,
     }),
     listarContribuintesComDocumentos(visualizar),
   ])

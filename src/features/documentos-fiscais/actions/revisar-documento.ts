@@ -1,39 +1,39 @@
 'use server'
 
-import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/db/connection'
-import { documentosFiscais } from '@/db/schema'
-import { ACOES_AUDITORIA, registrarEventoAuditoria } from '@/features/auditoria/lib/registrar-evento'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
-import { PERMISSOES_DOCUMENTOS_FISCAIS } from '../constants/permissoes'
-import { resolverAcessoDocumentoFiscal } from '../lib/acesso-documentos-fiscais'
-import { ENTIDADES_AUDITORIA_FISCAL, metadadosAuditoriaFiscal } from '../lib/auditoria'
+import { LIMITE_REVISAO_EM_LOTE } from '../constants/operacao-fiscal'
+import { aplicarRevisaoNoDocumento } from '../lib/revisar-documento-fiscal'
 
 /**
- * Revisão humana da leitura do documento (Fase 1.8).
+ * Revisão pela interface — de um documento ou de uma seleção.
  *
- * O que ela afirma é exatamente isto: **alguém autorizado conferiu os dados
- * extraídos deste XML**. Não valida a operação, não recalcula imposto e não diz
- * nada sobre a situação na SEFAZ — esses continuam sendo outros conceitos, em
- * outras colunas.
- *
- * Usa `status_revisao` e o par `revisado_em` / `revisado_por_id` que existem
- * desde a fundação, com o `check` do banco garantindo a coerência entre eles
- * (pendente ⇔ sem data). Nenhuma migration foi necessária.
- *
- * Exige `documentos_fiscais.revisar` **no documento** — a mesma porta do
- * reprocessamento. Documento de outro escritório, fora do escopo do membro ou
- * inexistente recebem a mesma resposta.
+ * A regra vive em `lib/revisar-documento-fiscal`; aqui só entram sessão,
+ * validação da entrada e o formato da resposta. Cada documento do lote é
+ * autorizado no servidor, um a um: a seleção que chega do navegador não vale
+ * como permissão, e documento fora do escopo entra na contagem de "não
+ * elegíveis" sem ser distinguido de um que não existe.
  */
 
 const DocumentoIdSchema = z.string().uuid()
+const SelecaoSchema = z.array(DocumentoIdSchema).min(1).max(LIMITE_REVISAO_EM_LOTE)
 
 export type RespostaRevisao = {
   sucesso: boolean
   mensagem: string
   documentoId: string | null
   statusRevisao: 'pendente' | 'revisado' | null
+}
+
+export type RespostaRevisaoEmLote = {
+  sucesso: boolean
+  mensagem: string
+  resumo: {
+    selecionados: number
+    revisados: number
+    jaRevisados: number
+    naoElegiveis: number
+  }
 }
 
 const NAO_AUTORIZADO: RespostaRevisao = {
@@ -43,101 +43,85 @@ const NAO_AUTORIZADO: RespostaRevisao = {
   statusRevisao: null,
 }
 
-async function alterarRevisao(
-  documentoId: unknown,
-  destino: 'revisado' | 'pendente',
-): Promise<RespostaRevisao> {
+async function revisarUm(documentoId: unknown, destino: 'revisado' | 'pendente'): Promise<RespostaRevisao> {
   const sessao = await obterSessaoServidor()
   const id = DocumentoIdSchema.safeParse(documentoId)
   if (!sessao || !id.success) return NAO_AUTORIZADO
 
-  const acesso = await resolverAcessoDocumentoFiscal(
-    sessao.id,
-    PERMISSOES_DOCUMENTOS_FISCAIS.revisar,
-    id.data,
-  )
-  if (!acesso) return NAO_AUTORIZADO
-
-  const [documento] = await db
-    .select({
-      id: documentosFiscais.id,
-      clienteId: documentosFiscais.clienteId,
-      statusRevisao: documentosFiscais.statusRevisao,
-      statusProcessamento: documentosFiscais.statusProcessamento,
-    })
-    .from(documentosFiscais)
-    .where(
-      and(
-        eq(documentosFiscais.id, id.data),
-        eq(documentosFiscais.empresaId, acesso.empresaId),
-        isNull(documentosFiscais.excluidoEm),
-      ),
-    )
-    .limit(1)
-  if (!documento) return NAO_AUTORIZADO
-
-  // Revisar é conferir uma leitura: sem leitura, não há o que revisar.
-  if (destino === 'revisado' && documento.statusProcessamento !== 'processado') {
+  const estado = await aplicarRevisaoNoDocumento(sessao.id, id.data, destino)
+  if (estado === 'sem_acesso') return NAO_AUTORIZADO
+  if (estado === 'nao_interpretado') {
     return {
       sucesso: false,
       mensagem: 'Este documento ainda não foi interpretado. Reprocesse antes de revisar.',
-      documentoId: documento.id,
-      statusRevisao: documento.statusRevisao as RespostaRevisao['statusRevisao'],
+      documentoId: id.data,
+      statusRevisao: 'pendente',
     }
   }
-  if (documento.statusRevisao === destino) {
-    return {
-      sucesso: true,
-      mensagem: destino === 'revisado' ? 'Documento já estava revisado.' : 'Revisão já estava pendente.',
-      documentoId: documento.id,
-      statusRevisao: destino,
-    }
-  }
-
-  const agora = new Date()
-  await db.transaction(async (tx) => {
-    await tx
-      .update(documentosFiscais)
-      .set({
-        statusRevisao: destino,
-        // O `check` da tabela exige data quando não está pendente.
-        revisadoEm: destino === 'revisado' ? agora : null,
-        revisadoPorId: destino === 'revisado' ? sessao.id : null,
-        updatedAt: agora,
-      })
-      .where(eq(documentosFiscais.id, documento.id))
-
-    await registrarEventoAuditoria(
-      {
-        acao: ACOES_AUDITORIA.documentoFiscalRevisado,
-        entidade: ENTIDADES_AUDITORIA_FISCAL.documento,
-        registroAfetado: documento.id,
-        autorId: sessao.id,
-        empresaId: acesso.empresaId,
-        origem: 'admin',
-        metadados: metadadosAuditoriaFiscal({
-          clienteId: documento.clienteId,
-          statusAnterior: documento.statusRevisao,
-          statusNovo: destino,
-        }),
-      },
-      tx,
-    )
-  })
 
   return {
     sucesso: true,
-    mensagem: destino === 'revisado' ? 'Documento marcado como revisado.' : 'Revisão reaberta.',
-    documentoId: documento.id,
+    mensagem:
+      estado === 'ja_estava'
+        ? destino === 'revisado'
+          ? 'Documento já estava revisado.'
+          : 'Revisão já estava pendente.'
+        : destino === 'revisado'
+          ? 'Documento marcado como revisado.'
+          : 'Revisão reaberta.',
+    documentoId: id.data,
     statusRevisao: destino,
   }
 }
 
 export async function marcarDocumentoFiscalRevisado(documentoId: unknown) {
-  return alterarRevisao(documentoId, 'revisado')
+  return revisarUm(documentoId, 'revisado')
 }
 
 /** Reabrir é o mesmo ato, ao contrário — e do mesmo perfil que revisa. */
 export async function reabrirRevisaoDocumentoFiscal(documentoId: unknown) {
-  return alterarRevisao(documentoId, 'pendente')
+  return revisarUm(documentoId, 'pendente')
+}
+
+/**
+ * Revisão em lote: cada documento com o seu resultado, nenhum silêncio.
+ *
+ * Documento já revisado e documento que o parser não leu não viram erro do
+ * lote — entram no resumo, e o resto segue. Nada é revisado por engano: o
+ * `check` de elegibilidade é o mesmo de um documento só.
+ */
+export async function revisarDocumentosFiscaisEmLote(
+  documentoIds: unknown,
+): Promise<RespostaRevisaoEmLote> {
+  const sessao = await obterSessaoServidor()
+  const selecao = SelecaoSchema.safeParse(documentoIds)
+  const vazio = { selecionados: 0, revisados: 0, jaRevisados: 0, naoElegiveis: 0 }
+  if (!sessao) {
+    return { sucesso: false, mensagem: 'Sua sessão expirou. Entre novamente.', resumo: vazio }
+  }
+  if (!selecao.success) {
+    return {
+      sucesso: false,
+      mensagem: `Selecione entre 1 e ${LIMITE_REVISAO_EM_LOTE} documentos.`,
+      resumo: vazio,
+    }
+  }
+
+  const ids = [...new Set(selecao.data)]
+  const resumo = { selecionados: ids.length, revisados: 0, jaRevisados: 0, naoElegiveis: 0 }
+  for (const id of ids) {
+    const estado = await aplicarRevisaoNoDocumento(sessao.id, id, 'revisado')
+    if (estado === 'alterado') resumo.revisados += 1
+    else if (estado === 'ja_estava') resumo.jaRevisados += 1
+    else resumo.naoElegiveis += 1
+  }
+
+  const partes = [`${resumo.revisados} revisados`]
+  if (resumo.jaRevisados) partes.push(`${resumo.jaRevisados} já revisados`)
+  if (resumo.naoElegiveis) partes.push(`${resumo.naoElegiveis} não elegíveis`)
+  return {
+    sucesso: resumo.revisados > 0,
+    mensagem: `${resumo.selecionados} selecionados · ${partes.join(' · ')}.`,
+    resumo,
+  }
 }

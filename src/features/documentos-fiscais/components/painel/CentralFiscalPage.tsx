@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
+  CheckCircle2,
   Download,
   Eye,
   FileText,
@@ -16,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,7 +29,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { reprocessarDocumentoFiscalAction } from "../../actions/reprocessar-documento";
+import {
+  reprocessarDocumentoFiscalAction,
+  reprocessarDocumentosFiscaisEmLote,
+} from "../../actions/reprocessar-documento";
+import { revisarDocumentosFiscaisEmLote } from "../../actions/revisar-documento";
+import {
+  LIMITE_REPROCESSAMENTO_EM_LOTE,
+  LIMITE_REVISAO_EM_LOTE,
+  ORDENS_DOCUMENTOS_FISCAIS,
+  precisaDeAtencao,
+  ROTULOS_ORDEM_DOCUMENTOS,
+} from "../../constants/operacao-fiscal";
 import { ROTA_DOCUMENTOS_FISCAIS } from "../../constants/rotas";
 import { formatarIdentificacaoFiscal } from "../../lib/identidade-fiscal";
 import type {
@@ -109,9 +123,59 @@ export function CentralFiscalPage({
   const [importando, setImportando] = useState(false);
   const [busca, setBusca] = useState(filtros.busca ?? "");
   const [reprocessando, setReprocessando] = useState<string | null>(null);
+  const [emLote, setEmLote] = useState<"revisao" | "reprocesso" | null>(null);
+
+  /*
+    Seleção presa à vista atual.
+
+    A chave junta filtros e página: mudou a lista, a seleção zera sozinha, sem
+    efeito nenhum. É o comportamento previsível — nada de marcar documentos
+    numa página e agir sobre outra —, e também o motivo de não existir
+    "selecionar tudo do banco": só se age sobre o que está à vista.
+  */
+  const chaveDaVista = JSON.stringify([filtros, pagina]);
+  const [selecao, setSelecao] = useState<{ chave: string; ids: string[] }>({
+    chave: chaveDaVista,
+    ids: [],
+  });
+  const selecionados = selecao.chave === chaveDaVista ? selecao.ids : [];
+  const marcados = new Set(selecionados);
+  const idsDaPagina = documentos.map((documento) => documento.id);
+  const paginaInteiraMarcada = idsDaPagina.length > 0 && idsDaPagina.every((id) => marcados.has(id));
+
+  function alternarSelecao(id: string) {
+    const proximos = marcados.has(id)
+      ? selecionados.filter((atual) => atual !== id)
+      : [...selecionados, id];
+    setSelecao({ chave: chaveDaVista, ids: proximos });
+  }
+
+  function alternarPagina() {
+    setSelecao({ chave: chaveDaVista, ids: paginaInteiraMarcada ? [] : idsDaPagina });
+  }
+
+  function limparSelecao() {
+    setSelecao({ chave: chaveDaVista, ids: [] });
+  }
+
+  async function executarEmLote(acao: "revisao" | "reprocesso") {
+    if (selecionados.length === 0) return;
+    setEmLote(acao);
+    const resultado =
+      acao === "revisao"
+        ? await revisarDocumentosFiscaisEmLote(selecionados)
+        : await reprocessarDocumentosFiscaisEmLote(selecionados.slice(0, LIMITE_REPROCESSAMENTO_EM_LOTE));
+    setEmLote(null);
+    if (resultado.sucesso) toast.success(resultado.mensagem);
+    else toast.warning(resultado.mensagem);
+    limparSelecao();
+    iniciarTransicao(() => router.refresh());
+  }
 
   function aplicar(mudancas: Partial<Record<string, string | number | null>>) {
     const proximo = {
+      atencao: filtros.atencao,
+      ordem: filtros.ordem,
       cliente: filtros.cliente,
       sentido: filtros.sentido,
       processamento: filtros.processamento,
@@ -138,6 +202,8 @@ export function CentralFiscalPage({
 
   // Os filtros viajam com o link: voltar do detalhe devolve a mesma vista.
   const buscaAtual = montarBuscaDocumentosFiscais({
+    atencao: filtros.atencao,
+    ordem: filtros.ordem,
     cliente: filtros.cliente,
     sentido: filtros.sentido,
     processamento: filtros.processamento,
@@ -149,7 +215,15 @@ export function CentralFiscalPage({
   });
 
   const temFiltro = Boolean(
-    filtros.cliente || filtros.sentido || filtros.processamento || filtros.revisao || filtros.de || filtros.ate || filtros.busca,
+    filtros.cliente ||
+      filtros.sentido ||
+      filtros.processamento ||
+      filtros.revisao ||
+      filtros.de ||
+      filtros.ate ||
+      filtros.busca ||
+      filtros.atencao ||
+      filtros.ordem,
   );
 
   return (
@@ -168,12 +242,13 @@ export function CentralFiscalPage({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           { rotulo: "Documentos", valor: resumo.total },
           { rotulo: "Emitidas", valor: resumo.emitidas },
           { rotulo: "Recebidas", valor: resumo.recebidas },
           { rotulo: "Não interpretadas", valor: resumo.comFalha },
+          { rotulo: "Pendentes de revisão", valor: resumo.pendentesRevisao },
         ].map((item) => (
           <Card key={item.rotulo} className="border-amber-500/15 shadow-card">
             <CardContent className="p-4">
@@ -207,6 +282,34 @@ export function CentralFiscalPage({
               <Filter className="size-4" /> Filtrar
             </Button>
           </form>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="filtro-ordem" className="text-xs">
+                Ordenar por
+              </Label>
+              <select
+                id="filtro-ordem"
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+                value={filtros.ordem ?? ORDENS_DOCUMENTOS_FISCAIS[0]}
+                onChange={(evento) => aplicar({ ordem: evento.target.value })}
+              >
+                {ORDENS_DOCUMENTOS_FISCAIS.map((ordem) => (
+                  <option key={ordem} value={ordem}>
+                    {ROTULOS_ORDEM_DOCUMENTOS[ordem]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button
+              type="button"
+              variant={filtros.atencao ? "default" : "outline"}
+              aria-pressed={filtros.atencao}
+              onClick={() => aplicar({ atencao: filtros.atencao ? null : "1" })}
+            >
+              <AlertCircle className="size-4" /> Precisa de atenção
+            </Button>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-1">
@@ -320,6 +423,56 @@ export function CentralFiscalPage({
         </CardContent>
       </Card>
 
+      {selecionados.length > 0 && (
+        <Card className="border-amber-500/30 shadow-card">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium">
+              {selecionados.length}{" "}
+              {selecionados.length === 1 ? "documento selecionado" : "documentos selecionados"}
+              {selecionados.length > LIMITE_REPROCESSAMENTO_EM_LOTE && (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (reprocessamento age nos {LIMITE_REPROCESSAMENTO_EM_LOTE} primeiros)
+                </span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {permissoes.revisar && (
+                <>
+                  <Button
+                    size="sm"
+                    disabled={emLote !== null || pendente || selecionados.length > LIMITE_REVISAO_EM_LOTE}
+                    onClick={() => void executarEmLote("revisao")}
+                  >
+                    {emLote === "revisao" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="size-4" />
+                    )}
+                    Marcar como revisados
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={emLote !== null || pendente}
+                    onClick={() => void executarEmLote("reprocesso")}
+                  >
+                    {emLote === "reprocesso" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="size-4" />
+                    )}
+                    Reprocessar
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="ghost" onClick={limparSelecao} disabled={emLote !== null}>
+                Limpar seleção
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {documentos.length === 0 ? (
         <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed bg-card p-8 text-center">
           <FileText className="size-10 text-muted-foreground" />
@@ -358,6 +511,13 @@ export function CentralFiscalPage({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label="Selecionar todos os documentos desta página"
+                        checked={paginaInteiraMarcada}
+                        onCheckedChange={alternarPagina}
+                      />
+                    </TableHead>
                     <TableHead>Documento</TableHead>
                     <TableHead>Emissão</TableHead>
                     <TableHead>Contribuinte</TableHead>
@@ -369,7 +529,14 @@ export function CentralFiscalPage({
                 </TableHeader>
                 <TableBody>
                   {documentos.map((documento) => (
-                    <TableRow key={documento.id}>
+                    <TableRow key={documento.id} data-selecionado={marcados.has(documento.id)}>
+                      <TableCell>
+                        <Checkbox
+                          aria-label={`Selecionar documento ${documento.numero ?? documento.id}`}
+                          checked={marcados.has(documento.id)}
+                          onCheckedChange={() => alternarSelecao(documento.id)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium">
                           {documento.tipo === "nfce" ? "NFC-e" : "NF-e"}{" "}
@@ -413,6 +580,7 @@ export function CentralFiscalPage({
                           <BadgeProcessamento status={documento.statusProcessamento} />
                           <BadgeRevisao status={documento.statusRevisao} />
                           <BadgeSituacao situacao={documento.situacao} />
+                          {precisaDeAtencao(documento) && <SeloAtencao />}
                         </div>
                         {documento.contribuinteSemIdentidade &&
                           documento.statusProcessamento === "processado" && (
@@ -441,12 +609,29 @@ export function CentralFiscalPage({
           </Card>
 
           {/* Celular e tablet estreito: cartões. */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Checkbox
+              id="selecionar-pagina-mobile"
+              aria-label="Selecionar todos os documentos desta página"
+              checked={paginaInteiraMarcada}
+              onCheckedChange={alternarPagina}
+            />
+            <Label htmlFor="selecionar-pagina-mobile" className="text-sm">
+              Selecionar esta página
+            </Label>
+          </div>
           <div className="grid gap-3 md:hidden">
             {documentos.map((documento) => (
               <Card key={documento.id} className="border-amber-500/15 shadow-card">
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <Checkbox
+                      className="mt-1"
+                      aria-label={`Selecionar documento ${documento.numero ?? documento.id}`}
+                      checked={marcados.has(documento.id)}
+                      onCheckedChange={() => alternarSelecao(documento.id)}
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">
                         {documento.tipo === "nfce" ? "NFC-e" : "NF-e"}{" "}
                         {documento.numero ? `nº ${documento.numero}` : "sem número"}
@@ -465,6 +650,7 @@ export function CentralFiscalPage({
                     <BadgeSentido sentido={documento.sentido} />
                     <BadgeProcessamento status={documento.statusProcessamento} />
                     <BadgeRevisao status={documento.statusRevisao} />
+                    {precisaDeAtencao(documento) && <SeloAtencao />}
                   </div>
                   {documento.contribuinteSemIdentidade &&
                     documento.statusProcessamento === "processado" && (
@@ -520,6 +706,15 @@ export function CentralFiscalPage({
         aoConcluir={() => iniciarTransicao(() => router.refresh())}
       />
     </div>
+  );
+}
+
+/** Derivado dos estados que já existem — não há status novo no banco. */
+function SeloAtencao() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+      <AlertCircle className="size-3" /> Precisa de atenção
+    </span>
   );
 }
 

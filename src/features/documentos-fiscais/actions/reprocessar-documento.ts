@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
+import { LIMITE_REPROCESSAMENTO_EM_LOTE } from '../constants/operacao-fiscal'
 import { reprocessarDocumentoFiscal } from '../lib/reprocessar-documento-fiscal'
 
 /**
@@ -77,5 +78,65 @@ export async function reprocessarDocumentoFiscalAction(
     documentoId: resultado.codigo === 'SEM_PERMISSAO' ? null : resultado.documentoId,
     status: resultado.codigo === 'NAO_INTERPRETADO' ? 'falhou' : null,
     sentido: null,
+  }
+}
+
+export type RespostaReprocessamentoEmLote = {
+  sucesso: boolean
+  mensagem: string
+  resumo: {
+    selecionados: number
+    reprocessados: number
+    naoInterpretados: number
+    naoElegiveis: number
+  }
+}
+
+/**
+ * Reprocessamento de uma seleção.
+ *
+ * Síncrono e conservador: os documentos são relidos **em série**, até
+ * `LIMITE_REPROCESSAMENTO_EM_LOTE` por ação, reaproveitando exatamente a mesma
+ * função de domínio do reprocessamento individual — o parser não é chamado de
+ * outro jeito aqui. Nada de fila, worker ou trabalho em segundo plano nesta
+ * etapa: a ação termina antes de responder, e o resumo diz o que aconteceu com
+ * cada documento.
+ *
+ * Cada documento é autorizado por si; o que está fora do escopo entra como não
+ * elegível, sem revelar que existe.
+ */
+export async function reprocessarDocumentosFiscaisEmLote(
+  documentoIds: unknown,
+): Promise<RespostaReprocessamentoEmLote> {
+  const vazio = { selecionados: 0, reprocessados: 0, naoInterpretados: 0, naoElegiveis: 0 }
+  const sessao = await obterSessaoServidor()
+  if (!sessao) {
+    return { sucesso: false, mensagem: MENSAGENS.SEM_PERMISSAO, resumo: vazio }
+  }
+  const selecao = z.array(DocumentoIdSchema).min(1).max(LIMITE_REPROCESSAMENTO_EM_LOTE).safeParse(documentoIds)
+  if (!selecao.success) {
+    return {
+      sucesso: false,
+      mensagem: `Selecione entre 1 e ${LIMITE_REPROCESSAMENTO_EM_LOTE} documentos para reprocessar.`,
+      resumo: vazio,
+    }
+  }
+
+  const ids = [...new Set(selecao.data)]
+  const resumo = { selecionados: ids.length, reprocessados: 0, naoInterpretados: 0, naoElegiveis: 0 }
+  for (const documentoId of ids) {
+    const resultado = await reprocessarDocumentoFiscal({ usuarioId: sessao.id, documentoId })
+    if (resultado.sucesso) resumo.reprocessados += 1
+    else if (resultado.codigo === 'NAO_INTERPRETADO') resumo.naoInterpretados += 1
+    else resumo.naoElegiveis += 1
+  }
+
+  const partes = [`${resumo.reprocessados} reprocessados`]
+  if (resumo.naoInterpretados) partes.push(`${resumo.naoInterpretados} ainda não interpretados`)
+  if (resumo.naoElegiveis) partes.push(`${resumo.naoElegiveis} não elegíveis`)
+  return {
+    sucesso: resumo.reprocessados > 0,
+    mensagem: `${resumo.selecionados} selecionados · ${partes.join(' · ')}.`,
+    resumo,
   }
 }
