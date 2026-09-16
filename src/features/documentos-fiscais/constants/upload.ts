@@ -87,6 +87,7 @@ export type CodigoRecusaLote = (typeof CODIGOS_RECUSA_LOTE)[number]
 export const CODIGOS_RESULTADO_ARQUIVO = [
   'ACEITO',
   'DOCUMENTO_DUPLICADO',
+  'DOCUMENTO_NAO_INTERPRETADO',
   'ARQUIVO_NAO_PERMITIDO',
   'ARQUIVO_VAZIO',
   'ARQUIVO_MUITO_GRANDE',
@@ -97,7 +98,9 @@ export const CODIGOS_RESULTADO_ARQUIVO = [
   'FALHA_REGISTRO',
 ] as const
 export type CodigoResultadoArquivo = (typeof CODIGOS_RESULTADO_ARQUIVO)[number]
-export type CodigoRecusaArquivo = Exclude<CodigoResultadoArquivo, 'ACEITO' | 'DOCUMENTO_DUPLICADO'>
+/** Códigos que descrevem um documento gravado — não uma recusa do arquivo. */
+export const CODIGOS_COM_DOCUMENTO = ['ACEITO', 'DOCUMENTO_DUPLICADO', 'DOCUMENTO_NAO_INTERPRETADO'] as const
+export type CodigoRecusaArquivo = Exclude<CodigoResultadoArquivo, (typeof CODIGOS_COM_DOCUMENTO)[number]>
 
 export const MENSAGENS_UPLOAD_FISCAL: Record<CodigoRecusaLote | CodigoResultadoArquivo, string> = {
   SEM_AUTENTICACAO: 'Sua sessão expirou. Entre novamente para enviar documentos.',
@@ -107,8 +110,10 @@ export const MENSAGENS_UPLOAD_FISCAL: Record<CodigoRecusaLote | CodigoResultadoA
   LOTE_VAZIO: 'Selecione ao menos um arquivo XML.',
   LOTE_MUITO_GRANDE: `Envie no máximo ${QUANTIDADE_MAXIMA_LOTE_XML_FISCAL} arquivos e ${emMegabytes(TAMANHO_MAXIMO_LOTE_XML_FISCAL)} por vez.`,
   REQUISICAO_INVALIDA: 'Não foi possível ler o envio. Tente novamente.',
-  ACEITO: 'Documento recebido e aguardando processamento.',
-  DOCUMENTO_DUPLICADO: 'Este arquivo já foi enviado para este cliente.',
+  ACEITO: 'Documento importado e pronto para revisão.',
+  DOCUMENTO_DUPLICADO: 'Este documento já foi importado para este cliente.',
+  DOCUMENTO_NAO_INTERPRETADO:
+    'O arquivo foi guardado, mas a NF-e ainda não pôde ser interpretada. Nenhum dado fiscal foi registrado.',
   ARQUIVO_NAO_PERMITIDO: 'Envie somente arquivos XML de NF-e.',
   ARQUIVO_VAZIO: 'O arquivo está vazio.',
   ARQUIVO_MUITO_GRANDE: `O arquivo XML deve ter no máximo ${emMegabytes(TAMANHO_MAXIMO_XML_FISCAL)}.`,

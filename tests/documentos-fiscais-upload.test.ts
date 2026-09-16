@@ -7,6 +7,8 @@ import { db } from '@/db/connection'
 import {
   documentosFiscais,
   documentosFiscaisArquivos,
+  documentosFiscaisEventos,
+  documentosFiscaisExtracoes,
   empresaMembros,
   eventosAuditoria,
   perfisPermissoes,
@@ -75,12 +77,15 @@ let semPermissao: { id: string; token: string }
 let vinculosCriados: { perfilId: string; permissaoId: string }[] = []
 let sequencia = 0
 
-/** NF-e sintética: cada chamada gera bytes diferentes. */
+/**
+ * NF-e sintética mínima, porém completa o bastante para o parser da Fase 1.3:
+ * cada chamada gera chave, número e bytes diferentes.
+ */
 function xmlNfe(extra = '') {
   sequencia += 1
   const numero = String(sequencia).padStart(9, '0')
   return `<?xml version="1.0" encoding="UTF-8"?>
-<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe3526091234567800019555001${numero}1000000010" versao="4.00"><ide><nNF>${sequencia}</nNF><natOp>Venda &amp; revenda</natOp></ide>${extra}</infNFe></NFe></nfeProc>`
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe3526091234567800019555001${numero}1000000010" versao="4.00"><ide><cUF>35</cUF><natOp>Venda &amp; revenda</natOp><mod>55</mod><serie>1</serie><nNF>${sequencia}</nNF><dhEmi>2026-09-15T10:00:00-03:00</dhEmi><tpNF>1</tpNF><tpAmb>2</tpAmb><finNFe>1</finNFe></ide><emit><CNPJ>12345678000195</CNPJ><xNome>Emitente Sintetico</xNome><enderEmit><xLgr>Rua Teste</xLgr><nro>1</nro><xMun>Sao Paulo</xMun><UF>SP</UF></enderEmit><IE>111111111111</IE><CRT>3</CRT></emit><dest><CNPJ>98765432000198</CNPJ><xNome>Destinatario Sintetico</xNome></dest><det nItem="1"><prod><cProd>P-1</cProd><xProd>Produto ${sequencia}</xProd><NCM>09012100</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>10.0000000000</vUnCom><vProd>10.00</vProd><indTot>1</indTot></prod><imposto><ICMS><ICMS00><orig>0</orig><CST>00</CST><vBC>10.00</vBC><pICMS>18.0000</pICMS><vICMS>1.80</vICMS></ICMS00></ICMS></imposto></det><total><ICMSTot><vBC>10.00</vBC><vICMS>1.80</vICMS><vProd>10.00</vProd><vNF>10.00</vNF></ICMSTot></total>${extra}</infNFe></NFe></nfeProc>`
 }
 
 /** NF-e sintética válida com exatamente `tamanho` bytes (espaço depois da raiz). */
@@ -134,6 +139,10 @@ async function limparFiscal() {
   const docs = await db.select({ id: documentosFiscais.id }).from(documentosFiscais).where(inArray(documentosFiscais.empresaId, empresas))
   const ids = docs.map(({ id }) => id)
   if (ids.length) {
+    // Ordem das FKs: evento → extração (que cascateia partes, itens e tributos)
+    // → arquivo → documento.
+    await db.delete(documentosFiscaisEventos).where(inArray(documentosFiscaisEventos.documentoFiscalId, ids))
+    await db.delete(documentosFiscaisExtracoes).where(inArray(documentosFiscaisExtracoes.documentoFiscalId, ids))
     await db.delete(documentosFiscaisArquivos).where(inArray(documentosFiscaisArquivos.documentoFiscalId, ids))
     await db.delete(documentosFiscais).where(inArray(documentosFiscais.id, ids))
   }
@@ -308,7 +317,7 @@ describe('autorização do upload', () => {
 })
 
 describe('recebimento, metadados e armazenamento privado', () => {
-  it('cria documento pendente sem dado fiscal, arquivo com os bytes exatos e chave privada', async () => {
+  it('cria o documento da perspectiva certa, com arquivo de bytes exatos e chave privada', async () => {
     const conteudo = xmlNfe()
     const bytes = bytesDe(conteudo)
     const resultado = await enviar('proprietario', [arquivo(conteudo, 'C:\\Users\\x\\NF 123.xml', 'text/xml')], cenario.clienteA)
@@ -324,14 +333,9 @@ describe('recebimento, metadados e armazenamento privado', () => {
       clienteId: cenario.clienteA,
       enviadoPorId: cenario.ids.proprietario,
       origem: 'envio_usuario',
-      statusProcessamento: 'pendente',
       statusRevisao: 'pendente',
+      // Interpretar não é conferir com a autoridade fiscal.
       situacao: 'nao_verificada',
-      tipo: null,
-      chaveAcesso: null,
-      numero: null,
-      emitenteIdentificacao: null,
-      valorTotal: null,
       sha256Original: calcularSha256(bytes),
     })
 
@@ -476,7 +480,7 @@ describe('lote', () => {
       [5, 'vazio.xml', 'ARQUIVO_VAZIO'],
       [6, 'ok-2.xml', 'ACEITO'],
     ])
-    expect(resultado.resumo).toEqual({ total: 7, aceitos: 2, duplicados: 1, recusados: 4 })
+    expect(resultado.resumo).toEqual({ total: 7, aceitos: 2, duplicados: 1, naoInterpretados: 0, recusados: 4 })
     for (const item of resultado.arquivos) expect(item.mensagem.length).toBeGreaterThan(0)
   })
 
@@ -600,7 +604,7 @@ describe('auditoria', () => {
       arquivoId,
       tipoArquivo: 'xml',
       tamanhoBytes: bytesDe(conteudo).byteLength,
-      statusNovo: 'pendente',
+      statusNovo: 'processado',
     })
     const serializado = JSON.stringify(evento.metadados)
     for (const proibido of ['<', 'nfeProc', '12ABC34501DE35', 'Sintética', 'documentos-fiscais/', calcularSha256(bytesDe(conteudo))]) {

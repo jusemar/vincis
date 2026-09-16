@@ -1,11 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/db/connection'
-import { documentosFiscais, documentosFiscaisArquivos } from '@/db/schema'
-import {
-  ACOES_AUDITORIA,
-  registrarEventoAuditoria,
-} from '@/features/auditoria/lib/registrar-evento'
+import { documentosFiscais } from '@/db/schema'
 import { ehAcessoInterno, resolverAcessoCliente } from '@/features/clientes/lib/acesso-cliente'
 import { PERMISSOES_DOCUMENTOS_FISCAIS } from '../constants/permissoes'
 import {
@@ -17,6 +13,9 @@ import {
   type CodigoRecusaArquivo,
   type CodigoRecusaLote,
 } from '../constants/upload'
+import type { CodigoErroInterpretacao } from '../constants/nfe'
+import { interpretarNfe } from './parser-fiscal/interpretar-nfe'
+import { persistirDocumentoFiscal } from './persistir-documento-fiscal'
 import {
   clienteNoEscopoDoEscritorio,
   resolverAcessoDocumentoFiscal,
@@ -28,7 +27,6 @@ import {
   gravarOriginalPrivado,
   montarChaveOriginal,
 } from './armazenamento-fiscal'
-import { ENTIDADES_AUDITORIA_FISCAL, metadadosAuditoriaFiscal } from './auditoria'
 import { limparNomeOriginal, validarXmlFiscal } from './validar-xml-fiscal'
 
 /** O mínimo de `File` que o recebimento usa — permite testar sem navegador. */
@@ -41,13 +39,30 @@ export type ArquivoDoLote = {
 
 export type ResultadoArquivoFiscal =
   | { indice: number; nome: string; codigo: 'ACEITO'; mensagem: string; documentoId: string; arquivoId: string }
+  | {
+      indice: number
+      nome: string
+      codigo: 'DOCUMENTO_NAO_INTERPRETADO'
+      mensagem: string
+      documentoId: string
+      arquivoId: string
+      /** Código do erro do parser — estrutura, nunca conteúdo do XML. */
+      motivo: CodigoErroInterpretacao
+    }
   | { indice: number; nome: string; codigo: 'DOCUMENTO_DUPLICADO'; mensagem: string; documentoId: string | null }
   | { indice: number; nome: string; codigo: CodigoRecusaArquivo; mensagem: string }
 
 export type ResultadoLoteFiscal =
   | {
       sucesso: true
-      resumo: { total: number; aceitos: number; duplicados: number; recusados: number }
+      resumo: {
+        total: number
+        aceitos: number
+        duplicados: number
+        /** Guardados, mas sem leitura fiscal: aguardam reprocessamento. */
+        naoInterpretados: number
+        recusados: number
+      }
       arquivos: ResultadoArquivoFiscal[]
     }
   | { sucesso: false; codigo: CodigoRecusaLote; mensagem: string }
@@ -130,7 +145,10 @@ export async function receberXmlsFiscais(entrada: {
       total: resultados.length,
       aceitos: resultados.filter((r) => r.codigo === 'ACEITO').length,
       duplicados: resultados.filter((r) => r.codigo === 'DOCUMENTO_DUPLICADO').length,
-      recusados: resultados.filter((r) => r.codigo !== 'ACEITO' && r.codigo !== 'DOCUMENTO_DUPLICADO').length,
+      naoInterpretados: resultados.filter((r) => r.codigo === 'DOCUMENTO_NAO_INTERPRETADO').length,
+      recusados: resultados.filter(
+        (r) => !['ACEITO', 'DOCUMENTO_DUPLICADO', 'DOCUMENTO_NAO_INTERPRETADO'].includes(r.codigo),
+      ).length,
     },
     arquivos: resultados,
   }
@@ -163,18 +181,31 @@ async function receberArquivo(
   const validacao = validarXmlFiscal({ nome: arquivo.name, tipoMime: arquivo.type, bytes })
   if (!validacao.valido) return recusar(validacao.codigo)
 
-  const duplicado = async (): Promise<ResultadoArquivoFiscal> => ({
+  type FiltroDocumento = { sha256?: string; chaveAcesso?: string }
+  const duplicado = async (filtro: FiltroDocumento): Promise<ResultadoArquivoFiscal> => ({
     indice,
     nome,
     codigo: 'DOCUMENTO_DUPLICADO',
     mensagem: MENSAGENS_UPLOAD_FISCAL.DOCUMENTO_DUPLICADO,
-    documentoId: await referenciaSegura(acesso, entrada.clienteId, validacao.sha256, entrada.usuarioId),
+    documentoId: await referenciaSegura(acesso, entrada.clienteId, filtro, entrada.usuarioId),
   })
 
-  // Caminho rápido: nem grava no storage o que já existe. Não é a garantia —
-  // a garantia é o índice único, conferido de novo na transação.
-  if (await buscarDocumentoDeOrigem(acesso.empresaId, entrada.clienteId, validacao.sha256)) {
-    return duplicado()
+  // Caminho rápido: nem grava no storage, nem interpreta, o que já existe. Não é
+  // a garantia — a garantia são os índices únicos, conferidos de novo na transação.
+  const porArquivo: FiltroDocumento = { sha256: validacao.sha256 }
+  if (await buscarDocumento(acesso.empresaId, entrada.clienteId, porArquivo)) return duplicado(porArquivo)
+
+  // Interpretação fiscal: pura, em memória, antes de gravar qualquer byte.
+  const interpretacao = interpretarNfe(textoDoXml(bytes))
+
+  // A mesma NF-e pode voltar em outro arquivo (novo download, outro
+  // espaçamento): a chave identifica o documento; o hash, o arquivo. Reenviar o
+  // mesmo documento fiscal principal não cria documento, item nem tributo novo.
+  const porChave: FiltroDocumento | null = interpretacao.sucesso
+    ? { chaveAcesso: interpretacao.documento.identificacao.chaveAcesso }
+    : null
+  if (porChave && (await buscarDocumento(acesso.empresaId, entrada.clienteId, porChave))) {
+    return duplicado(porChave)
   }
 
   const documentoId = randomUUID()
@@ -189,50 +220,27 @@ async function receberArquivo(
     return recusar('FALHA_ARMAZENAMENTO')
   }
 
+  // Documento, arquivo, extração, partes, itens, tributos, evento e auditoria
+  // numa transação só: ou entra tudo, ou não entra nada.
   try {
-    await db.transaction(async (tx) => {
-      await tx.insert(documentosFiscais).values({
-        id: documentoId,
+    await persistirDocumentoFiscal({
+      identificadores: { documentoId, arquivoId },
+      interpretacao,
+      contexto: {
+        // Sempre a empresa autorizada pelo servidor, nunca a pedida pelo navegador.
         empresaId: acesso.empresaId,
         clienteId: entrada.clienteId,
-        enviadoPorId: entrada.usuarioId,
+        usuarioId: entrada.usuarioId,
         origem: 'envio_usuario',
-        // `status_processamento` nasce `pendente`: recebido e armazenado,
-        // aguardando o parser. Nenhum campo fiscal é preenchido aqui.
-        sha256Original: validacao.sha256,
-      })
-      await tx.insert(documentosFiscaisArquivos).values({
-        id: arquivoId,
-        empresaId: acesso.empresaId,
-        documentoFiscalId: documentoId,
-        tipoArquivo: 'xml',
-        nomeOriginal: validacao.nomeOriginal,
-        tipoMime: MIME_XML_FISCAL,
-        tamanhoBytes: bytes.byteLength,
-        chaveArmazenamento: chave,
-        sha256: validacao.sha256,
-        enviadoPorId: entrada.usuarioId,
-      })
-      await registrarEventoAuditoria(
-        {
-          acao: ACOES_AUDITORIA.documentoFiscalEnviado,
-          entidade: ENTIDADES_AUDITORIA_FISCAL.documento,
-          registroAfetado: documentoId,
-          autorId: entrada.usuarioId,
-          empresaId: acesso.empresaId,
-          origem: 'admin',
-          ip: entrada.ip ?? null,
-          metadados: metadadosAuditoriaFiscal({
-            origem: 'envio_usuario',
-            clienteId: entrada.clienteId,
-            arquivoId,
-            tipoArquivo: 'xml',
-            tamanhoBytes: bytes.byteLength,
-            statusNovo: 'pendente',
-          }),
+        ip: entrada.ip ?? null,
+        arquivo: {
+          nomeOriginal: validacao.nomeOriginal,
+          tipoMime: MIME_XML_FISCAL,
+          tamanhoBytes: bytes.byteLength,
+          chaveArmazenamento: chave,
+          sha256: validacao.sha256,
         },
-        tx,
-      )
+      },
     })
   } catch (erro) {
     // O registro não existe: o objeto gravado não pode ficar para trás.
@@ -241,9 +249,23 @@ async function receberArquivo(
       // ser encontrável para limpeza. A chave vai só para o log do servidor.
       console.error('[DOCUMENTOS_FISCAIS_ORFAO]', { chave, nome: falha instanceof Error ? falha.name : 'desconhecido' })
     })
-    if (ehViolacaoDeOrigem(erro)) return duplicado()
+    if (ehDocumentoJaRegistrado(erro)) return duplicado(porChave ?? porArquivo)
     console.error('[DOCUMENTOS_FISCAIS_REGISTRO]', { nome: erro instanceof Error ? erro.name : 'desconhecido' })
     return recusar('FALHA_REGISTRO')
+  }
+
+  // XML seguro que o parser ainda não lê: o original fica guardado e o documento
+  // nasce `falhou`, para ser reprocessado quando o parser evoluir.
+  if (!interpretacao.sucesso) {
+    return {
+      indice,
+      nome,
+      codigo: 'DOCUMENTO_NAO_INTERPRETADO',
+      mensagem: MENSAGENS_UPLOAD_FISCAL.DOCUMENTO_NAO_INTERPRETADO,
+      documentoId,
+      arquivoId,
+      motivo: interpretacao.codigo,
+    }
   }
 
   return {
@@ -256,15 +278,28 @@ async function receberArquivo(
   }
 }
 
-async function buscarDocumentoDeOrigem(empresaId: string, clienteId: string | null, sha256: string) {
+type FiltroDocumento = { sha256?: string; chaveAcesso?: string }
+
+/**
+ * Texto do XML para o parser. O BOM é marca de codificação, não conteúdo: sai
+ * daqui, mas continua no arquivo original, que segue intocado no storage.
+ */
+function textoDoXml(bytes: Uint8Array) {
+  return new TextDecoder('utf-8').decode(bytes).replace(/^\ufeff/, '')
+}
+
+/** Documento da mesma perspectiva (empresa + cliente) pelo arquivo ou pela chave. */
+async function buscarDocumento(empresaId: string, clienteId: string | null, filtro: FiltroDocumento) {
   const [documento] = await db
     .select({ id: documentosFiscais.id })
     .from(documentosFiscais)
     .where(
       and(
         eq(documentosFiscais.empresaId, empresaId),
-        eq(documentosFiscais.sha256Original, sha256),
         clienteId ? eq(documentosFiscais.clienteId, clienteId) : isNull(documentosFiscais.clienteId),
+        filtro.sha256
+          ? eq(documentosFiscais.sha256Original, filtro.sha256)
+          : eq(documentosFiscais.chaveAcesso, filtro.chaveAcesso ?? ''),
       ),
     )
     .limit(1)
@@ -275,10 +310,10 @@ async function buscarDocumentoDeOrigem(empresaId: string, clienteId: string | nu
 async function referenciaSegura(
   acesso: AcessoDocumentosFiscais,
   clienteId: string | null,
-  sha256: string,
+  filtro: FiltroDocumento,
   usuarioId: string,
 ) {
-  const existente = await buscarDocumentoDeOrigem(acesso.empresaId, clienteId, sha256)
+  const existente = await buscarDocumento(acesso.empresaId, clienteId, filtro)
   if (!existente) return null
   const pode = await resolverAcessoDocumentoFiscal(
     usuarioId,
@@ -288,7 +323,13 @@ async function referenciaSegura(
   return pode ? existente.id : null
 }
 
-function ehViolacaoDeOrigem(erro: unknown) {
-  const causa = (erro as { cause?: { code?: string; constraint_name?: string } })?.cause ?? (erro as { code?: string; constraint_name?: string })
-  return causa?.code === '23505' && causa?.constraint_name === 'documentos_fiscais_origem_unica'
+/** Mesmo arquivo ou mesma NF-e já registrados nesta perspectiva. */
+function ehDocumentoJaRegistrado(erro: unknown) {
+  const causa =
+    (erro as { cause?: { code?: string; constraint_name?: string } })?.cause ??
+    (erro as { code?: string; constraint_name?: string })
+  return (
+    causa?.code === '23505' &&
+    ['documentos_fiscais_origem_unica', 'documentos_fiscais_chave_unica'].includes(causa?.constraint_name ?? '')
+  )
 }
