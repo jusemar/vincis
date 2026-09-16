@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- XML seguro e no namespace fiscal, mas não é NF-e: evento, não nota. -->
+<procEventoNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
+  <evento versao="1.00">
+    <infEvento Id="ID1101113526091234567800019555001000000001100000001701">
+      <tpEvento>110111</tpEvento>
+      <chNFe>35260912345678000195550010000000011000000017</chNFe>
+    </infEvento>
+  </evento>
+</procEventoNFe>

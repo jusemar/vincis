@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintética da Vincis: nenhum dado real de contribuinte. -->
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35260912345678000195550010000000011000000017" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <cNF>00000001</cNF>
+        <natOp>Venda de mercadoria &amp; servi&#231;o</natOp>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>1</nNF>
+        <dhEmi>2026-09-15T10:20:30-03:00</dhEmi>
+        <tpNF>1</tpNF>
+        <idDest>1</idDest>
+        <cMunFG>3550308</cMunFG>
+        <tpImp>1</tpImp>
+        <tpEmis>1</tpEmis>
+        <cDV>7</cDV>
+        <tpAmb>1</tpAmb>
+        <finNFe>1</finNFe>
+        <indFinal>0</indFinal>
+        <indPres>9</indPres>
+        <procEmi>0</procEmi>
+        <verProc>vincis-teste</verProc>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>Com&#233;rcio Sint&#233;tico &amp; Cia Ltda</xNome>
+        <xFant>Sint&#233;tico</xFant>
+        <enderEmit>
+          <xLgr>Rua das Provas</xLgr>
+          <nro>100</nro>
+          <xCpl>Sala 2</xCpl>
+          <xBairro>Centro</xBairro>
+          <cMun>3550308</cMun>
+          <xMun>S&#227;o Paulo</xMun>
+          <UF>SP</UF>
+          <CEP>01001000</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+          <fone>1140028922</fone>
+        </enderEmit>
+        <IE>111111111111</IE>
+        <IEST>222222222222</IEST>
+        <IM>98765</IM>
+        <CRT>3</CRT>
+      </emit>
+      <dest>
+        <CNPJ>98765432000198</CNPJ>
+        <xNome>Distribuidora Fict&#237;cia S.A.</xNome>
+        <enderDest>
+          <xLgr>Avenida dos Testes</xLgr>
+          <nro>2000</nro>
+          <xBairro>Industrial</xBairro>
+          <cMun>3304557</cMun>
+          <xMun>Rio de Janeiro</xMun>
+          <UF>RJ</UF>
+          <CEP>20040002</CEP>
+          <cPais>1058</cPais>
+          <xPais>BRASIL</xPais>
+          <fone>2133334444</fone>
+        </enderDest>
+        <indIEDest>1</indIEDest>
+        <IE>333333333</IE>
+        <email>contato@exemplo.invalid</email>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>PROD-001</cProd>
+          <cEAN>7891234567895</cEAN>
+          <xProd>Caf&#233; torrado 500g</xProd>
+          <NCM>09012100</NCM>
+          <CEST>1700100</CEST>
+          <CFOP>5102</CFOP>
+          <uCom>CX</uCom>
+          <qCom>10.0000</qCom>
+          <vUnCom>25.5000000000</vUnCom>
+          <vProd>255.00</vProd>
+          <cEANTrib>7891234567895</cEANTrib>
+          <uTrib>CX</uTrib>
+          <qTrib>10.0000</qTrib>
+          <vUnTrib>25.5000000000</vUnTrib>
+          <vFrete>10.00</vFrete>
+          <vSeg>2.00</vSeg>
+          <vDesc>5.00</vDesc>
+          <vOutro>1.00</vOutro>
+          <indTot>1</indTot>
+          <xPed>PEDIDO-9</xPed>
+        </prod>
+        <imposto>
+          <vTotTrib>40.00</vTotTrib>
+          <ICMS>
+            <ICMS00>
+              <orig>0</orig>
+              <CST>00</CST>
+              <modBC>3</modBC>
+              <vBC>263.00</vBC>
+              <pICMS>18.0000</pICMS>
+              <vICMS>47.34</vICMS>
+              <pFCP>2.0000</pFCP>
+              <vFCP>5.26</vFCP>
+            </ICMS00>
+          </ICMS>
+          <IPI>
+            <cEnq>999</cEnq>
+            <IPITrib>
+              <CST>50</CST>
+              <vBC>255.00</vBC>
+              <pIPI>5.0000</pIPI>
+              <vIPI>12.75</vIPI>
+            </IPITrib>
+          </IPI>
+          <PIS>
+            <PISAliq>
+              <CST>01</CST>
+              <vBC>255.00</vBC>
+              <pPIS>1.6500</pPIS>
+              <vPIS>4.21</vPIS>
+            </PISAliq>
+          </PIS>
+          <COFINS>
+            <COFINSAliq>
+              <CST>01</CST>
+              <vBC>255.00</vBC>
+              <pCOFINS>7.6000</pCOFINS>
+              <vCOFINS>19.38</vCOFINS>
+            </COFINSAliq>
+          </COFINS>
+        </imposto>
+        <infAdProd>Lote de teste</infAdProd>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>PROD-002</cProd>
+          <cEAN>SEM GTIN</cEAN>
+          <xProd>Servi&#231;o de entrega</xProd>
+          <NCM>00000000</NCM>
+          <CFOP>5949</CFOP>
+          <uCom>UN</uCom>
+          <qCom>1.0000</qCom>
+          <vUnCom>100.0000000000</vUnCom>
+          <vProd>100.00</vProd>
+          <cEANTrib>SEM GTIN</cEANTrib>
+          <uTrib>UN</uTrib>
+          <qTrib>1.0000</qTrib>
+          <vUnTrib>100.0000000000</vUnTrib>
+          <indTot>0</indTot>
+        </prod>
+        <imposto>
+          <ICMS>
+            <ICMSSN102>
+              <orig>0</orig>
+              <CSOSN>102</CSOSN>
+            </ICMSSN102>
+          </ICMS>
+          <PIS>
+            <PISNT>
+              <CST>07</CST>
+            </PISNT>
+          </PIS>
+          <COFINS>
+            <COFINSNT>
+              <CST>07</CST>
+            </COFINSNT>
+          </COFINS>
+        </imposto>
+      </det>
+      <total>
+        <ICMSTot>
+          <vBC>263.00</vBC>
+          <vICMS>47.34</vICMS>
+          <vICMSDeson>0.00</vICMSDeson>
+          <vFCP>5.26</vFCP>
+          <vBCST>0.00</vBCST>
+          <vST>0.00</vST>
+          <vFCPST>0.00</vFCPST>
+          <vProd>355.00</vProd>
+          <vFrete>10.00</vFrete>
+          <vSeg>2.00</vSeg>
+          <vDesc>5.00</vDesc>
+          <vII>0.00</vII>
+          <vIPI>12.75</vIPI>
+          <vPIS>4.21</vPIS>
+          <vCOFINS>19.38</vCOFINS>
+          <vOutro>1.00</vOutro>
+          <vNF>376.01</vNF>
+        </ICMSTot>
+        <retTrib>
+          <vRetPIS>1.00</vRetPIS>
+          <vRetCOFINS>2.00</vRetCOFINS>
+          <vRetCSLL>3.00</vRetCSLL>
+          <vBCIRRF>255.00</vBCIRRF>
+          <vIRRF>4.00</vIRRF>
+        </retTrib>
+      </total>
+    </infNFe>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt>
+      <tpAmb>1</tpAmb>
+      <verAplic>SP_TESTE_1</verAplic>
+      <chNFe>35260912345678000195550010000000011000000017</chNFe>
+      <dhRecbto>2026-09-15T10:25:00-03:00</dhRecbto>
+      <nProt>135260000000001</nProt>
+      <digVal>abcDEF123456789=</digVal>
+      <cStat>100</cStat>
+      <xMotivo>Autorizado o uso da NF-e</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>

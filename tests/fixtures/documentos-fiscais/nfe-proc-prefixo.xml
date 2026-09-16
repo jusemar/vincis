@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintética: mesmo namespace fiscal, com prefixo, e ruído de outros namespaces. -->
+<nfe:nfeProc xmlns:nfe="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <nfe:NFe>
+    <nfe:infNFe Id="NFe35260912345678000195550010000000031000000033" versao="4.00">
+      <nfe:ide>
+        <nfe:natOp>Remessa</nfe:natOp>
+        <nfe:mod>55</nfe:mod>
+        <nfe:serie>2</nfe:serie>
+        <nfe:nNF>3</nfe:nNF>
+        <nfe:dhEmi>2026-09-15T08:00:00-03:00</nfe:dhEmi>
+        <nfe:tpNF>0</nfe:tpNF>
+        <nfe:tpAmb>1</nfe:tpAmb>
+        <nfe:finNFe>4</nfe:finNFe>
+      </nfe:ide>
+      <nfe:emit>
+        <nfe:CNPJ>12ABC34501DE35</nfe:CNPJ>
+        <nfe:xNome>Emitente com CNPJ alfanum&#233;rico</nfe:xNome>
+        <nfe:enderEmit>
+          <nfe:xLgr>Rua Alfanum&#233;rica</nfe:xLgr>
+          <nfe:nro>7</nfe:nro>
+          <nfe:xMun>Curitiba</nfe:xMun>
+          <nfe:UF>PR</nfe:UF>
+        </nfe:enderEmit>
+        <nfe:IE>ISENTO</nfe:IE>
+      </nfe:emit>
+      <nfe:det nItem="1">
+        <nfe:prod>
+          <nfe:cProd>PROD-004</nfe:cProd>
+          <nfe:xProd>Pe&#231;a de reposi&#231;&#227;o</nfe:xProd>
+          <nfe:NCM>84139100</nfe:NCM>
+          <nfe:CFOP>5915</nfe:CFOP>
+          <nfe:uCom>UN</nfe:uCom>
+          <nfe:qCom>1.0000</nfe:qCom>
+          <nfe:vUnCom>50.0000000000</nfe:vUnCom>
+          <nfe:vProd>50.00</nfe:vProd>
+          <nfe:indTot>1</nfe:indTot>
+        </nfe:prod>
+        <nfe:imposto>
+          <nfe:ICMS>
+            <nfe:ICMS40>
+              <nfe:orig>0</nfe:orig>
+              <nfe:CST>41</nfe:CST>
+            </nfe:ICMS40>
+          </nfe:ICMS>
+        </nfe:imposto>
+      </nfe:det>
+      <!-- Elemento homônimo em outro namespace: não é item da nota. -->
+      <x:det xmlns:x="urn:vincis:teste" nItem="99">
+        <x:prod><x:xProd>Ruído</x:xProd></x:prod>
+      </x:det>
+      <nfe:total>
+        <nfe:ICMSTot>
+          <nfe:vProd>50.00</nfe:vProd>
+          <nfe:vNF>50.00</nfe:vNF>
+        </nfe:ICMSTot>
+      </nfe:total>
+    </nfe:infNFe>
+    <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+      <SignedInfo>
+        <Reference URI="#NFe35260912345678000195550010000000031000000033"/>
+      </SignedInfo>
+      <SignatureValue>ZmFrZQ==</SignatureValue>
+    </Signature>
+  </nfe:NFe>
+  <nfe:protNFe versao="4.00">
+    <nfe:infProt>
+      <nfe:tpAmb>1</nfe:tpAmb>
+      <nfe:chNFe>35260912345678000195550010000000031000000033</nfe:chNFe>
+      <nfe:dhRecbto>2026-09-15T08:05:00-03:00</nfe:dhRecbto>
+      <nfe:nProt>135260000000003</nfe:nProt>
+      <nfe:cStat>100</nfe:cStat>
+      <nfe:xMotivo>Autorizado o uso da NF-e</nfe:xMotivo>
+    </nfe:infProt>
+  </nfe:protNFe>
+</nfe:nfeProc>

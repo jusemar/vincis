@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture sintética: NF-e sem protocolo, destinatário pessoa física. -->
+<NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+  <infNFe Id="NFe35260912345678000195550010000000021000000025" versao="4.00">
+    <ide>
+      <cUF>35</cUF>
+      <natOp>Venda ao consumidor</natOp>
+      <mod>55</mod>
+      <serie>1</serie>
+      <nNF>2</nNF>
+      <dhEmi>2026-09-15T14:00:00-03:00</dhEmi>
+      <tpNF>1</tpNF>
+      <tpAmb>2</tpAmb>
+      <finNFe>1</finNFe>
+    </ide>
+    <emit>
+      <CNPJ>12345678000195</CNPJ>
+      <xNome>Com&#233;rcio Sint&#233;tico &amp; Cia Ltda</xNome>
+      <enderEmit>
+        <xLgr>Rua das Provas</xLgr>
+        <nro>100</nro>
+        <xBairro>Centro</xBairro>
+        <cMun>3550308</cMun>
+        <xMun>S&#227;o Paulo</xMun>
+        <UF>SP</UF>
+        <CEP>01001000</CEP>
+      </enderEmit>
+      <IE>111111111111</IE>
+      <CRT>1</CRT>
+    </emit>
+    <dest>
+      <CPF>12345678909</CPF>
+      <xNome>Consumidor de Teste</xNome>
+      <enderDest>
+        <xLgr>Rua Particular</xLgr>
+        <nro>S/N</nro>
+        <xBairro>Bairro</xBairro>
+        <cMun>3550308</cMun>
+        <xMun>S&#227;o Paulo</xMun>
+        <UF>SP</UF>
+      </enderDest>
+      <indIEDest>9</indIEDest>
+    </dest>
+    <det nItem="1">
+      <prod>
+        <cProd>PROD-003</cProd>
+        <xProd>Caderno pautado</xProd>
+        <NCM>48201000</NCM>
+        <CFOP>5102</CFOP>
+        <uCom>UN</uCom>
+        <qCom>3.0000</qCom>
+        <vUnCom>12.3456789000</vUnCom>
+        <vProd>37.04</vProd>
+        <indTot>1</indTot>
+      </prod>
+      <imposto>
+        <ICMS>
+          <ICMS60>
+            <orig>0</orig>
+            <CST>60</CST>
+            <vBCSTRet>37.04</vBCSTRet>
+            <vICMSSTRet>6.67</vICMSSTRet>
+          </ICMS60>
+        </ICMS>
+        <IBSCBS>
+          <CST>000</CST>
+          <cClassTrib>000001</cClassTrib>
+          <gIBSCBS>
+            <vBC>37.04</vBC>
+            <gIBSUF>
+              <pIBSUF>0.1000</pIBSUF>
+              <vIBSUF>0.04</vIBSUF>
+            </gIBSUF>
+          </gIBSCBS>
+        </IBSCBS>
+      </imposto>
+    </det>
+    <total>
+      <ICMSTot>
+        <vBC>0.00</vBC>
+        <vICMS>0.00</vICMS>
+        <vProd>37.04</vProd>
+        <vNF>37.04</vNF>
+      </ICMSTot>
+    </total>
+  </infNFe>
+</NFe>

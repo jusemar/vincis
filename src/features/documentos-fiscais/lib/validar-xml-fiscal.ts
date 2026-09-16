@@ -24,12 +24,11 @@ import {
  *
  * ## Fronteira com o parser fiscal
  *
- * A interpretação (namespaces, versões de layout, `NFe` e `nfeProc`, evolução
- * dos schemas, validação contra XSD oficiais, Reforma Tributária) é de uma
- * camada própria da fase seguinte, com uma biblioteca XML madura configurada
- * sem DTD nem entidades. Essa camada só lê o que esta barreira já aceitou e
- * armazenou. Regra fiscal nova vai para lá; aqui só entra endurecimento de
- * segurança.
+ * A interpretação vive em `lib/parser-fiscal/` (Fase 1.3): namespaces, versões
+ * de layout, `NFe` e `nfeProc`, evolução dos schemas e, adiante, XSD oficiais e
+ * Reforma Tributária. Ela usa uma biblioteca XML madura, só lê o que esta
+ * barreira já aceitou e armazenou, e nunca é chamada em lugar dela. Regra fiscal
+ * nova vai para lá; aqui só entra endurecimento de segurança.
  *
  * ## Por que um verificador próprio, e não uma biblioteca
  *
