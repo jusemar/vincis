@@ -44,6 +44,28 @@ export function excedeLimitesDoLote(arquivos: readonly { size: number }[]): bool
   return total > TAMANHO_MAXIMO_LOTE_XML_FISCAL
 }
 
+/**
+ * Divide uma seleção grande em lotes que cabem numa requisição.
+ *
+ * É a contrapartida de `excedeLimitesDoLote` para quem envia: 300 XMLs viram
+ * vários lotes seguros, cada um com resultado próprio, sem nenhuma requisição
+ * gigante. Arquivo individual acima do teto não é dividido — isso é resultado
+ * dele, não do lote.
+ */
+export function dividirEmLotesDeUpload<T extends { size: number }>(arquivos: readonly T[]): T[][] {
+  const lotes: T[][] = []
+  let atual: T[] = []
+  for (const arquivo of arquivos) {
+    if (atual.length > 0 && excedeLimitesDoLote([...atual, arquivo])) {
+      lotes.push(atual)
+      atual = []
+    }
+    atual.push(arquivo)
+  }
+  if (atual.length > 0) lotes.push(atual)
+  return lotes
+}
+
 /** `3670016` → `3,5 MB`. Mensagens derivam dos limites, nunca os repetem. */
 function emMegabytes(bytes: number) {
   return `${(Math.round((bytes / (1024 * 1024)) * 10) / 10).toString().replace('.', ',')} MB`

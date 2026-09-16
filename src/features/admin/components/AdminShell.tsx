@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/features/usuarios";
 import { ehGestorPlataforma } from "@/features/usuarios/lib/gestor-plataforma";
 import { tipoPrestadorDoPerfil } from "@/features/usuarios/lib/tipos-pessoa";
+import { perfilVeDocumentosFiscais } from "@/features/documentos-fiscais/constants/rotas";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 import { MobileAdminNavigation } from "./MobileAdminNavigation";
@@ -51,6 +52,17 @@ export function AdminShell({
   */
   const ehPrestador = usuario
     ? tipoPrestadorDoPerfil(usuario.perfilTipo) !== null
+    : false;
+  /*
+    O menu oferece a Central Fiscal?
+
+    Decidido pela mesma tabela de permissões por perfil que o servidor consulta
+    (`PERMISSOES_FISCAIS_POR_PERFIL`). A rota confere sessão, vínculo com o
+    escritório e `documentos_fiscais.visualizar` de novo — esconder item nunca
+    autorizou nada; o que este valor evita é oferecer uma porta fechada.
+  */
+  const podeVerDocumentosFiscais = usuario
+    ? perfilVeDocumentosFiscais(usuario.perfilTipo)
     : false;
 
   useEffect(() => {
@@ -116,6 +128,7 @@ export function AdminShell({
           reputacao={reputacao}
           ehGestor={ehGestor}
           ehPrestador={ehPrestador}
+          podeVerDocumentosFiscais={podeVerDocumentosFiscais}
         />
       </div>
 
@@ -126,7 +139,11 @@ export function AdminShell({
           {children}
         </main>
       </div>
-      <MobileAdminNavigation ehGestor={ehGestor} ehPrestador={ehPrestador} />
+      <MobileAdminNavigation
+        ehGestor={ehGestor}
+        ehPrestador={ehPrestador}
+        podeVerDocumentosFiscais={podeVerDocumentosFiscais}
+      />
     </div>
   );
 }

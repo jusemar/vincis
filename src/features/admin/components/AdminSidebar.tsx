@@ -19,6 +19,7 @@ import {
   BadgeDollarSign,
   Landmark,
   BookOpen,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -29,6 +30,10 @@ import {
   ROTA_ADMIN,
 } from "../constants/recursos";
 import { ROTA_MEUS_PRECOS } from "@/features/precificacao-profissional/constants/precificacao-profissional";
+import {
+  ROTA_DOCUMENTOS_FISCAIS,
+  ROTULO_DOCUMENTOS_FISCAIS,
+} from "@/features/documentos-fiscais/constants/rotas";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -53,6 +58,13 @@ interface SidebarProps {
    */
   ehGestor?: boolean;
   /**
+   * O perfil da conta enxerga documentos fiscais.
+   *
+   * Vem da mesma tabela de permissões que o servidor consulta. A rota confere
+   * tudo de novo — isto só evita oferecer uma porta fechada.
+   */
+  podeVerDocumentosFiscais?: boolean;
+  /**
    * A conta exerce operação profissional.
    *
    * O menu do painel leva a telas do prestador; sem cadastro de prestador elas
@@ -74,6 +86,16 @@ interface SidebarProps {
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "clients", label: "Clientes", icon: Users },
+  // Rota própria, como Meus preços: a lista é filtrada e paginada no banco a
+  // cada visita, e virar seção faria `/admin` carregar documentos fiscais para
+  // quem só foi ver a Agenda.
+  {
+    id: "documentos-fiscais",
+    label: ROTULO_DOCUMENTOS_FISCAIS,
+    icon: FileText,
+    rota: ROTA_DOCUMENTOS_FISCAIS,
+    exigeFiscal: true,
+  },
   { id: "team", label: "Equipe", icon: UsersRound },
   { id: "tickets", label: "Mensagens", icon: Ticket, badge: 3 },
   { id: "appointments", label: "Agenda", icon: Calendar },
@@ -115,6 +137,7 @@ export default function AdminSidebar({
   reputacao,
   ehGestor = false,
   ehPrestador = true,
+  podeVerDocumentosFiscais = false,
 }: SidebarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -163,7 +186,10 @@ export default function AdminSidebar({
           </Link>
         ) : null}
 
-        {ehPrestador && navItems.map((item) => {
+        {ehPrestador &&
+          navItems
+            .filter((item) => !("exigeFiscal" in item) || podeVerDocumentosFiscais)
+            .map((item) => {
           // Um item pode ser uma seção do painel (`?pagina=`) ou uma rota
           // própria. Quem tem `rota` acende pelo caminho aberto; os demais
           // continuam acendendo pela seção, exatamente como antes.

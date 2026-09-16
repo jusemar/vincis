@@ -8,6 +8,7 @@ import {
   Calendar,
   CalendarClock,
   DollarSign,
+  FileText,
   Headphones,
   LayoutDashboard,
   Megaphone,
@@ -25,6 +26,10 @@ import {
 } from 'lucide-react'
 import { recursosPermitidos } from '../constants/recursos'
 import { ROTA_MEUS_PRECOS } from '@/features/precificacao-profissional/constants/precificacao-profissional'
+import {
+  ROTA_DOCUMENTOS_FISCAIS,
+  ROTULO_DOCUMENTOS_FISCAIS,
+} from '@/features/documentos-fiscais/constants/rotas'
 import {
   Drawer,
   DrawerContent,
@@ -44,6 +49,15 @@ const PRINCIPAIS = [
 // `Meu Perfil → Serviços` e o trabalho contratado, em `Atendimentos`.
 const DEMAIS = [
   { id: 'team', label: 'Equipe', icon: UsersRound },
+  // Rota própria — ver o comentário em `AdminSidebar`. Só aparece para quem o
+  // perfil autoriza a ver documentos fiscais.
+  {
+    id: 'documentos-fiscais',
+    label: ROTULO_DOCUMENTOS_FISCAIS,
+    icon: FileText,
+    rota: ROTA_DOCUMENTOS_FISCAIS,
+    exigeFiscal: true,
+  },
   { id: 'tickets', label: 'Mensagens', icon: Ticket },
   { id: 'atendimentos', label: 'Atendimentos', icon: Headphones },
   { id: 'oportunidades', label: 'Oportunidades', icon: Target },
@@ -82,6 +96,7 @@ function destino(item: { id: string; rota?: string }) {
 export function MobileAdminNavigation({
   ehGestor = false,
   ehPrestador = true,
+  podeVerDocumentosFiscais = false,
 }: {
   /**
    * A sessão é do Gestor da Plataforma — resolvido pelo `AdminShell` a partir
@@ -90,6 +105,8 @@ export function MobileAdminNavigation({
   ehGestor?: boolean
   /** A conta exerce operação profissional. Ver `AdminSidebar`. */
   ehPrestador?: boolean
+  /** O perfil enxerga documentos fiscais — mesma tabela que o servidor usa. */
+  podeVerDocumentosFiscais?: boolean
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -97,6 +114,7 @@ export function MobileAdminNavigation({
   const [maisAberto, setMaisAberto] = useState(false)
   // Um item de rota própria acende pelo caminho aberto; os de seção, pela
   // seção — a gaveta "Mais" precisa refletir os dois.
+  const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais)
   const paginaNoMais = DEMAIS.some((item) =>
     'rota' in item ? pathname.startsWith(item.rota) : item.id === paginaAtual,
   )
@@ -205,7 +223,7 @@ export function MobileAdminNavigation({
             </DrawerDescription>
           </DrawerHeader>
           <nav className="grid grid-cols-2 gap-2 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {DEMAIS.map((item) => {
+            {demais.map((item) => {
               const Icone = item.icon
               return (
                 <Link
