@@ -463,6 +463,20 @@
       "when": 1789422735912,
       "tag": "0065_parceiro_campanhas",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1789431612252,
+      "tag": "0066_documentos_fiscais",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789450479191,
+      "tag": "0067_documentos_fiscais_origem",
+      "breakpoints": true
     }
   ]
 }

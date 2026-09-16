@@ -3,6 +3,10 @@ import { perfis } from './tables/perfis/tabela'
 import { permissoes } from './tables/permissoes/tabela'
 import { perfisPermissoes } from './tables/perfis_permissoes/tabela'
 import { eq } from 'drizzle-orm'
+import {
+  DESCRICOES_PERMISSOES_DOCUMENTOS_FISCAIS,
+  PERMISSOES_FISCAIS_POR_PERFIL,
+} from '../features/documentos-fiscais/constants/permissoes'
 
 const perfisIniciais = [
   { nome: 'cliente', descricao: 'Cliente que busca serviços jurídicos ou contábeis' },
@@ -34,7 +38,12 @@ const permissoesIniciais = [
   { nome: 'atendimentos.criar', descricao: 'Criar atendimentos' },
   { nome: 'pagamentos.visualizar', descricao: 'Visualizar pagamentos' },
   { nome: 'auditoria.visualizar', descricao: 'Visualizar auditoria' },
-] as const
+  // Central Fiscal: a lista e a distribuição por perfil moram no domínio.
+  ...Object.entries(DESCRICOES_PERMISSOES_DOCUMENTOS_FISCAIS).map(([nome, descricao]) => ({
+    nome,
+    descricao,
+  })),
+]
 
 const permissoesPorPerfil: Record<string, string[]> = {
   cliente: [
@@ -96,6 +105,10 @@ const permissoesPorPerfil: Record<string, string[]> = {
     'atendimentos.visualizar',
     'atendimentos.criar',
   ],
+}
+
+for (const [perfil, fiscais] of Object.entries(PERMISSOES_FISCAIS_POR_PERFIL)) {
+  permissoesPorPerfil[perfil] = [...(permissoesPorPerfil[perfil] ?? []), ...fiscais]
 }
 
 async function seedPerfis() {

@@ -127,6 +127,20 @@ export const ACOES_AUDITORIA = {
   recompensaCampanhaPagaInvalidada: 'recompensa_campanha_paga_invalidada',
   pontosParceiroCreditados: 'pontos_parceiro_creditados',
   pontosParceiroRevertidos: 'pontos_parceiro_revertidos',
+  /**
+   * Central Fiscal. Os metadados passam por
+   * `features/documentos-fiscais/lib/auditoria` — nunca XML, itens, partes ou
+   * valores do documento.
+   */
+  documentoFiscalEnviado: 'documento_fiscal_enviado',
+  documentoFiscalProcessado: 'documento_fiscal_processado',
+  documentoFiscalVisualizado: 'documento_fiscal_visualizado',
+  documentoFiscalBaixado: 'documento_fiscal_baixado',
+  documentoFiscalRevisado: 'documento_fiscal_revisado',
+  documentoFiscalAlterado: 'documento_fiscal_alterado',
+  documentoFiscalExcluido: 'documento_fiscal_excluido',
+  /** Conteúdo fiscal saiu para serviço externo (OCR, integração). */
+  documentoFiscalEnviadoServicoExterno: 'documento_fiscal_enviado_servico_externo',
 } as const
 
 export type AcaoAuditoria =
