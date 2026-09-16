@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Download,
+  Eye,
   FileText,
   FileUp,
   Filter,
@@ -133,6 +135,18 @@ export function CentralFiscalPage({
     else toast.error(resultado.mensagem);
     iniciarTransicao(() => router.refresh());
   }
+
+  // Os filtros viajam com o link: voltar do detalhe devolve a mesma vista.
+  const buscaAtual = montarBuscaDocumentosFiscais({
+    cliente: filtros.cliente,
+    sentido: filtros.sentido,
+    processamento: filtros.processamento,
+    revisao: filtros.revisao,
+    de: filtros.de,
+    ate: filtros.ate,
+    busca: filtros.busca,
+    pagina,
+  });
 
   const temFiltro = Boolean(
     filtros.cliente || filtros.sentido || filtros.processamento || filtros.revisao || filtros.de || filtros.ate || filtros.busca,
@@ -413,6 +427,7 @@ export function CentralFiscalPage({
                           <AcoesDoDocumento
                             documento={documento}
                             permissoes={permissoes}
+                            voltarPara={buscaAtual}
                             reprocessando={reprocessando === documento.id}
                             aoReprocessar={() => void reprocessar(documento.id)}
                           />
@@ -461,6 +476,7 @@ export function CentralFiscalPage({
                     <AcoesDoDocumento
                       documento={documento}
                       permissoes={permissoes}
+                      voltarPara={buscaAtual}
                       reprocessando={reprocessando === documento.id}
                       aoReprocessar={() => void reprocessar(documento.id)}
                     />
@@ -510,16 +526,28 @@ export function CentralFiscalPage({
 function AcoesDoDocumento({
   documento,
   permissoes,
+  voltarPara,
   reprocessando,
   aoReprocessar,
 }: {
   documento: DocumentoFiscalDaLista;
   permissoes: { revisar: boolean; baixar: boolean };
+  /** Filtros da listagem, para o detalhe saber como voltar. */
+  voltarPara: string;
   reprocessando: boolean;
   aoReprocessar: () => void;
 }) {
   return (
     <>
+      <Button variant="outline" size="sm" asChild>
+        <Link
+          href={`${ROTA_DOCUMENTOS_FISCAIS}/${documento.id}${
+            voltarPara ? `?voltar=${encodeURIComponent(voltarPara.slice(1))}` : ""
+          }`}
+        >
+          <Eye className="size-4" /> Visualizar
+        </Link>
+      </Button>
       {permissoes.revisar && (
         <Button variant="outline" size="sm" disabled={reprocessando} onClick={aoReprocessar}>
           {reprocessando ? (
