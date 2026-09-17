@@ -48,5 +48,6 @@ export async function obterSessaoServidor(): Promise<DadosUsuarioAutenticado | n
     status: usuario.status,
     perfilTipo: acesso.perfil,
     ehGestor: acesso.ehGestor,
+    elegivelCentralFiscal: acesso.elegivelCentralFiscal,
   }
 }

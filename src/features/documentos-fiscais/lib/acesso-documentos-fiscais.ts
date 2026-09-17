@@ -21,6 +21,7 @@ import {
   PERMISSOES_FISCAIS_ADMINISTRATIVAS,
   type PermissaoDocumentosFiscais,
 } from '../constants/permissoes'
+import { usuarioElegivelParaCentralFiscal } from '../queries/elegibilidade-fiscal'
 
 /**
  * Acesso resolvido à Central Fiscal de um escritório.
@@ -42,10 +43,19 @@ export type AcessoDocumentosFiscais = {
 /**
  * Resolve se o usuário pode exercer `permissao` na Central Fiscal da empresa.
  *
- * Três condições, todas obrigatórias:
- * 1. a permissão no RBAC da plataforma (`possuiPermissao`);
- * 2. vínculo ativo, com papel reconhecido, na empresa ativa;
- * 3. para atos administrativos (excluir, integrações), papel que administra.
+ * Quatro condições, todas obrigatórias:
+ * 1. **elegibilidade contábil** — Documentos Fiscais é módulo da atividade
+ *    contábil (`lib/elegibilidade-fiscal`). Advogado e demais áreas param aqui,
+ *    mesmo que tenham recebido a permissão por engano; o Gestor da plataforma é
+ *    a exceção administrativa prevista pela regra de negócio;
+ * 2. a permissão no RBAC da plataforma (`possuiPermissao`);
+ * 3. vínculo ativo, com papel reconhecido, na empresa ativa;
+ * 4. para atos administrativos (excluir, integrações), papel que administra.
+ *
+ * Esta é a **porta única** do módulo: listagem, detalhe, upload, download,
+ * revisão e reprocessamento — individuais ou em lote — passam por aqui ou por
+ * `resolverAcessoDocumentoFiscal`, que a chama. Nenhuma tela, rota ou action
+ * decide acesso por conta própria.
  *
  * `empresaId` pode ter vindo do cookie de contexto ou da própria linha do
  * documento: nunca é confiado, é conferido aqui. Sem acesso, `null`.
@@ -55,6 +65,7 @@ export async function resolverAcessoDocumentosFiscais(
   permissao: PermissaoDocumentosFiscais,
   empresaId: string,
 ): Promise<AcessoDocumentosFiscais | null> {
+  if (!(await usuarioElegivelParaCentralFiscal(usuarioId, empresaId))) return null
   if (!(await possuiPermissao(usuarioId, permissao))) return null
 
   const vinculo = await obterVinculoAtivo(usuarioId, empresaId)

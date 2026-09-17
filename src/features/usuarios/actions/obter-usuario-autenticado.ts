@@ -5,6 +5,7 @@ import { buscarSessaoAtiva } from '../queries/buscar-sessao-ativa'
 import type { ResultadoPadrao, DadosUsuarioAutenticado } from '../types'
 import { montarUsuarioAutenticado } from '../lib/dados-usuario-autenticado'
 import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
+import { usuarioElegivelParaCentralFiscal } from '@/features/documentos-fiscais/queries/elegibilidade-fiscal'
 
 export type ResultadoUsuarioAutenticado = ResultadoPadrao & {
   usuario?: DadosUsuarioAutenticado
@@ -55,7 +56,11 @@ export async function obterUsuarioAutenticado(token: string): Promise<ResultadoU
     mensagem: 'Usuário autenticado',
     usuario: montarUsuarioAutenticado(
       { ...usuario, status: usuario.status as DadosUsuarioAutenticado['status'] },
-      { perfil: perfilOperacional, ehGestor },
+      {
+      perfil: perfilOperacional,
+      ehGestor,
+      elegivelCentralFiscal: await usuarioElegivelParaCentralFiscal(usuario.id),
+    },
     ),
   }
 }

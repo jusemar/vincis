@@ -8,6 +8,11 @@ import {
 import { prestadorHabilitado, tipoPrestadorDoPerfil } from '../lib/prestador'
 import { contaVerificada } from '../lib/verificacao-conta'
 import type { PerfilTipo } from '../types'
+import {
+  elegivelParaCentralFiscal,
+  SEGMENTO_EMPRESA_CONTABIL,
+} from '@/features/documentos-fiscais/lib/elegibilidade-fiscal'
+import { colaboradorEmEscritorioContabil } from '@/features/documentos-fiscais/queries/elegibilidade-fiscal'
 import { buscarCapacidadesUsuario } from './buscar-perfil-principal-usuario'
 
 export type AcessoUsuario = {
@@ -21,6 +26,14 @@ export type AcessoUsuario = {
   ehGestor: boolean
   /** Tipo de prestador da pessoa; `null` para quem não presta serviço. */
   tipoPrestador: TipoPrestador | null
+  /**
+   * A conta exerce atividade contábil (ou administra a plataforma).
+   *
+   * É o que decide se a Central Fiscal aparece no menu. Quem autoriza de
+   * verdade continua sendo o servidor, a cada rota e a cada action — esta marca
+   * só evita oferecer uma porta que será fechada.
+   */
+  elegivelCentralFiscal: boolean
   /** Onde a pessoa cai ao entrar. Não é a única área que ela pode abrir. */
   destino: string
   /**
@@ -93,6 +106,7 @@ export async function resolverAcessoUsuario(
       perfil,
       ehGestor,
       tipoPrestador: null,
+      elegivelCentralFiscal: ehGestor,
       destino: ehGestor ? '/admin' : '/cliente',
       statusProfissional: null,
       habilitado: false,
@@ -102,6 +116,7 @@ export async function resolverAcessoUsuario(
   const [cadastro] = await db
     .select({
       tipoPrestador: perfisProfissionais.tipoPrestador,
+      tipoProfissional: perfisProfissionais.tipoProfissional,
       statusAnalise: perfisProfissionais.statusAnalise,
     })
     .from(perfisProfissionais)
@@ -113,10 +128,24 @@ export async function resolverAcessoUsuario(
   const habilitado =
     cadastro?.tipoPrestador === tipoPrestador && prestadorHabilitado(cadastro)
 
+  // Área de atuação: o Profissional traz a categoria no próprio cadastro; o
+  // Colaborador, o segmento do escritório a que está vinculado.
+  const contextoFiscal = {
+    ehGestor,
+    tipoPrestador,
+    tipoProfissional: cadastro?.tipoProfissional ?? null,
+  }
+  const elegivelCentralFiscal =
+    elegivelParaCentralFiscal(contextoFiscal) ||
+    (tipoPrestador === 'colaborador' &&
+      (await colaboradorEmEscritorioContabil(usuarioId)) &&
+      elegivelParaCentralFiscal({ ...contextoFiscal, segmentoDoEscritorio: SEGMENTO_EMPRESA_CONTABIL }))
+
   return montar({
     perfil,
     ehGestor,
     tipoPrestador,
+    elegivelCentralFiscal,
     // Cadastro pendente leva ao cadastro, inclusive para o Gestor: ele precisa
     // conseguir completá-lo para atuar como profissional. O acesso à Gestão da
     // Plataforma não se perde por isso — está em `areasPermitidas`.

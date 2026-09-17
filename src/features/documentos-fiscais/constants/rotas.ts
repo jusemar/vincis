@@ -8,6 +8,11 @@ import { PERMISSOES_DOCUMENTOS_FISCAIS, PERMISSOES_FISCAIS_POR_PERFIL } from './
  * menu não protege nada — a rota confere sessão, vínculo e
  * `documentos_fiscais.visualizar` antes de qualquer consulta —, mas evita
  * oferecer uma porta que o servidor vai fechar.
+ *
+ * Esta é só **uma** das duas condições do menu: a outra é a elegibilidade
+ * contábil (`lib/elegibilidade-fiscal`), que vem resolvida do servidor na
+ * sessão. Perfil com permissão mas de outra área — advogado, por exemplo — não
+ * vê o item nem entra na rota.
  */
 export const ROTA_DOCUMENTOS_FISCAIS = '/admin/documentos-fiscais'
 

@@ -5,6 +5,7 @@ import { contaVerificada } from '../lib/verificacao-conta'
 import { montarUsuarioAutenticado } from '../lib/dados-usuario-autenticado'
 import { buscarCapacidadesUsuario } from '../queries/buscar-perfil-principal-usuario'
 import type { ResultadoLogin, DadosUsuarioAutenticado } from '../types'
+import { usuarioElegivelParaCentralFiscal } from '@/features/documentos-fiscais/queries/elegibilidade-fiscal'
 
 export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin> {
   const validated = LoginSchema.safeParse(dados)
@@ -63,7 +64,11 @@ export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin
 
   const usuarioAutenticado = montarUsuarioAutenticado(
     { ...usuario, status: usuario.status as DadosUsuarioAutenticado['status'] },
-    { perfil: perfilOperacional, ehGestor },
+    {
+      perfil: perfilOperacional,
+      ehGestor,
+      elegivelCentralFiscal: await usuarioElegivelParaCentralFiscal(usuario.id),
+    },
   )
 
   return {

@@ -56,13 +56,15 @@ export function AdminShell({
   /*
     O menu oferece a Central Fiscal?
 
-    Decidido pela mesma tabela de permissões por perfil que o servidor consulta
-    (`PERMISSOES_FISCAIS_POR_PERFIL`). A rota confere sessão, vínculo com o
-    escritório e `documentos_fiscais.visualizar` de novo — esconder item nunca
-    autorizou nada; o que este valor evita é oferecer uma porta fechada.
+    Duas condições, as mesmas que o servidor aplica: **elegibilidade contábil**
+    (a área que a pessoa exerce, resolvida no servidor e trazida na sessão) e a
+    permissão do perfil no RBAC. Advogado e demais áreas não veem o item — e
+    também não passariam pela rota, que confere as duas de novo junto com o
+    vínculo. Esconder menu nunca autorizou nada; isto só evita oferecer uma
+    porta fechada.
   */
   const podeVerDocumentosFiscais = usuario
-    ? perfilVeDocumentosFiscais(usuario.perfilTipo)
+    ? usuario.elegivelCentralFiscal && perfilVeDocumentosFiscais(usuario.perfilTipo)
     : false;
 
   useEffect(() => {

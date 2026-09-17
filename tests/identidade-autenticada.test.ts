@@ -153,6 +153,9 @@ describe('as duas portas descrevem toda conta do mesmo jeito', () => {
       expect(doSessao).toEqual(dados.usuario)
       expect(Object.keys(dados.usuario).sort()).toEqual([
         'ehGestor',
+        // Área de atuação que abre a Central Fiscal — capacidade nova, e por
+        // isso precisa chegar pelas duas portas desde o primeiro carregamento.
+        'elegivelCentralFiscal',
         'email',
         'id',
         'nome',

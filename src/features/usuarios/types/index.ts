@@ -51,6 +51,12 @@ export type DadosUsuarioAutenticado = {
    * e não um valor dele — Gestor continua sendo Profissional ou Cliente.
    */
   ehGestor: boolean
+  /**
+   * A conta exerce atividade contábil (ou administra a plataforma) — o que
+   * decide se a Central Fiscal aparece no menu. Nunca autoriza nada: cada rota
+   * e cada action conferem no servidor.
+   */
+  elegivelCentralFiscal: boolean
 }
 
 export type ResultadoLogin = ResultadoPadrao & {
