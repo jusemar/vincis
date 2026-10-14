@@ -8,15 +8,16 @@
  * Uso: npm run db:local:clientes-recorrentes -- parceiro.bronze@vincis.local 3
  */
 import { exigirBancoLocal } from './guarda'
+import { lerSenhaContasLocais } from './senha-contas-locais'
 
 exigirBancoLocal(process.env.DATABASE_URL, 'db:local:clientes-recorrentes')
 const [email, quantidadeTexto] = process.argv.slice(2)
 const quantidade = Number(quantidadeTexto)
-const senha = process.env.SENHA_CONTAS_LOCAIS
-if (!email || !Number.isInteger(quantidade) || quantidade < 1 || !senha) {
+if (!email || !Number.isInteger(quantidade) || quantidade < 1) {
   console.error('Uso: npm run db:local:clientes-recorrentes -- <email-do-parceiro> <quantidade> (com SENHA_CONTAS_LOCAIS em .env.local)')
   process.exit(1)
 }
+const senha = lerSenhaContasLocais('db:local:clientes-recorrentes')
 
 const { eq } = await import('drizzle-orm')
 const { conexaoPostgres, db } = await import('../../src/db/connection')

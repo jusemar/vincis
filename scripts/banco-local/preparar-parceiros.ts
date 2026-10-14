@@ -20,39 +20,20 @@
  * Uso: npm run db:local:parceiros
  */
 import { exigirBancoLocal } from './guarda'
+import { lerSenhaContasLocais } from './senha-contas-locais'
 
 exigirBancoLocal(process.env.DATABASE_URL, 'db:local:parceiros')
-const senha = process.env.SENHA_CONTAS_LOCAIS
-if (!senha || senha.length < 10) {
-  console.error('Defina SENHA_CONTAS_LOCAIS (10+ caracteres) em .env.local.')
-  process.exit(1)
-}
+const senha = lerSenhaContasLocais('db:local:parceiros')
 // O banco é local (conferido acima): a confirmação manual de pagamento é o
 // mecanismo de teste que já existe para assinaturas.
 process.env.VINCIS_AMBIENTE ??= 'homologacao'
 
-const { eq } = await import('drizzle-orm')
 const { conexaoPostgres, db } = await import('../../src/db/connection')
-const { parceiros } = await import('../../src/db/schema')
-const { gerarCodigoDoParceiro } = await import('../../src/features/parceiros/lib/codigo-do-parceiro')
 const { contarClientesRecorrentesAtivos, obterConfiguracaoVigente, obterSituacaoDeNivel } =
   await import('../../src/features/parceiros/lib/niveis')
-const { clienteRecorrenteLocal, contaLocal } = await import('./fixtures')
+const { clienteRecorrenteLocal, contaLocal, parceiroLocal } = await import('./fixtures')
 
-const conta = (email: string, nome: string, perfil: string) => contaLocal(email, nome, perfil, senha!)
-
-async function ativarParceiro(usuarioId: string) {
-  const [existente] = await db
-    .select({ id: parceiros.id })
-    .from(parceiros)
-    .where(eq(parceiros.usuarioId, usuarioId))
-  if (existente) return existente.id
-  const [criado] = await db
-    .insert(parceiros)
-    .values({ usuarioId, codigo: gerarCodigoDoParceiro() })
-    .returning({ id: parceiros.id })
-  return criado.id
-}
+const conta = (email: string, nome: string, perfil: string) => contaLocal(email, nome, perfil, senha)
 
 const vigente = await obterConfiguracaoVigente()
 if (!vigente.ok) {
@@ -65,12 +46,12 @@ const configuracao = vigente.configuracao
 await conta('gestor.local@vincis.local', 'Gestor Local', 'gestor_vincis')
 await conta('cliente.sem-parceria@vincis.local', 'Cliente Sem Parceria', 'cliente')
 
-const clienteRecorrente = (parceiroId: string) => clienteRecorrenteLocal(parceiroId, senha!)
+const clienteRecorrente = (parceiroId: string) => clienteRecorrenteLocal(parceiroId, senha)
 
 for (const nivel of configuracao.niveis) {
   const email = `parceiro.${nivel.codigo}@vincis.local`
   const usuarioId = await conta(email, `Parceiro ${nivel.nome}`, 'cliente')
-  const parceiroId = await ativarParceiro(usuarioId)
+  const parceiroId = await parceiroLocal(usuarioId)
   const atuais = await contarClientesRecorrentesAtivos(db, parceiroId)
   for (let i = atuais; i < nivel.minimoClientes; i++) await clienteRecorrente(parceiroId)
   const situacao = await obterSituacaoDeNivel(parceiroId)
