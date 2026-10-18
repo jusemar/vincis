@@ -1,4 +1,8 @@
 /* A demonstração usa apenas os tokens do tema global da Vincis; o mapa e a lógica permanecem intactos. */
+/* Sem data-theme, ambos ficam ocultos até o tema salvo ser aplicado: não há flash do mapa errado. */
+.viva-mapa-asset image { opacity: 0; }
+html[data-theme="light"] .viva-mapa-asset .viva-mapa-claro,
+html[data-theme="dark"] .viva-mapa-asset .viva-mapa-escuro { opacity: 1; }
 .viva {
   --viva-fundo: hsl(var(--background));
   --viva-superficie: hsl(var(--card));
