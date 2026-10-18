@@ -98,7 +98,7 @@ const TypingText = ({ text, onComplete, speed = 40, isUser = false }: { text: st
   }, [currentIndex, text, speed, onComplete]);
 
   return (
-    <span className={isUser ? 'text-primary-foreground font-medium' : 'text-primary font-medium'}>
+    <span className={isUser ? 'text-primary-foreground dark:text-white font-medium' : 'text-primary font-medium'}>
       {text.slice(0, currentIndex)}
       {currentIndex < text.length && <span className="animate-pulse">|</span>}
     </span>
@@ -212,6 +212,8 @@ const ChatInterface = ({
   // Quando uma mensagem com isTyping começa, ativa o estado
   useEffect(() => {
     if (currentMessage?.isTyping && !typingStates[currentMessage.id]) {
+      // Fluxo de digitação original: marca a mensagem corrente ao avançar.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTypingStates(prev => ({ ...prev, [currentMessage.id]: true }));
     }
   }, [currentMessage, typingStates]);
@@ -323,7 +325,7 @@ const ChatInterface = ({
                     )}
                   </p>
                   <div className={`flex items-center gap-1 mt-1 text-[10px] ${
-                    msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    msg.sender === 'user' ? 'text-primary-foreground/70 dark:text-white/70' : 'text-muted-foreground'
                   }`}>
                     <span>{msg.timestamp}</span>
                     {msg.sender === 'support' && index < currentMessageIndex && (
@@ -402,6 +404,8 @@ export default function ChatDemo() {
   // Start animation when in view
   useEffect(() => {
     if (isInView && !hasStarted) {
+      // A animação original começa somente quando o notebook entra na viewport.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasStarted(true);
     }
   }, [isInView, hasStarted]);

@@ -33,7 +33,7 @@ const services = [
   { id: 'empresarial', icon: TrendingUp, title: 'Direito Empresarial', subtitle: 'Societário e Contratos', color: 'indigo', angle: 315 },
 ];
 
-const colorClasses: Record<string, any> = {
+const colorClasses: Record<string, { bg: string; text: string; border: string; hex: string }> = {
   blue: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', hex: '#3B82F6' },
   cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', hex: '#06B6D4' },
   purple: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', hex: '#A855F7' },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import passo1 from "@/assets/passo1.webp";
 import passo2 from "@/assets/passo2.webp";
 import passo3 from "@/assets/passo3.webp";

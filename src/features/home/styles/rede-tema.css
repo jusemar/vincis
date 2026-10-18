@@ -1,0 +1,59 @@
+/* A demonstração usa apenas os tokens do tema global da Vincis; o mapa e a lógica permanecem intactos. */
+.viva {
+  --viva-fundo: hsl(var(--background));
+  --viva-superficie: hsl(var(--card));
+  --viva-tinta: hsl(var(--foreground));
+  --viva-suave: hsl(var(--muted-foreground));
+  --viva-borda: hsl(var(--border));
+  --viva-laranja: hsl(var(--primary));
+  --viva-cliente: #258c9d;
+  --viva-ink: var(--viva-tinta);
+  --viva-muted: var(--viva-suave);
+  background: radial-gradient(ellipse at 50% 33%,hsl(var(--primary) / .055),transparent 62%), var(--viva-fundo);
+  color: var(--viva-tinta);
+  border-bottom: 1px solid var(--viva-borda);
+}
+.viva-cabecalho>span, .viva-cabecalho strong { color: var(--viva-laranja); }
+.viva-etapas button { background: var(--viva-superficie); border-color: var(--viva-borda); color: var(--viva-suave); box-shadow: 0 4px 14px #0000000b; }
+.viva-etapas button>span { background: hsl(var(--muted)); color: var(--viva-tinta); }
+.viva-etapas button[aria-current] { background: hsl(var(--primary) / .12); border-color: hsl(var(--primary) / .45); color: var(--viva-tinta); box-shadow: 0 5px 20px hsl(var(--primary) / .13); }
+.viva-etapas button[aria-current]>span { background: var(--viva-laranja); color: hsl(var(--on-primary)); }
+.viva-balao, .viva-balao-profissional { background: var(--viva-superficie); border-color: var(--viva-borda); color: var(--viva-tinta); box-shadow: 0 8px 22px #00000014, inset 0 1px 0 hsl(var(--foreground) / .035); }
+.viva-balao svg, .viva-balao small, .viva-profissional-cidade, .viva-profissional-vinculo { color: var(--viva-laranja); }
+.viva-balao-profissional::after { background: var(--viva-superficie); border-color: var(--viva-borda); }
+.viva-profissional-classificacao { color: var(--viva-suave); }
+.viva-profissional-resposta { border-color: var(--viva-borda); }
+.viva-opcoes { background: var(--viva-superficie); border-color: var(--viva-borda); box-shadow: 0 14px 30px #00000019; }
+.viva-opcoes>p, .viva-card { color: var(--viva-tinta); }
+.viva-card { background: var(--viva-superficie); border-color: var(--viva-borda); }
+.viva-card.neutro { background: hsl(var(--muted) / .48); }
+.viva-card.neutro .viva-selecionar { background: hsl(var(--muted)); color: var(--viva-suave); }
+.viva-card.selecionado { border-color: var(--viva-laranja); box-shadow: 0 0 0 2px hsl(var(--primary) / .42), 0 10px 24px hsl(var(--primary) / .16); }
+.viva-selecionar { background: var(--viva-laranja); color: hsl(var(--on-primary)); }
+.viva-card-detalhe, .viva-opcoes>small, .viva-mapa-nota, .viva-legenda-mobile, .viva-aviso { color: var(--viva-suave); }
+.viva-hub-legenda, .viva-mobile-nucleo .viva-hub-legenda { background: var(--viva-superficie); border-color: var(--viva-borda); color: var(--viva-tinta); }
+.viva-status, .viva-local { color: var(--viva-tinta); }
+.viva-rodape { border-color: var(--viva-borda); }
+.viva-controles button { background: var(--viva-superficie); border-color: var(--viva-borda); color: var(--viva-tinta); }
+.viva-atendimentos button { color: var(--viva-suave); }
+.viva-atendimentos button[aria-pressed=true] { background: hsl(var(--primary) / .12); color: var(--viva-tinta); }
+.viva-ponto { background: var(--viva-laranja); }
+.viva-legenda-profissional { background: var(--viva-laranja) !important; }
+.viva-mobile-trajeto { color: var(--viva-tinta); }
+.viva-mobile-trajeto { border-color: var(--viva-cliente); box-shadow: -2px 0 5px -3px var(--viva-cliente); }
+.viva-mobile-nucleo~.viva-mobile-trajeto { border-color: var(--viva-laranja); box-shadow: -2px 0 5px -3px var(--viva-laranja); }
+/* Os pulsos preservam as duas identidades, sem espalhar ciano pela interface. */
+.viva-conexao-territorial[data-tipo="cliente"] .viva-linha-rede { filter: drop-shadow(0 0 2px #58b7c5); }
+.viva-conexao-territorial[data-tipo="cliente"] .viva-pulso-rede { filter: drop-shadow(0 0 3px #58b7c5); }
+.viva-conexao-territorial[data-tipo="profissional"] .viva-linha-rede { filter: drop-shadow(0 0 2px hsl(var(--primary))); }
+.viva-conexao-territorial[data-tipo="profissional"] .viva-pulso-rede { filter: drop-shadow(0 0 3px hsl(var(--primary))); }
+/* O asset 3D mantém sua arte; apenas a interface que o envolve troca de tema. */
+html[data-theme="dark"] .viva { background: radial-gradient(ellipse at 50% 30%,hsl(var(--primary) / .065),transparent 65%), var(--viva-fundo); }
+/* A luz sob o asset permite ler seu relevo sem trocar ou filtrar a imagem aprovada. */
+html[data-theme="dark"] .viva-palco { background: radial-gradient(ellipse 43% 42% at 47% 57%, #a3ada3 0%, #56665d 58%, transparent 100%); }
+html[data-theme="dark"] .viva-mobile-nucleo { background: radial-gradient(ellipse 49% 55% at 48% 48%, #a3ada3 0%, #53645c 65%, transparent 100%); }
+html[data-theme="dark"] .viva-balao,
+html[data-theme="dark"] .viva-balao-profissional,
+html[data-theme="dark"] .viva-card,
+html[data-theme="dark"] .viva-opcoes { box-shadow: 0 10px 25px #00000055; }
+html[data-theme="dark"] .viva-documento-mobile { background: var(--viva-superficie); color: var(--viva-cliente); }

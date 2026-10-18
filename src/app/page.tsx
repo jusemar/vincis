@@ -1,17 +1,16 @@
-"use client";
+import type { Metadata } from "next";
+import { RedeVincis } from "@/features/home/components/rede/RedeVincis";
+import { HomeAntiga } from "@/features/home/components/HomeAntiga";
 
-import { ChatDemo } from "@/features/home";
-import { SimpleSteps } from "@/features/home";
-import { Banners } from "@/features/home";
-import { ServicesHub } from "@/features/home";
+export const metadata: Metadata = {
+  title: "Vincis | Orientação contábil e jurídica online",
+  description: "Conecte-se a contadores, advogados e profissionais da área na Vincis.",
+};
 
 export default function HomePage() {
-  return (
-    <main className="min-h-dvh">
-      <ChatDemo />
-      <SimpleSteps />
-      <Banners />
-      <ServicesHub />
-    </main>
-  );
+  // A demonstração atual ocupa uma única posição, imediatamente antes do Hero antigo.
+  return <div className="min-h-dvh">
+    <RedeVincis />
+    <HomeAntiga />
+  </div>;
 }

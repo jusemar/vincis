@@ -1,0 +1,306 @@
+/* Coordenadas e proporções pertencem ao palco ilustrado de 1000 × 600, não ao layout da página. */
+.viva { --viva-ink:#183c32; --viva-muted:#596b64; position:relative; padding:110px 28px 24px; background:radial-gradient(ellipse at 50% 45%,#fff 0%,#f0f0e9 65%,#e8e8e1 100%); color:var(--viva-ink); overflow:hidden; scroll-margin-top:90px; }
+.viva-cabecalho {text-align:center; margin-bottom:22px;}
+.viva-cabecalho>span {font-size:9px;letter-spacing:.22em;color:#64796d;}
+.viva-cabecalho p {font-size:clamp(14px,1.5vw,22px);margin-top:7px;font-weight:400;letter-spacing:-.025em;}
+.viva-cabecalho strong {font-weight:550;}
+.viva-etapas {position:relative;z-index:5;display:flex;max-width:1180px;margin:auto;gap:6px;}
+.viva-etapas button {flex:1;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 8px;border-radius:17px;background:#ffffff70;border:1px solid #ffffff80;min-height:52px;color:#646d68;font-size:13px;transition:background .4s,color .4s;}
+.viva-etapas button>span {display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#737a76;color:white;font-size:18px;font-weight:600;flex-shrink:0;box-shadow:inset 0 2px 3px #ffffff35;}
+.viva-etapas button strong {font-weight:500;}
+.viva-etapas button>svg {margin-left:auto;opacity:.5;}
+.viva-etapas button[aria-current] {background:#e3efe4;border-color:#bad6c2;color:#14563e;box-shadow:0 3px 20px #418d5a10;}
+.viva-etapas button[aria-current]>span {background:linear-gradient(135deg,#327f5a,#06442f);}
+.viva :is(button,a):focus-visible {outline:3px solid #ad7a20;outline-offset:4px;}
+.viva-palco {position:relative;max-width:1500px;aspect-ratio:1000/600;margin:0 auto;isolation:auto;}
+.viva-mapa {position:absolute;width:100%;height:100%;inset:0;overflow:visible;}
+.viva-conexao>path {fill:none;stroke:currentColor;stroke-width:2.5;filter:drop-shadow(0 0 5px currentColor);opacity:.8;}
+.viva-documento {filter:drop-shadow(0 0 6px #ffffff);}
+.viva-ator {position:relative;width:100%;}
+.viva-ator>img {width:100%;height:auto;object-fit:contain;filter:drop-shadow(0 10px 9px #36533c17);user-select:none;}
+.viva-cliente,.viva-profissional {position:absolute;width:25%;animation:viva-aparecer .9s ease both;}
+.viva-cliente-0 {left:1%;top:8%;}
+.viva-cliente-1 {left:0;top:40%;}
+.viva-cliente-2 {left:5%;top:71%;}
+.viva-profissional-0 {right:0;top:11%;}
+.viva-profissional-1 {right:-1%;top:42%;}
+.viva-profissional-2 {right:1%;top:72%;}
+.viva-cliente>.viva-ator {width:78%;margin-top:4%;}
+.viva-cliente-2>.viva-ator {filter:hue-rotate(65deg);}
+.viva-local {display:flex;align-items:center;gap:6px;font-size:clamp(10px,.94vw,14px);line-height:1.25;text-align:left;font-weight:600;position:relative;z-index:2;}
+.viva-local svg {color:var(--cor-fluxo,#267858);fill:var(--cor-fluxo,#267858);stroke:#fff;filter:drop-shadow(0 1px 2px #45634930);flex-shrink:0;}
+.viva-local small {display:block;font-size:.85em;font-weight:400;}
+.viva-balao {position:relative;display:flex;gap:6px;align-items:center;background:#ffffffed;border:1px solid #fff;border-radius:14px 14px 14px 3px;box-shadow:0 5px 20px #354b4410;color:#183044;padding:12px 14px;font-size:clamp(10px,1.05vw,15px);line-height:1.45;}
+.viva-balao svg {color:#267858;flex-shrink:0;}
+.viva-cliente>.viva-balao {position:absolute;top:18%;left:51%;width:67%;z-index:3;min-height:64px;}
+.viva-profissional>.viva-balao {position:absolute;top:19%;right:0;width:68%;z-index:3;font-size:clamp(9px,.9vw,13px);}
+.viva-profissional>.viva-ator {width:88%;margin-top:8%;}
+.viva-profissional .viva-local {margin-left:7%;}
+.viva-disponivel {opacity:.48;}
+.viva-selo {display:block;margin:-2% 0 0 10%;width:max-content;max-width:90%;font-size:clamp(8px,.65vw,10px);padding:4px 9px;background:#ffffffc9;border:1px solid #e3e8df;border-radius:20px;color:#31634e;}
+.viva-central {position:absolute;left:35%;top:36%;width:31%;z-index:2;}
+.viva-hub {position:relative;text-align:center;}
+.viva-hub-legenda {position:relative;display:inline-block;border:1px solid #e0e8dc;background:#fafff4dd;border-radius:20px;padding:5px 10px;font-size:clamp(8px,.7vw,11px);margin-top:-5px;color:#35664d;}
+.viva-processando::before {content:"";position:absolute;inset:20%;border-radius:50%;background:#badf9f66;filter:blur(25px);animation:viva-pulsar 2s ease-in-out infinite;}
+.viva-especialistas {position:absolute;width:32%;left:34%;top:2%;z-index:4;animation:viva-aparecer .7s ease both;}
+.viva-opcoes {padding:12px;border-radius:20px;border:1px solid #fff;background:linear-gradient(130deg,#ffffffd9,#eff5f1c7);box-shadow:0 12px 25px #345e4820;backdrop-filter:blur(10px);}
+.viva-opcoes>p {font-size:clamp(11px,1vw,15px);line-height:1.2;margin-bottom:10px;color:#19363c;}
+.viva-opcoes>p strong {font-weight:500;}
+.viva-cards {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.viva-card {min-width:0;display:flex;flex-direction:column;align-items:center;background:#f9ffff;border:2px solid #e6eeee;box-shadow:0 3px 8px #36625a0e;border-radius:11px;padding:6px;transition:transform .7s,border-color .7s,opacity .7s,box-shadow .7s;color:#163a48;}
+.viva-card:disabled {cursor:default;}
+.viva-card.selecionado {border-color:#d6b46e;transform:translateY(-5px);box-shadow:0 3px 18px #d1b26640;}
+.viva-card.secundario {opacity:.5;}
+.viva-retrato {width:100%;height:clamp(42px,5.5vw,80px);overflow:hidden;display:block;background:linear-gradient(150deg,#e9f0ef,#dce8e7);border-radius:6px;}
+.viva-retrato .viva-ator {width:150%;margin:-5% 0 0 -25%;}
+.viva-estrelas {font-size:clamp(9px,1vw,14px);letter-spacing:0;color:#b27b16;margin:2px 0;}
+.viva-card>strong {font-size:clamp(9px,.82vw,12px);line-height:1.2;font-weight:500;min-height:2.4em;}
+.viva-card-detalhe {font-size:clamp(7px,.61vw,9px);line-height:1.4;margin:5px 0 7px;color:#536974;}
+.viva-selecionar {display:flex;align-items:center;justify-content:center;gap:3px;border-radius:5px;padding:4px 2px;width:100%;background:linear-gradient(120deg,#238c70,#116b55);color:white;font-size:clamp(8px,.72vw,11px);margin-top:auto;min-height:24px;}
+.viva-opcoes>small {display:block;text-align:center;font-size:clamp(7px,.65vw,10px);color:#526960;margin-top:7px;}
+.viva-mapa-nota {position:absolute;bottom:1%;left:39%;font-size:9px;color:#5c7162;}
+.viva-rodape {position:relative;max-width:1180px;margin:16px auto 0;display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid #d3ded3;padding-top:13px;}
+.viva-status {display:flex;align-items:center;gap:9px;font-size:12px;color:#335847;}
+.viva-ponto {width:6px;height:6px;border-radius:50%;background:#328c62;flex-shrink:0;}
+.viva-check {display:grid;place-items:center;border-radius:50%;background:#287451;color:white;width:20px;height:20px;flex-shrink:0;}
+.viva-controles {display:flex;gap:6px;}
+.viva-controles button {display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid #d8e1d6;border-radius:25px;font-size:11px;background:#ffffff65;}
+.viva-atendimentos {max-width:1180px;margin:7px auto 0;display:flex;gap:15px;}
+.viva-atendimentos button {display:flex;gap:6px;align-items:center;font-size:10px;min-height:36px;padding:3px 8px;border-radius:7px;color:#587066;}
+.viva-atendimentos button[aria-pressed=true] {background:#ffffffa0;color:#194d37;}
+.viva-atendimentos button>span {width:5px;height:5px;border-radius:50%;}
+.viva-atendimentos small {opacity:.8;}
+.viva-aviso {font-size:9px;text-align:center;line-height:1.6;color:#617268;margin:10px 0 0;}
+.viva-digitando {display:flex;gap:4px;position:absolute;top:15%;left:30%;background:white;padding:7px;border-radius:10px;box-shadow:0 3px 12px #1c65401a;}
+.viva-digitando i {width:4px;height:4px;background:#267858;border-radius:50%;animation:viva-pulsar .8s ease-in-out infinite alternate;}
+.viva-digitando i:nth-child(2) {animation-delay:.2s;}.viva-digitando i:nth-child(3) {animation-delay:.4s;}
+.viva-trabalhando>img {animation:viva-digitar 1.1s ease-in-out infinite alternate;transform-origin:50% 80%;}
+.viva-cursor {animation:viva-pulsar .7s infinite alternate;color:#267858;}
+.viva-mobile {display:none;}
+.viva[data-executando=false] *,.viva[data-executando=false] *::before {animation-play-state:paused!important;}
+@keyframes viva-aparecer {from {opacity:0;transform:translateY(8px);} to {opacity:1;transform:translateY(0);}}
+@keyframes viva-pulsar {from {opacity:.4;} to {opacity:1;}}
+@keyframes viva-digitar {to {transform:rotate(.4deg) translateY(-1px);}}
+/* A ilustração mantém a luz diurna, como um material editorial, em ambos os temas. */
+[data-theme=dark] .viva {background:radial-gradient(ellipse at center,#edf1e8,#dbe3d7);}
+@media (min-width:768px) and (max-width:1100px) {
+ .viva {padding-inline:14px;}.viva-etapas {gap:3px;}.viva-etapas button {gap:5px;font-size:10px;padding:8px 5px;}.viva-etapas button>span {width:25px;height:25px;font-size:15px;}.viva-etapas button>svg {display:none;}.viva-card-detalhe {display:none;}.viva-especialistas {width:34%;left:33%;top:4%;}.viva-opcoes {padding:8px;}.viva-cards {gap:4px;}.viva-cliente>.viva-balao {padding:8px;min-height:45px;}.viva-profissional>.viva-balao {padding:8px;}.viva-palco {margin-top:15px;}.viva-mapa-nota {font-size:7px;}
+}
+@media (max-width:767px) {
+ .viva {padding:105px 16px 20px;}.viva-cabecalho {margin-bottom:16px;}.viva-cabecalho p {font-size:17px;}.viva-cabecalho strong {display:block;}.viva-etapas {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}.viva-etapas button {min-height:44px;padding:7px 5px;font-size:10px;gap:5px;border-radius:12px;justify-content:flex-start;}.viva-etapas button>span {width:24px;height:24px;font-size:14px;}.viva-etapas button>svg {display:none;}.viva-palco {display:none;}.viva-mobile {display:flex;flex-direction:column;align-items:center;max-width:460px;margin:24px auto 0;}.viva-mobile-cliente {width:100%;position:relative;min-height:170px;}.viva-mobile-cliente>.viva-ator {width:55%;margin-top:14px;}.viva-mobile-cliente>.viva-balao {position:absolute;top:40px;right:0;width:52%;z-index:2;font-size:13px;}.viva-local {font-size:12px;}.viva-mobile-trajeto {position:relative;min-height:62px;display:flex;align-items:center;gap:10px;color:#417057;font-size:10px;width:85%;border-left:1px dashed #85b493;padding-left:20px;margin:0 0 5px 20px;}.viva-mobile-trajeto[data-retorno=true]>svg:first-child {transform:rotate(180deg);}.viva-documento-mobile {position:absolute;left:-12px;background:#f5fff7;color:#4d9db0;filter:drop-shadow(0 1px 3px #ffffff);transform:translateY(-50%);}.viva-mobile>.viva-hub {width:65%;max-width:240px;}.viva-hub-legenda {font-size:10px;}.viva-mobile>.viva-opcoes {width:100%;margin:22px 0 12px;}.viva-opcoes>p {font-size:15px;}.viva-card {padding:6px;min-height:190px;}.viva-cards {gap:5px;}.viva-retrato {height:70px;}.viva-estrelas {font-size:13px;}.viva-card>strong {font-size:10px;}.viva-card-detalhe {font-size:8px;}.viva-selecionar {font-size:10px;min-height:32px;}.viva-opcoes>small {font-size:9px;}.viva-mobile-parceiro {position:relative;width:100%;text-align:center;padding-bottom:10px;animation:viva-aparecer .6s ease;}.viva-mobile-parceiro>.viva-ator {width:70%;margin:12px auto 4px;}.viva-mobile-parceiro>strong {display:block;font-size:14px;}.viva-mobile-parceiro>small {font-size:10px;color:#597062;}.viva-mobile-parceiro>.viva-balao {font-size:12px;margin:12px auto 0;width:90%;justify-content:center;}.viva-rodape {flex-direction:column;gap:10px;margin-top:22px;}.viva-status {font-size:12px;line-height:1.5;align-self:flex-start;min-height:36px;}.viva-atendimentos {gap:3px;justify-content:center;flex-wrap:wrap;}.viva-atendimentos button {font-size:9px;flex-direction:column;gap:3px;min-height:44px;flex:1;}.viva-atendimentos button>span {display:none;}.viva-aviso {font-size:9px;}
+}
+@media (prefers-reduced-motion:reduce) {
+ .viva *, .viva *::before {animation:none!important;transition:opacity .15s!important;}
+}
+/* Ao navegar com a reprodução pausada, novos atores devem aparecer por completo. */
+.viva[data-executando=false] :is(.viva-cliente,.viva-profissional,.viva-especialistas,.viva-mobile-parceiro) {animation:none!important;}
+.viva-robo {position:absolute;width:30%;right:4%;bottom:10%;transform-origin:50% 90%;}
+.viva-processando .viva-robo {animation:viva-assistente 2.5s ease-in-out infinite alternate;}
+@keyframes viva-assistente {to {transform:translateY(-4px) rotate(-3deg);}}
+.viva-documento {transition:transform .1s linear;}
+.viva-documento-mobile {transition:top .1s linear;}
+.viva-retrato .viva-ator {width:235%;margin:-3% 0 0 -28%;}
+.viva-card:last-child .viva-retrato .viva-ator {width:135%;margin:0 0 0 -18%;}
+/* Respiro entre as três fileiras e painéis compactos dos atendimentos paralelos. */
+.viva-cliente>.viva-ator {width:66%;}
+.viva-cliente-2>.viva-ator {filter:none;}
+.viva-profissional>.viva-ator {width:77%;}
+.viva-profissional>.viva-balao {right:-1%;top:15%;width:63%;}
+.viva-central {left:40%;top:43%;width:27%;}
+.viva-robo {width:24%;right:4%;bottom:10%;}
+.viva-mini {position:absolute;width:18%;left:22%;top:43%;z-index:3;animation:viva-aparecer .7s ease both;}
+.viva-mini-0 {top:5%;left:5%;}
+.viva-mini-2 {left:27%;top:76%;}
+.viva-mini .viva-opcoes {padding:8px;border-radius:13px;}
+.viva-mini .viva-opcoes>p {font-size:10px;margin-bottom:6px;}
+.viva-mini .viva-cards {gap:4px;}
+.viva-mini .viva-card {padding:3px;border-width:1px;border-radius:6px;}
+.viva-mini .viva-retrato {height:38px;}
+.viva-mini .viva-estrelas {font-size:9px;}
+.viva-mini .viva-card>strong {font-size:8px;}
+.viva-mini .viva-card-detalhe,.viva-mini .viva-opcoes>small {display:none;}
+.viva-mini .viva-selecionar {font-size:7px;min-height:22px;margin-top:5px;}
+.viva[data-executando=false] .viva-mini {animation:none!important;}
+@media (max-width:1100px) {.viva-mini {display:none;}.viva-central {left:35%;top:47%;width:30%;}}
+.viva-cliente-1>.viva-balao,.viva-cliente-2>.viva-balao {width:44%;font-size:clamp(10px,.9vw,13px);padding:10px;}
+.viva-mini {left:26%;width:17%;top:43%;}
+.viva-mini-2 {left:31%;top:76%;}
+.viva-mini-local {display:block;font-size:9px;margin-bottom:4px;color:#315a44;}
+.viva-central {left:44%;width:26%;}
+.viva-profissional>.viva-ator {width:70%;margin-top:5%;}
+.viva-card:nth-child(2) .viva-retrato .viva-ator {margin-left:-100%;}
+@media (min-width:768px) and (max-width:1100px) {
+ .viva-central {left:40%;width:30%;}
+ .viva-cliente-1>.viva-balao,.viva-cliente-2>.viva-balao {width:67%;padding:8px;}
+ .viva-selo {font-size:7px;padding:2px 5px;}
+}
+.viva-mapa-nota {left:55%;}
+@media (max-width:767px) {
+ .viva-mobile .viva-hub-legenda {display:block;margin-top:8px;}
+ .viva-mobile .viva-robo {width:28%;bottom:45px;}
+}
+@media (max-width:360px) {
+ .viva-etapas {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+/* Base oficial, corpo e braço são camadas independentes na mesma proporção da referência. */
+.viva-cenario-central { position: relative; width: 100%; aspect-ratio: 3 / 2; isolation: isolate; }
+.viva-base-oficial { object-fit: contain; z-index: 0; }
+.viva-robo-independente { position: absolute; z-index: 1; left: 45%; top: 34%; width: 12%; height: 32%; transform-origin: 50% 85%; }
+.viva-robo-independente img { object-fit: fill; }
+.viva-braco-camada { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.viva-hub-holografico .viva-hub-legenda { margin-top: 2px; }
+.viva-braco-holografico { transform-box: view-box; transform-origin: 256px 222px; transform: rotate(12deg); }
+.viva-processando .viva-braco-holografico { animation: viva-tocar-tela 3.6s ease-in-out infinite; }
+@keyframes viva-tocar-tela {
+  0%, 100% { transform: rotate(12deg); }
+  28%, 39% { transform: rotate(0deg); }
+  58%, 68% { transform: rotate(-9deg); }
+  80% { transform: rotate(4deg); }
+}
+@media (max-width:767px) {
+  .viva-mobile>.viva-hub-holografico { width: 86%; max-width: 320px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .viva-braco-holografico { transform: none; }
+}
+/* Novos atores têm silhuetas próprias; enquadramento não depende da cor da roupa. */
+.viva-profissional>.viva-ator { width: 57%; margin-top: 3%; }
+.viva-cliente-2 { top: 69%; }
+.viva-cliente-2>.viva-ator { width: 58%; }
+.viva-retrato [data-asset="autonoma-camila-ambiente"] { margin-left: -100%; margin-top: -28%; }
+.viva-card:nth-child(2) .viva-retrato [data-asset="tecnico-rafael-ambiente"] { margin-left: -78%; }
+/* Os balões ficam ao lado dos ambientes, preservando o rosto dos profissionais. */
+.viva-profissional>.viva-balao { width: 42%; }
+
+/* Hierarquia narrativa mantém os demais atendimentos conectados. */
+.viva-segundo-plano { opacity: .48; filter: saturate(.55); }
+.viva-cliente, .viva-profissional { transition: opacity .6s ease, filter .6s ease; }
+.viva-em-foco { opacity: 1; }
+.viva-card.neutro { filter: saturate(.25); background: #f3f5f4; }
+.viva-card.neutro .viva-selecionar { background: #e2e7e4; color: #50625a; }
+.viva-card.selecionado { box-shadow: 0 0 0 3px #d4aa46, 0 10px 25px #12604435; }
+.viva-especialistas, .viva-mini { transform-origin: 60% 100%; }
+.viva-balao-assistente { position: absolute; bottom: 92%; left: 8%; width: 90%; z-index: 8; }
+.viva-balao small { display: block; color: #167354; font-size: .7em; font-weight: 700; margin-bottom: .25em; }
+.viva-mobile-assistente { position: relative; margin: 12px auto 0; max-width: 280px; }
+.viva-profissional-ativo.viva-em-foco .viva-ator { filter: drop-shadow(0 5px 12px #54b89545); }
+/* Não deixar keyframes sobrescreverem o progresso calculado pelo relógio. */
+.viva-especialistas, .viva-mini { animation: none; }
+.viva-cliente, .viva-profissional { animation-fill-mode: backwards; }
+.viva-balao-assistente, .viva-mobile-assistente, .viva-balao.viva-concluido { display: block; }
+.viva-concluido>svg { float: left; margin-right: 5px; }
+.viva-conexao { transition: opacity .6s ease; }
+/* A base maior mantém o robô legível dentro do mapa; o enquadramento mobile segue próprio. */
+@media (min-width:1101px) {
+  .viva-palco>.viva-central { left: 39%; top: 39%; width: 36%; }
+}
+@media (min-width:768px) and (max-width:1100px) {
+  .viva-palco>.viva-central { left: 39%; top: 44%; width: 34%; }
+}
+
+/* O branco do asset se integra ao cenário sem alterar a arte ou sua proporção. */
+.viva-mapa-fundo { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.viva-conexao>.viva-linha-principal { stroke-width: 1.25; opacity: .44; filter: drop-shadow(0 0 2px currentColor); transition: opacity .35s, stroke-width .35s; }
+.viva-conexao>.viva-linha-principal.ativa { opacity: 1; stroke-width: 1.8; filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 5px currentColor); }
+.viva-documento { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px #47efd2); }
+.viva-linha-territorial { fill: none; stroke: currentColor; stroke-width: .65; opacity: .2; transition: opacity .35s; }
+.viva-linha-territorial.ativa { opacity: .72; stroke-width: 1; filter: drop-shadow(0 0 2px currentColor); }
+.viva-marcador-halo { fill: currentColor; opacity: .12; }
+.viva-marcador-corpo { fill: currentColor; stroke: #f3fff8; stroke-width: 1; filter: drop-shadow(0 0 2px currentColor); }
+.viva-marcador-anel { fill: none; stroke: currentColor; stroke-width: .7; opacity: .55; }
+.viva-marcador.ativo .viva-marcador-halo { opacity: .35; }
+.viva-marcador.ativo .viva-marcador-corpo { filter: drop-shadow(0 0 4px currentColor); }
+.viva-marcador-halo { transition: opacity .35s; }
+.viva-pulso-territorial { filter: drop-shadow(0 0 4px currentColor); transition: transform .1s linear; pointer-events: none; }
+.viva-mapa-nota, .viva-legenda-mobile { display: flex; align-items: center; gap: 5px; }
+.viva-mapa-nota i, .viva-legenda-mobile i { display: inline-block; width: 7px; height: 7px; background: #00cba9; border-radius: 50%; }
+.viva-mapa-nota .viva-legenda-profissional, .viva-legenda-mobile .viva-legenda-profissional { background: #e7a51c; border-radius: 2px; margin-left: 7px; }
+.viva-mobile-nucleo { position: relative; width: 100%; aspect-ratio: 3 / 2; margin: 8px 0 32px; isolation: auto; }
+.viva-mapa-mobile { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.viva-mobile-nucleo>.viva-hub { position: absolute; z-index: 2; width: var(--nucleo-width); left: var(--nucleo-left); top: var(--nucleo-top); }
+/* A legenda vai abaixo do mapa no mobile, liberando os pontos do Sul. */
+.viva-mobile-nucleo .viva-hub-legenda { position: absolute; top: var(--nucleo-legenda-top); left: 50%; transform: translateX(-50%); width: max-content; white-space: nowrap; margin-top: 0; font-size: 8px; }
+.viva-mobile-trajeto { border-left: 1px solid #00cba9; box-shadow: -2px 0 5px -3px #00e5c1; }
+.viva-mobile-nucleo~.viva-mobile-trajeto { border-color: #e7a51c; box-shadow: -2px 0 5px -3px #ffd371; }
+@media (prefers-reduced-motion: reduce) {
+  .viva-rede-territorial * { transition: none !important; }
+}
+
+.viva-legenda-mobile { font-size: 9px; color: #426356; margin: 0 0 14px; }
+
+/* Rede territorial: presença contínua e ativação holográfica controlada pelo relógio. */
+.viva-marcadores-rede { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+@media (max-width:767px) { .viva-marcador-escala { transform: scale(1.2); } }
+.viva-linha-rede { fill: none; stroke: currentColor; stroke-width: 1.1; filter: drop-shadow(0 0 3px #35e4c0) drop-shadow(0 0 7px #7cfce0); }
+.viva-cliente-presente { filter: drop-shadow(0 0 1.5px #3ebc96); }
+.viva-cliente-brilho { filter: drop-shadow(0 0 4px #49eec8); }
+.viva-cliente-aura { filter: drop-shadow(0 0 3px #62efd2) drop-shadow(0 0 6px #62efd2); }
+.viva-cliente-nucleo { filter: drop-shadow(0 0 2px #42e8c5); }
+.viva-pulso-rede { filter: drop-shadow(0 0 3px #48edce) drop-shadow(0 0 6px #48edce); transition: transform .1s linear; pointer-events: none; }
+
+/* A rede fica abaixo dos atores; seus balões e cards permanecem na frente. */
+.viva-cliente, .viva-profissional { z-index: 4; }
+.viva-especialistas, .viva-mini { z-index: 5; }
+
+/* A legenda ocupa a borda inferior transparente da base, liberando SP e PR. */
+.viva-central .viva-hub-legenda { position: absolute; top: 90%; left: 50%; transform: translateX(-50%); white-space: nowrap; margin-top: 0; }
+
+/* Profissionais mantêm identidade dourada durante toda a conexão, sem mudar os clientes. */
+.viva-conexao-territorial[data-tipo="profissional"] .viva-linha-rede { filter: drop-shadow(0 0 3px #edbd50) drop-shadow(0 0 7px #ffe3a1); }
+.viva-conexao-territorial[data-tipo="profissional"] .viva-pulso-rede { filter: drop-shadow(0 0 3px #efc362) drop-shadow(0 0 6px #efc362); }
+.viva-marcador-rede[data-tipo="profissional"] .viva-cliente-presente { filter: drop-shadow(0 0 1.5px #c39436); }
+.viva-marcador-rede[data-tipo="profissional"] .viva-cliente-brilho { filter: drop-shadow(0 0 4px #f0c467); }
+.viva-marcador-rede[data-tipo="profissional"] .viva-cliente-aura { filter: drop-shadow(0 0 3px #f3d183) drop-shadow(0 0 6px #f3d183); }
+.viva-marcador-rede[data-tipo="profissional"] .viva-cliente-nucleo { filter: drop-shadow(0 0 2px #efc362); }
+
+/* Colunas preservam o asset e colocam informação antes da imagem, sem espelhamento. */
+.viva-profissional, .viva-mobile-parceiro { display: grid; grid-template-columns: 42% 55%; column-gap: 3%; align-items: center; }
+.viva-profissional>.viva-ator, .viva-mobile-parceiro>.viva-ator { grid-column: 2; grid-row: 1; width: 100%; margin: 0; left: 0; }
+.viva-profissional>.viva-balao-profissional, .viva-mobile-parceiro>.viva-balao-profissional { grid-column: 1; grid-row: 1; position: relative; left: 0; right: auto; top: auto; width: 100%; margin: 0; padding: 11px; z-index: 3; display: block; text-align: left; font-size: clamp(10px,.85vw,12px); }
+/* Superfície opaca impede que marcadores transpareçam; sombras dão profundidade discreta. */
+.viva-balao-profissional { border: 1px solid #cfdfd8; border-radius: 16px; background: linear-gradient(145deg,#fff 20%,#f1f7f4); box-shadow: 0 8px 22px #234f4014, 0 2px 5px #234f400a, inset 0 1px 0 #fff; color: #25473c; }
+.viva-balao-profissional::after { content: ""; position: absolute; right: -5px; top: 45%; width: 8px; height: 8px; transform: rotate(-45deg); background: #f4f9f6; border-right: 1px solid #cfdfd8; border-bottom: 1px solid #cfdfd8; }
+.viva-profissional-identidade { display: grid; gap: 4px; line-height: 1.35; }
+.viva-profissional-cidade { display: flex; align-items: center; gap: 4px; color: #164b39; font-size: 1em; font-weight: 650; }
+.viva-profissional-profissao { font-weight: 550; }
+.viva-profissional-classificacao, .viva-profissional-vinculo { color: #536d62; font-size: .93em; }
+.viva-profissional-vinculo { color: #297859; font-weight: 600; }
+.viva-profissional-resposta { display: flex; align-items: flex-start; gap: 6px; border-top: 1px solid #dce8e1; margin-top: 9px; padding-top: 9px; line-height: 1.4; }
+/* Selo estável: luz contida e check de alto contraste, sem introduzir outro loop. */
+.viva-confirmacao { position: relative; display: inline-grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; border-radius: 9px; border: 1px solid #9bd6be; background: radial-gradient(circle at 35% 20%,#e3fff2,#b8e9d1 55%,#8cc8ac); box-shadow: inset 0 1px 1px #fff, 0 2px 4px #175d3d18, 0 0 7px #53bc891f; }
+.viva-confirmacao::before { content: ""; position: absolute; inset: 3px; border: 1px solid #ffffff8c; border-radius: 6px; }
+.viva-confirmacao svg { color: #126343; }
+.viva-confirmacao-status { display: inline-flex; flex-shrink: 0; }
+@media (min-width:768px) and (max-width:1100px) {
+  .viva-profissional { width: 31%; grid-template-columns: 60% 37%; }
+  .viva-profissional-0 { top: 8%; }
+  .viva-profissional-1 { top: 37%; }
+  .viva-profissional-2 { top: auto; bottom: 1%; }
+  .viva-profissional>.viva-balao-profissional { padding: 8px; font-size: 10px; }
+  .viva-profissional-resposta { margin-top: 6px; padding-top: 6px; }
+}
+@media (max-width:767px) {
+  .viva-mobile-parceiro { grid-template-columns: 52% 45%; z-index: 4; }
+  .viva-mobile-parceiro>.viva-balao-profissional { font-size: 12px; padding: 12px; }
+}
+
+/* O segundo plano afeta só o desenho: os balões continuam opacos acima da rede. */
+.viva-profissional.viva-segundo-plano, .viva-profissional.viva-disponivel { opacity: 1; filter: none; }
+.viva-profissional:is(.viva-segundo-plano,.viva-disponivel)>.viva-ator { opacity: .48; filter: saturate(.55); }
+.viva-profissional>.viva-ator { transition: opacity .6s ease, filter .6s ease; }
+/* ON/OFF segue a conversa, não o foco da câmera; balões mantêm sua leitura. */
+.viva-cliente.viva-personagem-em-atividade { opacity: 1; filter: none; }
+.viva-cliente.viva-em-foco:not(.viva-personagem-em-atividade)>.viva-ator,
+.viva-mobile-cliente:not(.viva-personagem-em-atividade)>.viva-ator,
+.viva-mobile-parceiro:not(.viva-personagem-em-atividade)>.viva-ator { opacity: .48; filter: saturate(.55); }
+.viva-cliente.viva-segundo-plano:not(.viva-personagem-em-atividade)>.viva-ator { opacity: 1; }
+.viva-profissional:not(.viva-personagem-em-atividade)>.viva-ator { opacity: .48; filter: saturate(.55); }
+.viva-profissional.viva-personagem-em-atividade>.viva-ator { opacity: 1; filter: none; }
+.viva-profissional.viva-personagem-em-atividade.viva-em-foco>.viva-ator { filter: drop-shadow(0 4px 10px #49c8a65e); }
+.viva-cliente>.viva-ator, .viva-mobile-cliente>.viva-ator, .viva-mobile-parceiro>.viva-ator { transition: opacity .6s ease, filter .6s ease; }
+/* No limite do layout desktop, reservar altura para a identificação de quatro linhas. */
+@media (min-width:768px) and (max-width:819px) {
+  .viva-profissional { width: 33%; }
+  .viva-profissional-0 { top: 1%; }
+  .viva-profissional-1 { top: 31%; }
+}

@@ -74,7 +74,7 @@ export default function NavigationNext() {
     if (link.type === "route") {
       return pathname === link.href;
     }
-    return pathname === "/"; // hash links active only on home
+    return false; // Uma âncora não representa a página inteira como ativa.
   };
 
   return (
@@ -129,8 +129,12 @@ export default function NavigationNext() {
                       <a
                         href={link.href}
                         onClick={(e) => {
-                          e.preventDefault();
-                          scrollToSection(link.href);
+                          if (pathname === "/") {
+                            e.preventDefault();
+                            scrollToSection(link.href);
+                          } else {
+                            setIsMobileMenuOpen(false);
+                          }
                         }}
                         className="relative px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
                       >
@@ -239,8 +243,12 @@ export default function NavigationNext() {
                       <a
                         href={link.href}
                         onClick={(e) => {
-                          e.preventDefault();
-                          scrollToSection(link.href);
+                          if (pathname === "/") {
+                            e.preventDefault();
+                            scrollToSection(link.href);
+                          } else {
+                            setIsMobileMenuOpen(false);
+                          }
                         }}
                         className="flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                       >

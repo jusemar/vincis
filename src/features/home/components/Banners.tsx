@@ -45,7 +45,7 @@ export default function Banners() {
   const [large, ...smalls] = services;
 
   return (
-    <div className="w-full bg-background py-12 px-4">
+    <div id="models" className="w-full bg-background py-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Bento grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
