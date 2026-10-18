@@ -1,10 +1,12 @@
 import { CENTRAL } from "../constants/demonstracao";
-import { ENQUADRAMENTO_MAPA, marcadoresTerritoriais } from "../constants/rede-territorial";
+import { ENQUADRAMENTO_ARTE_MAPA, marcadoresTerritoriais } from "../constants/rede-territorial";
 import { pontoNaConexao } from "./fluxo-demonstracao";
 
 export function posicaoNoMapa(x: number, y: number): readonly [number, number] {
-  const escala = ENQUADRAMENTO_MAPA.largura / 1536;
-  return [ENQUADRAMENTO_MAPA.x + x * escala, ENQUADRAMENTO_MAPA.y + y * escala];
+  return [
+    ENQUADRAMENTO_ARTE_MAPA.x + x * ENQUADRAMENTO_ARTE_MAPA.largura,
+    ENQUADRAMENTO_ARTE_MAPA.y + y * ENQUADRAMENTO_ARTE_MAPA.altura,
+  ];
 }
 
 const clientes = marcadoresTerritoriais.filter(m => m.tipo === "cliente");
