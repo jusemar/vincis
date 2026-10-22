@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { MessageCircle, Send, Sparkles, Bot, User, Clock, Check, CheckCheck, Pause, Play } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, CheckCheck, Pause, Play } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -503,44 +503,6 @@ export default function ChatDemo() {
           </Notebook3D>
         </motion.div>
 
-        {/* Features */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16"
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
-          {[
-            {
-              icon: Clock,
-              title: 'Resposta em 10 min',
-              description: 'Nosso time responde em média em menos de 10 minutos',
-            },
-            {
-              icon: Check,
-              title: 'Especialistas reais',
-              description: 'Contadores e advogados qualificados à sua disposição',
-            },
-            {
-              icon: Sparkles,
-              title: 'Disponível 24/7',
-              description: 'Atendimento todos os dias, inclusive feriados',
-            },
-          ].map((feature, index) => (
-            <motion.div
-              key={index}
-              className="glass-card rounded-2xl p-6 text-center"
-              whileHover={{ y: -5, scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                <feature.icon className="w-6 h-6 text-primary" />
-              </div>
-              <h4 className="font-semibold text-foreground mb-2">{feature.title}</h4>
-              <p className="text-sm text-muted-foreground">{feature.description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
       </div>
     </section>
   );

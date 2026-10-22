@@ -51,6 +51,9 @@ import { ModalContratacaoConsultoria } from './ModalContratacaoConsultoria'
 export type ConsultoriaPublicaProps = {
   nomeExibido: string
   agendaInicial: AgendaDoMesDTO | null
+  /** Repassados ao card: a foto grande do perfil e, em edição, seus controles. */
+  fotoUrl?: string | null
+  controlesFoto?: React.ReactNode
 }
 
 /** `sessionStorage` não existe no servidor nem em aba com storage bloqueado. */
@@ -65,6 +68,8 @@ function obterStorage(): Storage | null {
 export function ConsultoriaPublica({
   nomeExibido,
   agendaInicial,
+  fotoUrl,
+  controlesFoto,
 }: ConsultoriaPublicaProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -161,6 +166,8 @@ export function ConsultoriaPublica({
         nomeExibido={nomeExibido}
         agendaInicial={agendaInicial}
         onAgendar={abrirComSelecao}
+        fotoUrl={fotoUrl}
+        controlesFoto={controlesFoto}
       />
       {selecao ? (
         <ModalContratacaoConsultoria

@@ -22,8 +22,10 @@ export function AppChrome({ children }: AppChromeProps) {
     '/cadastro-profissional',
     '/cadastro-colaborador',
   ]
-  const estaNaAreaAdministrativa = AREAS_AUTENTICADAS.some((rota) =>
-    pathname.startsWith(rota),
+  // Comparação por segmento: `startsWith('/profissional')` também casava com
+  // a vitrine pública `/profissionais`, que perdia navegação e footer globais.
+  const estaNaAreaAdministrativa = AREAS_AUTENTICADAS.some(
+    (rota) => pathname === rota || pathname.startsWith(`${rota}/`),
   )
 
   return (

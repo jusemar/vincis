@@ -43,6 +43,12 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   areasAtuacao: text('areas_atuacao').array().notNull().default([]),
   apresentacao: text('apresentacao').notNull(),
   avatarUrl: text('avatar_url'),
+  /**
+   * Foto grande do perfil público (topo do card da direita). Independente de
+   * `avatar_url`, que segue sendo a foto dos cards de `/profissionais`: trocar
+   * ou remover uma nunca toca na outra. Nula = o perfil não mostra foto grande.
+   */
+  fotoDestaqueUrl: text('foto_destaque_url'),
   nomeAtuacao: varchar('nome_atuacao', { length: 255 }).notNull(),
   modalidadeAtuacao: varchar('modalidade_atuacao', { length: 20 }).notNull(),
   cidade: varchar('cidade', { length: 120 }).notNull(),

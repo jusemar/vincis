@@ -10,11 +10,20 @@ const SUFIXO = '@avatar-consultoria.teste'
 // Mesmo padrão de `perfil-valores.test.ts`: o storage é simulado, nada sobe
 // para o Vercel Blob de verdade durante os testes.
 vi.mock('@/features/usuarios/lib/avatar-profissional', () => ({
-  enviarAvatarPublico: vi.fn(async () => ({ url: 'https://blob.teste/avatar-novo.jpg' })),
+  // A URL devolvida carrega a finalidade, para os testes provarem que cada
+  // imagem caiu na própria coluna.
+  enviarAvatarPublico: vi.fn(async (_usuarioId: string, _arquivo: File, finalidade = 'avatar') => ({
+    url: `https://blob.teste/${finalidade}-novo.jpg`,
+  })),
   removerAvatarPublico: vi.fn(async () => undefined),
 }))
 
-const { salvarAvatarProfissional } = await import(
+const {
+  salvarAvatarProfissional,
+  removerAvatarProfissional,
+  salvarFotoDestaqueProfissional,
+  removerFotoDestaqueProfissional,
+} = await import(
   '@/features/perfis/actions/salvar-avatar-profissional'
 )
 const { enviarAvatarPublico, removerAvatarPublico } = await import(
@@ -59,7 +68,7 @@ describe('salvarAvatarProfissional', () => {
       .from(perfisProfissionais)
       .where(eq(perfisProfissionais.usuarioId, contas.dono.id))
     expect(perfil.avatarUrl).toBe('https://blob.teste/avatar-novo.jpg')
-    expect(enviarAvatarPublico).toHaveBeenCalledWith(contas.dono.id, expect.any(File))
+    expect(enviarAvatarPublico).toHaveBeenCalledWith(contas.dono.id, expect.any(File), 'avatar')
     expect(removerAvatarPublico).toHaveBeenCalledWith('https://blob.teste/avatar-antigo.jpg')
   })
 
@@ -83,6 +92,180 @@ describe('salvarAvatarProfissional', () => {
       .from(perfisProfissionais)
       .where(eq(perfisProfissionais.usuarioId, contas.dono.id))
     expect(perfilDono.avatarUrl).toBeNull()
+  })
+})
+
+describe('removerAvatarProfissional', () => {
+  async function definirAvatar(usuarioId: string, url: string | null) {
+    await db
+      .update(perfisProfissionais)
+      .set({ avatarUrl: url })
+      .where(eq(perfisProfissionais.usuarioId, usuarioId))
+  }
+
+  async function avatarDe(usuarioId: string) {
+    const [perfil] = await db
+      .select({ avatarUrl: perfisProfissionais.avatarUrl })
+      .from(perfisProfissionais)
+      .where(eq(perfisProfissionais.usuarioId, usuarioId))
+    return perfil.avatarUrl
+  }
+
+  it('dono remove a própria foto: coluna volta a null e o arquivo sai do storage', async () => {
+    entrarComo(contas.dono.token)
+    await definirAvatar(contas.dono.id, 'https://blob.teste/avatar-dono.jpg')
+
+    const resultado = await removerAvatarProfissional()
+    expect(resultado.sucesso).toBe(true)
+    expect(await avatarDe(contas.dono.id)).toBeNull()
+    expect(removerAvatarPublico).toHaveBeenCalledWith('https://blob.teste/avatar-dono.jpg')
+  })
+
+  it('sem foto, responde sucesso sem chamar o storage', async () => {
+    entrarComo(contas.dono.token)
+    const resultado = await removerAvatarProfissional()
+    expect(resultado.sucesso).toBe(true)
+    expect(removerAvatarPublico).not.toHaveBeenCalled()
+  })
+
+  it('sem sessão, nada é removido', async () => {
+    await definirAvatar(contas.dono.id, 'https://blob.teste/avatar-dono.jpg')
+    sairDaSessao()
+    const resultado = await removerAvatarProfissional()
+    expect(resultado.sucesso).toBe(false)
+    expect(await avatarDe(contas.dono.id)).toBe('https://blob.teste/avatar-dono.jpg')
+    expect(removerAvatarPublico).not.toHaveBeenCalled()
+  })
+
+  it('remover logado como "outro" não toca na foto do dono', async () => {
+    await definirAvatar(contas.dono.id, 'https://blob.teste/avatar-dono.jpg')
+    entrarComo(contas.outro.token)
+    await removerAvatarProfissional()
+    expect(await avatarDe(contas.dono.id)).toBe('https://blob.teste/avatar-dono.jpg')
+    expect(removerAvatarPublico).not.toHaveBeenCalledWith('https://blob.teste/avatar-dono.jpg')
+  })
+})
+
+describe('foto de destaque do perfil (independente do avatar)', () => {
+  async function definirImagens(
+    usuarioId: string,
+    imagens: { avatarUrl?: string | null; fotoDestaqueUrl?: string | null },
+  ) {
+    await db.update(perfisProfissionais).set(imagens).where(eq(perfisProfissionais.usuarioId, usuarioId))
+  }
+
+  async function imagensDe(usuarioId: string) {
+    const [perfil] = await db
+      .select({
+        avatarUrl: perfisProfissionais.avatarUrl,
+        fotoDestaqueUrl: perfisProfissionais.fotoDestaqueUrl,
+      })
+      .from(perfisProfissionais)
+      .where(eq(perfisProfissionais.usuarioId, usuarioId))
+    return perfil
+  }
+
+  function formularioFoto() {
+    const dados = new FormData()
+    dados.set('foto', arquivoFalso())
+    return dados
+  }
+
+  it('perfil novo começa sem foto de destaque', async () => {
+    expect((await imagensDe(contas.dono.id)).fotoDestaqueUrl).toBeNull()
+  })
+
+  it('dono adiciona a foto de destaque sem tocar no avatar', async () => {
+    entrarComo(contas.dono.token)
+    await definirImagens(contas.dono.id, { avatarUrl: 'https://blob.teste/avatar-dono.jpg' })
+
+    const resultado = await salvarFotoDestaqueProfissional(formularioFoto())
+    expect(resultado.sucesso).toBe(true)
+    expect(enviarAvatarPublico).toHaveBeenCalledWith(contas.dono.id, expect.any(File), 'destaque')
+    expect(await imagensDe(contas.dono.id)).toEqual({
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: 'https://blob.teste/destaque-novo.jpg',
+    })
+    expect(removerAvatarPublico).not.toHaveBeenCalled()
+  })
+
+  it('trocar a foto de destaque remove só o arquivo antigo do destaque', async () => {
+    entrarComo(contas.dono.token)
+    await definirImagens(contas.dono.id, {
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: 'https://blob.teste/destaque-antigo.jpg',
+    })
+
+    await salvarFotoDestaqueProfissional(formularioFoto())
+    expect(await imagensDe(contas.dono.id)).toEqual({
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: 'https://blob.teste/destaque-novo.jpg',
+    })
+    expect(removerAvatarPublico).toHaveBeenCalledTimes(1)
+    expect(removerAvatarPublico).toHaveBeenCalledWith('https://blob.teste/destaque-antigo.jpg')
+  })
+
+  it('remover a foto de destaque mantém o avatar do card', async () => {
+    entrarComo(contas.dono.token)
+    await definirImagens(contas.dono.id, {
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg',
+    })
+
+    const resultado = await removerFotoDestaqueProfissional()
+    expect(resultado.sucesso).toBe(true)
+    expect(await imagensDe(contas.dono.id)).toEqual({
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: null,
+    })
+    expect(removerAvatarPublico).toHaveBeenCalledTimes(1)
+    expect(removerAvatarPublico).toHaveBeenCalledWith('https://blob.teste/destaque-dono.jpg')
+  })
+
+  it('remover o avatar mantém a foto de destaque', async () => {
+    entrarComo(contas.dono.token)
+    await definirImagens(contas.dono.id, {
+      avatarUrl: 'https://blob.teste/avatar-dono.jpg',
+      fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg',
+    })
+
+    await removerAvatarProfissional()
+    expect(await imagensDe(contas.dono.id)).toEqual({
+      avatarUrl: null,
+      fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg',
+    })
+    expect(removerAvatarPublico).not.toHaveBeenCalledWith('https://blob.teste/destaque-dono.jpg')
+  })
+
+  it('depois de removida, a foto de destaque pode ser adicionada de novo', async () => {
+    entrarComo(contas.dono.token)
+    await definirImagens(contas.dono.id, { fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg' })
+
+    await removerFotoDestaqueProfissional()
+    expect((await imagensDe(contas.dono.id)).fotoDestaqueUrl).toBeNull()
+    await salvarFotoDestaqueProfissional(formularioFoto())
+    expect((await imagensDe(contas.dono.id)).fotoDestaqueUrl).toBe('https://blob.teste/destaque-novo.jpg')
+  })
+
+  it('sem sessão, nada é salvo nem removido', async () => {
+    await definirImagens(contas.dono.id, { fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg' })
+    sairDaSessao()
+
+    expect((await salvarFotoDestaqueProfissional(formularioFoto())).sucesso).toBe(false)
+    expect((await removerFotoDestaqueProfissional()).sucesso).toBe(false)
+    expect((await imagensDe(contas.dono.id)).fotoDestaqueUrl).toBe('https://blob.teste/destaque-dono.jpg')
+    expect(enviarAvatarPublico).not.toHaveBeenCalled()
+    expect(removerAvatarPublico).not.toHaveBeenCalled()
+  })
+
+  it('logado como "outro", não altera nem remove a foto de destaque do dono', async () => {
+    await definirImagens(contas.dono.id, { fotoDestaqueUrl: 'https://blob.teste/destaque-dono.jpg' })
+    entrarComo(contas.outro.token)
+
+    await salvarFotoDestaqueProfissional(formularioFoto())
+    await removerFotoDestaqueProfissional()
+    expect((await imagensDe(contas.dono.id)).fotoDestaqueUrl).toBe('https://blob.teste/destaque-dono.jpg')
+    expect(removerAvatarPublico).not.toHaveBeenCalledWith('https://blob.teste/destaque-dono.jpg')
   })
 })
 

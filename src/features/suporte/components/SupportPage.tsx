@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, HelpCircle } from 'lucide-react'
-import Footer from '@/components/shared/Footer'
 import {
   Accordion,
   AccordionContent,
@@ -237,7 +236,6 @@ const SupportPage = () => {
           </div>
         </div>
       </section>
-      <Footer />
     </div>
   )
 }

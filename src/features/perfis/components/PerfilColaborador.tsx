@@ -7,7 +7,6 @@ import TimelineSection from './TimelineSection';
 import FAQSection from './FAQSection';
 import ReviewsSection from './ReviewsSection';
 import ProfileCard from './ProfileCard';
-import Footer from '../../../components/shared/Footer';
 
 export function PerfilColaborador() {
   useEffect(() => {
@@ -52,7 +51,6 @@ export function PerfilColaborador() {
           </aside>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

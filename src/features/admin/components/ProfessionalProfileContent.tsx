@@ -18,6 +18,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { CatalogoServicos } from "@/features/servicos/components/CatalogoServicos";
+import { GerenciadorAvatarProfissional } from "@/features/perfis/components/GerenciadorAvatarProfissional";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,16 +52,6 @@ const REGIMES = {
   lucro_presumido: "Lucro Presumido",
   lucro_real: "Lucro Real",
 } as const;
-
-function iniciais(nome: string) {
-  return nome
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((parte) => parte[0])
-    .join("")
-    .toUpperCase();
-}
 
 function TagEditor({
   label,
@@ -292,17 +283,11 @@ export function ProfessionalProfileContent({
       <Card className="overflow-hidden border-amber-500/20 shadow-card">
         <div className="h-1 bg-gradient-gold" />
         <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-          <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-gold text-xl font-bold text-on-gradient ring-4 ring-amber-500/15">
-            {perfil.avatarUrl ? (
-              <img
-                src={perfil.avatarUrl}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : (
-              iniciais(nome)
-            )}
-          </div>
+          {/* Foto gerenciada aqui mesmo: adicionar, trocar e remover. */}
+          <GerenciadorAvatarProfissional
+            urlInicial={perfil.avatarUrl}
+            nome={nome}
+          />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-500">
               Meu perfil profissional

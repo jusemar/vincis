@@ -484,6 +484,13 @@
       "when": 1789550578120,
       "tag": "0068_identidade_fiscal_contribuinte",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792572264547,
+      "tag": "0069_foto_destaque_perfil",
+      "breakpoints": true
     }
   ]
 }

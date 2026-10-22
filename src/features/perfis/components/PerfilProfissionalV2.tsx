@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -8,11 +8,10 @@ import {
   BadgeCheck, Headphones, GraduationCap, Award,
   CheckCircle2, Lock, Users, Send,
   ChevronRight, ShieldCheck, Shield, FileText,
-  Pencil, X, Check, Plus, ChevronUp, ChevronDown, Trash2, Camera,
+  Pencil, X, Check, Plus, ChevronUp, ChevronDown, Trash2,
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import Footer from '../../../components/shared/Footer';
 import { contratarServico } from '@/features/servicos/actions/contratar';
 import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
 import { salvarVitrineProfissional } from '@/features/usuarios/actions/salvar-vitrine-profissional';
@@ -23,7 +22,8 @@ import {
   salvarExperiencias,
   salvarPerguntasFrequentes,
 } from '@/features/perfis/actions/salvar-conteudo-vitrine';
-import { salvarAvatarProfissional } from '@/features/perfis/actions/salvar-avatar-profissional';
+import { useImagemPerfilProfissional } from '@/features/perfis/hooks/useAvatarProfissional';
+import { ControlesFotoDestaque } from '@/features/perfis/components/ControlesFotoDestaque';
 import {
   FormularioSolicitarOrcamento,
   type DestinatarioDaSolicitacao,
@@ -31,6 +31,13 @@ import {
 import { ConsultoriaPublica } from '@/features/consultorias/components/publico/ConsultoriaPublica';
 import { obterMinhaConsultoria, salvarConsultoria } from '@/features/consultorias/actions/consultoria';
 import type { AgendaDoMesDTO, ConsultoriaDoPrestadorDTO } from '@/features/consultorias/types/consultoria';
+
+/**
+ * Imagem de exemplo da vitrine de demonstração (sem `?prestador=`), a mesma
+ * que o card exibia fixa antes. Perfis reais usam só `foto_destaque_url`.
+ */
+const FOTO_DESTAQUE_DEMONSTRACAO =
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop';
 
 const successCases = [
   { type: 'IRPF', title: 'Declaração com pendências anteriores', desc: 'Organização de documentos e envio correto após inconsistências.' },
@@ -271,6 +278,8 @@ export type IdentidadePublica = {
   disponivelAtendimento?: boolean
   regimesAtendidos?: string[]
   avatarUrl?: string | null
+  /** Foto grande do perfil (topo do card da direita). Nula = sem foto grande. */
+  fotoDestaqueUrl?: string | null
   valorHoraCentavos?: number | null
   tipoProfissional?: string
   /** Conteúdo do bloco "Sobre". Vazio/ausente = o bloco correspondente some. */
@@ -484,8 +493,27 @@ export default function PerfilProfissionalV2({
   );
   const [rascunhoFaq, setRascunhoFaq] = useState<RascunhoPergunta[]>(() => construirRascunhoFaq(faq));
   const [salvando, setSalvando] = useState(false);
-  const [enviandoAvatar, setEnviandoAvatar] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Foto grande do perfil — a única imagem desta página. O avatar dos cards
+   * (`avatar_url`) não aparece aqui; é editado em Admin > Meu perfil.
+   *
+   * Upload/remoção são imediatos, independentes do "Salvar" geral: a foto já
+   * existe como arquivo no storage assim que confirmada. A URL fica em estado
+   * local para a troca aparecer na hora, sem esperar o `router.refresh()`.
+   * Sem `identidade` (vitrine de demonstração, sem dono) entra a imagem de
+   * exemplo — nunca usada como foto de um profissional real.
+   */
+  const [fotoDestaqueUrl, setFotoDestaqueUrl] = useState<string | null>(
+    identidade ? (identidade.fotoDestaqueUrl ?? null) : FOTO_DESTAQUE_DEMONSTRACAO,
+  );
+  const fotoDestaque = useImagemPerfilProfissional({
+    finalidade: 'destaque',
+    aoAlterar: (url) => {
+      setFotoDestaqueUrl(url);
+      router.refresh();
+    },
+  });
+  const fotoDestaqueExibida = fotoDestaque.previa ?? fotoDestaqueUrl;
   /**
    * A consultoria do próprio prestador, com todos os campos que
    * `salvarConsultoria` exige (inclusive os que esta etapa NUNCA deve
@@ -532,30 +560,6 @@ export default function PerfilProfissionalV2({
     setRascunhoExperiencias(construirRascunhoExperiencias(experiencias));
     setRascunhoFaq(construirRascunhoFaq(faq));
     setModoEdicao(false);
-  }
-
-  async function alterarAvatar(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    e.target.value = '';
-    if (!arquivo) return;
-    setEnviandoAvatar(true);
-    try {
-      const dados = new FormData();
-      dados.set('avatar', arquivo);
-      const resultado = await salvarAvatarProfissional(dados);
-      if (!resultado.sucesso) {
-        toast.error(resultado.mensagem);
-        return;
-      }
-      toast.success(resultado.mensagem);
-      // Upload é imediato, independente do "Salvar" geral: a foto já existe
-      // como arquivo no storage assim que confirmada, então mostrar o
-      // resultado real de uma vez é mais honesto do que fingir que ela
-      // esperaria o rascunho do resto do perfil.
-      router.refresh();
-    } finally {
-      setEnviandoAvatar(false);
-    }
   }
 
   async function salvarEdicao() {
@@ -742,7 +746,6 @@ export default function PerfilProfissionalV2({
             </div>
           </aside>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -845,67 +848,17 @@ export default function PerfilProfissionalV2({
               </div>
 
               {/*
-                Sem avatar e fora da edição, nada aqui muda: nenhum elemento
-                novo entra no DOM. `avatar_url` só ganha lugar na tela quando
-                tem valor real, ou quando o dono está editando e pode
-                adicionar um — a mesma regra de campo vazio do resto do
-                perfil, aplicada à primeira coisa que não tinha onde aparecer.
+                Só o nome: a foto desta página é a grande, no card da direita.
+                O avatar (`avatar_url`) fica para os cards de `/profissionais`.
               */}
-              {(identidade?.avatarUrl || emEdicao) ? (
-                <div className="flex items-center gap-3 mb-2.5">
-                  <div className="relative shrink-0">
-                    {identidade?.avatarUrl ? (
-                      // `<img>` simples: URL pública externa (Vercel Blob), sem domínio configurado em next/image.
-                      <img
-                        src={identidade.avatarUrl}
-                        alt={nomeExibido}
-                        className="h-14 w-14 rounded-full object-cover border border-border"
-                      />
-                    ) : (
-                      <div className="h-14 w-14 rounded-full border border-dashed border-border bg-muted/30 grid place-items-center text-muted-foreground">
-                        <Camera className="h-5 w-5" />
-                      </div>
-                    )}
-                    {emEdicao && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          disabled={enviandoAvatar}
-                          aria-label="Alterar foto"
-                          className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary text-primary-foreground grid place-items-center border-2 border-card disabled:opacity-60"
-                        >
-                          <Camera className="h-3 w-3" />
-                        </button>
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => void alterarAvatar(e)}
-                        />
-                      </>
-                    )}
-                  </div>
-                  <motion.h1
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.05 }}
-                    className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground"
-                  >
-                    {nomeExibido}
-                  </motion.h1>
-                </div>
-              ) : (
-                <motion.h1
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.05 }}
-                  className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
-                >
-                  {nomeExibido}
-                </motion.h1>
-              )}
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.05 }}
+                className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
+              >
+                {nomeExibido}
+              </motion.h1>
               {/*
                 O identificador público, o mesmo que o parceiro vê no card do
                 negócio. Só aparece quando existe: perfil de demonstração não
@@ -1833,6 +1786,15 @@ export default function PerfilProfissionalV2({
               <ConsultoriaPublica
                 nomeExibido={nomeExibido}
                 agendaInicial={agendaConsultoria ?? null}
+                fotoUrl={fotoDestaqueExibida}
+                controlesFoto={
+                  emEdicao ? (
+                    <ControlesFotoDestaque
+                      temFoto={Boolean(fotoDestaqueExibida)}
+                      imagem={fotoDestaque}
+                    />
+                  ) : undefined
+                }
               />
               {/*
                 Não mexe no calendário nem no fluxo de agendamento — só um
@@ -2070,7 +2032,6 @@ export default function PerfilProfissionalV2({
         </motion.div>
       </main>
 
-      <Footer />
     </div>
   );
 }

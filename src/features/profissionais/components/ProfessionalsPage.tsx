@@ -3,7 +3,6 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Users } from "lucide-react";
-import Footer from "@/components/shared/Footer";
 import { ChamadaSolicitarOrcamento } from "@/features/oportunidades/components/cliente/ChamadaSolicitarOrcamento";
 import { pesquisarProfissionaisPublicos } from "../actions/pesquisar-profissionais";
 import type { FilterState, Professional } from "../types/profissionais";
@@ -33,86 +32,100 @@ export default function ProfessionalsPage() {
   const [total, setTotal] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
 
   useEffect(() => {
     let ativo = true;
     startTransition(async () => {
       setCarregando(true);
-      const [cidadeLocalizacao, estadoLocalizacao] =
-        filtrosAdiados.location === "Todas as Localizações" ||
-        filtrosAdiados.location === "Remoto"
-          ? ["", ""]
-          : filtrosAdiados.location.split(",").map((item) => item.trim());
-      const resultado = await pesquisarProfissionaisPublicos({
-        busca: filtrosAdiados.search,
-        profissao:
-          filtrosAdiados.profession === "all"
-            ? "todos"
-            : filtrosAdiados.profession === "contador"
-              ? "contabilidade"
-              : filtrosAdiados.profession === "advogado"
-                ? "advocacia"
-                : "especialista_fiscal",
-        especialidade:
-          filtrosAdiados.specialty === "Todas as Especialidades"
-            ? ""
-            : filtrosAdiados.specialty,
-        formacao: filtrosAdiados.formation,
-        experienciaMinima: filtrosAdiados.minExperience,
-        modalidade:
-          filtrosAdiados.modality === "all" ? "todos" : filtrosAdiados.modality,
-        cidade: filtrosAdiados.city || cidadeLocalizacao,
-        estado: filtrosAdiados.state || estadoLocalizacao,
-        pagina,
-        porPagina: 9,
-      });
-      if (!ativo) return;
-      if (!resultado.sucesso || !resultado.dados) {
-        setProfissionais([]);
+      setFalhou(false);
+      // Uma falha de rede/servidor rejeita a action: sem este try a promessa
+      // morria aqui e a tela ficava em "Carregando profissionais..." para
+      // sempre. A falha vira estado visível, nunca uma lista vazia silenciosa.
+      try {
+        const [cidadeLocalizacao, estadoLocalizacao] =
+          filtrosAdiados.location === "Todas as Localizações" ||
+          filtrosAdiados.location === "Remoto"
+            ? ["", ""]
+            : filtrosAdiados.location.split(",").map((item) => item.trim());
+        const resultado = await pesquisarProfissionaisPublicos({
+          busca: filtrosAdiados.search,
+          profissao:
+            filtrosAdiados.profession === "all"
+              ? "todos"
+              : filtrosAdiados.profession === "contador"
+                ? "contabilidade"
+                : filtrosAdiados.profession === "advogado"
+                  ? "advocacia"
+                  : "especialista_fiscal",
+          especialidade:
+            filtrosAdiados.specialty === "Todas as Especialidades"
+              ? ""
+              : filtrosAdiados.specialty,
+          formacao: filtrosAdiados.formation,
+          experienciaMinima: filtrosAdiados.minExperience,
+          modalidade:
+            filtrosAdiados.modality === "all"
+              ? "todos"
+              : filtrosAdiados.modality,
+          cidade: filtrosAdiados.city || cidadeLocalizacao,
+          estado: filtrosAdiados.state || estadoLocalizacao,
+          pagina,
+          porPagina: 9,
+        });
+        if (!ativo) return;
+        if (!resultado.sucesso || !resultado.dados) {
+          setProfissionais([]);
+          setCarregando(false);
+          return;
+        }
+        setProfissionais(
+          resultado.dados.profissionais
+            .map((item) => ({
+              id: item.id,
+              name: item.nome,
+              photo: item.avatarUrl ?? null,
+              profession: (item.profissao === "advocacia"
+                ? "advogado"
+                : item.profissao === "contabilidade"
+                  ? "contador"
+                  : "tecnico") as Professional["profession"],
+              specialty:
+                item.especialidades[0] ??
+                item.areasAtuacao[0] ??
+                "Atendimento profissional",
+              location: `${item.cidade}, ${item.estado}`,
+              rating: (item.avaliacaoMedia ?? 0) / 10,
+              reviewCount: item.totalAvaliacoes,
+              education:
+                [item.formacao, item.instituicaoEnsino]
+                  .filter(Boolean)
+                  .join(" - ") || "Formação não informada",
+              experience: `${item.experiencia ?? 0} anos`,
+              hourlyRate: (item.valorHoraCentavos ?? 0) / 100,
+              isAvailable: item.disponivel,
+              specialties: item.especialidades,
+              about: item.apresentacao,
+              certifications: item.certificacoes,
+            }))
+            .filter(
+              (item) =>
+                item.rating >= filtrosAdiados.minRating &&
+                item.hourlyRate <= filtrosAdiados.maxPrice &&
+                (filtrosAdiados.availability === "all" ||
+                  item.isAvailable ===
+                    (filtrosAdiados.availability === "available")),
+            ),
+        );
+        setTotal(resultado.dados.total);
+        setTotalPaginas(resultado.dados.totalPaginas);
         setCarregando(false);
-        return;
+      } catch {
+        if (!ativo) return;
+        setProfissionais([]);
+        setFalhou(true);
+        setCarregando(false);
       }
-      setProfissionais(
-        resultado.dados.profissionais
-          .map((item) => ({
-            id: item.id,
-            name: item.nome,
-            photo: item.avatarUrl ?? null,
-            profession: (item.profissao === "advocacia"
-              ? "advogado"
-              : item.profissao === "contabilidade"
-                ? "contador"
-                : "tecnico") as Professional["profession"],
-            specialty:
-              item.especialidades[0] ??
-              item.areasAtuacao[0] ??
-              "Atendimento profissional",
-            location: `${item.cidade}, ${item.estado}`,
-            rating: (item.avaliacaoMedia ?? 0) / 10,
-            reviewCount: item.totalAvaliacoes,
-            education:
-              [item.formacao, item.instituicaoEnsino]
-                .filter(Boolean)
-                .join(" - ") || "Formação não informada",
-            experience: `${item.experiencia ?? 0} anos`,
-            hourlyRate: (item.valorHoraCentavos ?? 0) / 100,
-            isAvailable: item.disponivel,
-            specialties: item.especialidades,
-            about: item.apresentacao,
-            certifications: item.certificacoes,
-          }))
-          .filter(
-            (item) =>
-              item.rating >= filtrosAdiados.minRating &&
-              item.hourlyRate <= filtrosAdiados.maxPrice &&
-              (filtrosAdiados.availability === "all" ||
-                item.isAvailable ===
-                  (filtrosAdiados.availability === "available")),
-          ),
-      );
-      setTotal(resultado.dados.total);
-      setTotalPaginas(resultado.dados.totalPaginas);
-      setCarregando(false);
     });
     return () => {
       ativo = false;
@@ -155,6 +168,8 @@ export default function ProfessionalsPage() {
           <p className="text-muted-foreground">
             {carregando ? (
               "Carregando profissionais..."
+            ) : falhou ? (
+              "Não foi possível carregar os profissionais. Tente novamente em instantes."
             ) : (
               <>
                 Mostrando{" "}
@@ -177,7 +192,8 @@ export default function ProfessionalsPage() {
             ))}
           </div>
         ) : (
-          !carregando && (
+          !carregando &&
+          !falhou && (
             <div className="py-20 text-center">
               <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-muted">
                 <Users className="size-10 text-muted-foreground" />
@@ -213,7 +229,6 @@ export default function ProfessionalsPage() {
           </div>
         )}
       </div>
-      <Footer />
     </div>
   );
 }

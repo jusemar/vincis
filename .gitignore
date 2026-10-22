@@ -79,3 +79,6 @@ Desktop.ini
 *:SmartScreen
 .vercel
 .env*
+
+# Driver local de armazenamento de imagens (next dev). Nunca versionar.
+.armazenamento-local/

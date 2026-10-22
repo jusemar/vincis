@@ -36,6 +36,8 @@ export async function obterIdentidadePublica(prestadorId: string) {
       disponivelAtendimento: perfisProfissionais.disponivelAtendimento,
       regimesAtendidos: perfisProfissionais.regimesAtendidos,
       avatarUrl: perfisProfissionais.avatarUrl,
+      // Foto grande do perfil, independente do avatar dos cards.
+      fotoDestaqueUrl: perfisProfissionais.fotoDestaqueUrl,
       valorHoraCentavos: perfisProfissionais.valorHoraCentavos,
       tipoProfissional: perfisProfissionais.tipoProfissional,
       sobreTitulo: perfisProfissionais.sobreTitulo,

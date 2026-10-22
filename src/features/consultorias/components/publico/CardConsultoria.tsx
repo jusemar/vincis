@@ -61,32 +61,43 @@ const DIAS_DA_SEMANA_INICIAIS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 /** A casca do card. Idêntica nos dois estados, com e sem consultoria. */
 function Moldura({
   nome,
+  fotoUrl,
+  controlesFoto,
   children,
 }: {
   nome: string
+  fotoUrl?: string | null
+  controlesFoto?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border shadow-sm">
-      <div className="relative h-48">
-        <img
-          alt={nome}
-          className="w-full h-full object-cover"
-          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=400&fit=crop"
-        />
-        {/*
-          Favoritar e compartilhar continuam decorativos, como já eram. Ligá-los
-          é decisão de outra etapa; removê-los mudaria o card aprovado.
-        */}
-        <div className="absolute top-4 right-4 flex gap-2">
-          <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
-            <Share2 className="h-4 w-4 text-muted-foreground" />
-          </button>
+      {/*
+        A foto é do perfil, não da consultoria: chega pronta por props, junto
+        dos controles de edição quando o dono está editando. Sem foto e sem
+        controles, nada é renderizado — nem moldura, nem espaço reservado.
+      */}
+      {fotoUrl ? (
+        <div className="relative h-48">
+          {/* `<img>` simples: URL pública externa (Vercel Blob) ou `blob:` da prévia local. */}
+          <img alt={nome} className="w-full h-full object-cover" src={fotoUrl} />
+          {/*
+            Favoritar e compartilhar continuam decorativos, como já eram. Ligá-los
+            é decisão de outra etapa; removê-los mudaria o card aprovado.
+          */}
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
+              <Heart className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button className="bg-white/90 dark:bg-card/90 p-2 rounded-full shadow-sm hover:bg-white dark:hover:bg-card transition-colors">
+              <Share2 className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+          {controlesFoto}
         </div>
-      </div>
+      ) : (
+        controlesFoto
+      )}
       {children}
     </div>
   )
@@ -112,12 +123,18 @@ export type CardConsultoriaProps = {
    * pagamento, nenhum Atendimento.
    */
   onAgendar?: (selecao: SelecaoDeConsultoria) => void
+  /** Foto grande do perfil exibido. Ausente/nula = o card começa direto no conteúdo. */
+  fotoUrl?: string | null
+  /** Controles de edição da foto, entregues pelo perfil só quando o dono edita. */
+  controlesFoto?: React.ReactNode
 }
 
 export function CardConsultoria({
   nomeExibido,
   agendaInicial,
   onAgendar,
+  fotoUrl,
+  controlesFoto,
 }: CardConsultoriaProps) {
   const [agenda, setAgenda] = useState<AgendaDoMesDTO | null>(agendaInicial)
   // Mês, dia e horário andam juntos: trocar um invalida os seguintes, e as
@@ -167,7 +184,7 @@ export function CardConsultoria({
 
   if (!consultoria || !agenda?.hoje || !agenda.ultimoDia) {
     return (
-      <Moldura nome={nomeExibido}>
+      <Moldura nome={nomeExibido} fotoUrl={fotoUrl} controlesFoto={controlesFoto}>
         <div className="p-6">
           <p className="text-sm text-muted-foreground">
             Consultoria indisponível no momento.
@@ -239,7 +256,7 @@ export function CardConsultoria({
   }
 
   return (
-    <Moldura nome={nomeExibido}>
+    <Moldura nome={nomeExibido} fotoUrl={fotoUrl} controlesFoto={controlesFoto}>
       <div className="p-6">
         <div className="flex items-baseline gap-1 mb-6">
           <span className="text-3xl font-bold text-foreground">

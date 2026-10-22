@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import { del, put } from '@vercel/blob'
+import { enviarImagemPublica, removerImagemPublica } from '@/integracoes/armazenamento/imagens-publicas'
 
 /**
- * Upload de avatar do prestador — mesmo cliente (`@vercel/blob`) usado pelo
- * comprovante de registro em `comprovante-profissional.ts`, mas `access:
- * 'public'`: a foto aparece no perfil público, então não faz sentido
- * reaproveitar o caminho privado (que existe só para poder auditar/streamar
- * com sessão, coisa que uma imagem pública não precisa).
+ * Upload das imagens públicas do prestador (avatar e foto de destaque).
+ *
+ * Aqui mora a validação e a chave; **onde** o arquivo vai é decisão de
+ * `integracoes/armazenamento` — Vercel Blob público nos ambientes online,
+ * disco local no `next dev` (para testes locais nunca tocarem o Blob real).
+ * Público porque a foto aparece no perfil público, sem sessão.
  */
 
 export const TAMANHO_MAXIMO_AVATAR = 5 * 1024 * 1024
@@ -16,7 +17,18 @@ const TIPOS_AVATAR = new Map([
   ['image/webp', ['webp']],
 ])
 
-export async function enviarAvatarPublico(usuarioId: string, arquivo: File) {
+/**
+ * As imagens públicas do perfil: `avatar` (foto dos cards) e `destaque` (foto
+ * grande do perfil). Mesma validação, pastas separadas no storage — remover
+ * uma nunca alcança o arquivo da outra.
+ */
+export type FinalidadeImagemPerfil = 'avatar' | 'destaque'
+
+export async function enviarAvatarPublico(
+  usuarioId: string,
+  arquivo: File,
+  finalidade: FinalidadeImagemPerfil = 'avatar',
+) {
   const extensao = arquivo.name.split('.').pop()?.toLowerCase() ?? ''
   const extensoes = TIPOS_AVATAR.get(arquivo.type)
   if (!extensoes?.includes(extensao)) throw new Error('Envie uma imagem JPG, PNG ou WEBP válida.')
@@ -31,12 +43,11 @@ export async function enviarAvatarPublico(usuarioId: string, arquivo: File) {
         : String.fromCharCode(...assinatura.slice(8, 12)) === 'WEBP'
   if (!valido) throw new Error('O conteúdo do arquivo não corresponde ao formato informado.')
 
-  const chave = `perfis-profissionais/${usuarioId}/avatar/${randomUUID()}.${extensao}`
-  const blob = await put(chave, arquivo, { access: 'public', addRandomSuffix: false, contentType: arquivo.type })
-  return { url: blob.url }
+  const chave = `perfis-profissionais/${usuarioId}/${finalidade}/${randomUUID()}.${extensao}`
+  return enviarImagemPublica(chave, arquivo)
 }
 
-/** Recebe a própria URL pública salva em `avatar_url` — é o que `del` aceita. */
+/** Recebe a própria URL pública salva (`avatar_url` ou `foto_destaque_url`). */
 export async function removerAvatarPublico(url: string) {
-  await del(url).catch(() => undefined)
+  await removerImagemPublica(url)
 }

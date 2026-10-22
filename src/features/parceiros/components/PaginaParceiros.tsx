@@ -11,7 +11,6 @@ import {
   Rocket, Target, BadgeDollarSign, ChevronRight, Quote, Globe2, MousePointerClick,
   Flame,
 } from "lucide-react";
-import Footer from "../../../components/shared/Footer";
 import { formatarPercentualCentesimos } from "../constants/programa";
 import type { NiveisPublicos } from "../lib/niveis";
 
@@ -833,7 +832,6 @@ export function PaginaParceiros({ niveis = null }: { niveis?: NiveisPublicos | n
         <FAQ />
         <CTAFinal />
       </main>
-      <Footer />
     </div>
   );
 }

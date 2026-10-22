@@ -194,10 +194,20 @@ const ProfessionalCard = ({
         {variant === "adminEquipe" ? (
           adminControls
         ) : (
+          /*
+            Cores com `!` de propósito: o rodapé é `.bg-gradient-gold`, e a
+            regra global `.bg-gradient-gold *` (globals.css) força
+            `color: var(--on-gradient) !important` em todo descendente — com
+            a variável sem `hsl()`, o valor é inválido e o texto herdava a cor
+            do card (branca no dark), vencendo qualquer classe sem `!`. O mesmo
+            vale para `.text-navy-900`, também sobrescrita lá. No dark o botão
+            segue as superfícies escuras da Vincis (Pausar/Reiniciar): fundo
+            `secondary` (um tom acima do card), texto `foreground`, borda sutil.
+          */
           <button
             type="button"
             disabled={!professional.isAvailable}
-            className="alvo-toque-h inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-xs font-bold tracking-wide text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+            className="alvo-toque-h inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-2 text-xs font-bold tracking-wide !text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm dark:border-white/15 dark:bg-secondary dark:!text-foreground dark:hover:border-white/35 dark:focus-visible:ring-foreground dark:active:bg-card"
             onClick={(e) => {
               e.stopPropagation();
               if (!professional.isAvailable) return;
