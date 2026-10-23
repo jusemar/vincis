@@ -14,7 +14,13 @@ import {
   useControleModais,
 } from "@/features/usuarios";
 import { MenuUsuarioPublico } from "@/features/usuarios/components/MenuUsuarioPublico";
+import { MenuCmsDesktop, MenuCmsMobile } from "@/features/cms/components/publico/MenuCabecalhoCms";
+import type { ItemMenuPublico } from "@/features/cms/nucleo/lib/arvore-navegacao";
 
+/**
+ * Links fixos: levam a rotas da própria aplicação, que o CMS não representa (ele
+ * só aponta para páginas dele). Os itens do CMS entram depois destes.
+ */
 const navLinks = [
   { name: "Início", href: "/", type: "route" },
   { name: "Profissionais", href: "/profissionais", type: "route" },
@@ -22,7 +28,15 @@ const navLinks = [
   { name: "Preços", href: "/precos", type: "route" },
 ];
 
-export default function NavigationNext() {
+type NavigationNextProps = {
+  /**
+   * Itens do menu vindos do CMS, lidos no servidor pelo layout raiz. Desktop e
+   * mobile usam a mesma lista. Vazio mantém só os links fixos.
+   */
+  menuCms?: ItemMenuPublico[];
+};
+
+export default function NavigationNext({ menuCms = [] }: NavigationNextProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { modalAberto, abrir, fechar, alternarPara } = useControleModais();
@@ -147,6 +161,7 @@ export default function NavigationNext() {
                   </motion.div>
                 );
               })}
+              <MenuCmsDesktop itens={menuCms} pathname={pathname} />
             </div>
 
             {/* Right side buttons */}
@@ -255,6 +270,7 @@ export default function NavigationNext() {
                     )}
                   </motion.div>
                 ))}
+                <MenuCmsMobile itens={menuCms} aoNavegar={() => setIsMobileMenuOpen(false)} />
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

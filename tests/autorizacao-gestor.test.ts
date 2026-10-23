@@ -86,6 +86,8 @@ describe('registro de recursos administrativos', () => {
       // Parceiros também: o prazo da indicação é regra da Vincis, e vai
       // lastrear comissão.
       '/admin/parceiros',
+      // O CMS institucional: páginas e navegação do site são da Vincis.
+      '/admin/cms',
     ])
   })
 
@@ -126,6 +128,7 @@ describe('registro de recursos administrativos', () => {
       ['Consultorias', '/admin/consultorias'],
       ['Precificação', '/admin/precificacao'],
       ['Parceiros', '/admin/parceiros'],
+      ['Conteúdo', '/admin/cms'],
     ])
   })
 })

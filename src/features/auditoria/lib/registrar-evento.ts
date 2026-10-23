@@ -141,6 +141,17 @@ export const ACOES_AUDITORIA = {
   documentoFiscalExcluido: 'documento_fiscal_excluido',
   /** Conteúdo fiscal saiu para serviço externo (OCR, integração). */
   documentoFiscalEnviadoServicoExterno: 'documento_fiscal_enviado_servico_externo',
+  /**
+   * CMS institucional — só o Gestor escreve. Os metadados levam slug, status
+   * e a operação, nunca o conteúdo da página.
+   */
+  cmsPaginaCriada: 'cms_pagina_criada',
+  cmsPaginaEditada: 'cms_pagina_editada',
+  cmsPaginaPublicada: 'cms_pagina_publicada',
+  cmsPaginaDespublicada: 'cms_pagina_despublicada',
+  cmsPaginaArquivada: 'cms_pagina_arquivada',
+  /** Grupo ou item de navegação criado, editado, ligado/desligado ou reordenado. */
+  cmsNavegacaoAlterada: 'cms_navegacao_alterada',
 } as const
 
 export type AcaoAuditoria =

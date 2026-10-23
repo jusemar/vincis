@@ -217,3 +217,10 @@ export { documentosFiscaisItens } from './tables/documentos_fiscais_itens/tabela
 export { documentosFiscaisItensRelations } from './tables/documentos_fiscais_itens/relacoes'
 export { documentosFiscaisTributos } from './tables/documentos_fiscais_tributos/tabela'
 export { documentosFiscaisTributosRelations } from './tables/documentos_fiscais_tributos/relacoes'
+
+export { cmsPaginas } from './tables/cms_paginas/tabela'
+export { cmsPaginasRelations } from './tables/cms_paginas/relacoes'
+export { cmsGruposNavegacao } from './tables/cms_grupos_navegacao/tabela'
+export { cmsGruposNavegacaoRelations } from './tables/cms_grupos_navegacao/relacoes'
+export { cmsItensNavegacao } from './tables/cms_itens_navegacao/tabela'
+export { cmsItensNavegacaoRelations } from './tables/cms_itens_navegacao/relacoes'

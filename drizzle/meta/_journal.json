@@ -491,6 +491,20 @@
       "when": 1792572264547,
       "tag": "0069_foto_destaque_perfil",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792778373695,
+      "tag": "0070_cms_fundacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792783651586,
+      "tag": "0071_cms_cabecalho_submenu",
+      "breakpoints": true
     }
   ]
 }

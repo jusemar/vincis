@@ -37,7 +37,12 @@ vi.mock('next/headers', () => ({
   }),
 }))
 
+// `vi.fn()` (que devolve `undefined`) para que um teste possa conferir quais
+// etiquetas uma action invalidou. `unstable_cache` vira a própria função: a
+// suíte testa a consulta, não o cache do Next.
 vi.mock('next/cache', () => ({
-  revalidatePath: () => undefined,
-  revalidateTag: () => undefined,
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
+  unstable_cache: <T extends (...args: never[]) => unknown>(funcao: T) => funcao,
 }))

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   BadgeDollarSign,
   CalendarClock,
+  FileText,
   LayoutDashboard,
   Megaphone,
   Users,
@@ -40,6 +41,7 @@ const ICONE_DO_MODULO: Record<string, LucideIcon> = {
   comunicados: Megaphone,
   consultorias: CalendarClock,
   precificacao: BadgeDollarSign,
+  cms: FileText,
 }
 
 export function CentralVincisShell({ children }: { children: React.ReactNode }) {

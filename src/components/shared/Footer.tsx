@@ -12,6 +12,8 @@ import {
   Shield,
   CheckCircle
 } from 'lucide-react';
+import Link from 'next/link';
+import type { GrupoNavegacaoPublico } from '@/features/cms/nucleo/lib/navegacao';
 
 const footerLinks = {
   servicos: [
@@ -38,6 +40,54 @@ const footerLinks = {
   ],
 };
 
+/**
+ * Links que levam a rotas reais da plataforma. Quando o rodapé passa a vir do
+ * CMS, eles continuam numa coluna própria: o CMS só aponta para páginas dele,
+ * e sem esta coluna Preços, Parceiros e a Central de Ajuda sumiriam do site.
+ */
+const linksDaPlataforma = [
+  { name: 'Planos e Preços', href: '/precos' },
+  { name: 'Parceiros', href: '/parceiros' },
+  { name: 'Central de Ajuda', href: '/suporte' },
+];
+
+type LinkRodape = { chave: string; texto: string; href: string };
+
+function ColunaLinks({ titulo, links }: { titulo: string; links: LinkRodape[] }) {
+  return (
+    <div className="min-w-0">
+      <h4 className="text-foreground font-semibold mb-4">{titulo}</h4>
+      <ul className="space-y-3">
+        {links.map((link) => (
+          <li key={link.chave}>
+            {/* Âncora `#` continua `<a>`: não é rota, e o Link do Next a trataria como navegação. */}
+            {link.href.startsWith('/') ? (
+              <Link
+                href={link.href}
+                className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span className="break-words">{link.texto}</span>
+                <ArrowUpRight className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            ) : (
+              <a
+                href={link.href}
+                className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.texto}
+                <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const paraLinks = (links: { name: string; href: string }[]): LinkRodape[] =>
+  links.map((link) => ({ chave: link.name, texto: link.name, href: link.href }));
+
 const socialLinks = [
   { icon: Linkedin, href: '#', label: 'LinkedIn' },
   { icon: Instagram, href: '#', label: 'Instagram' },
@@ -50,7 +100,32 @@ const certifications = [
   { name: 'LGPD Compliant', icon: CheckCircle },
 ];
 
-export default function Footer() {
+type FooterProps = {
+  /**
+   * Colunas publicadas pelo CMS (grupo ativo, link ativo, página publicada),
+   * lidas no servidor. Vazio — CMS ainda sem rodapé, ou falha na leitura — mantém
+   * as colunas fixas originais.
+   */
+  gruposCms?: GrupoNavegacaoPublico[];
+};
+
+export default function Footer({ gruposCms = [] }: FooterProps) {
+  const colunas =
+    gruposCms.length > 0
+      ? [
+          ...gruposCms.map((grupo) => ({
+            chave: grupo.id,
+            titulo: grupo.titulo,
+            links: grupo.links.map((link) => ({ chave: link.id, texto: link.texto, href: link.href })),
+          })),
+          { chave: 'plataforma', titulo: 'Plataforma', links: paraLinks(linksDaPlataforma) },
+        ]
+      : [
+          { chave: 'servicos', titulo: 'Serviços', links: paraLinks(footerLinks.servicos) },
+          { chave: 'empresa', titulo: 'Empresa', links: paraLinks(footerLinks.empresa) },
+          { chave: 'suporte', titulo: 'Suporte', links: paraLinks(footerLinks.suporte) },
+        ];
+
   return (
     <footer className="relative bg-background border-t border-border/50">
       {/* Main Footer */}
@@ -122,59 +197,9 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Services Links */}
-          <div>
-            <h4 className="text-foreground font-semibold mb-4">Serviços</h4>
-            <ul className="space-y-3">
-              {footerLinks.servicos.map((link) => (
-                <li key={link.name}>
-                  <a 
-                    href={link.href}
-                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.name}
-                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h4 className="text-foreground font-semibold mb-4">Empresa</h4>
-            <ul className="space-y-3">
-              {footerLinks.empresa.map((link) => (
-                <li key={link.name}>
-                  <a 
-                    href={link.href}
-                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.name}
-                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Support Links */}
-          <div>
-            <h4 className="text-foreground font-semibold mb-4">Suporte</h4>
-            <ul className="space-y-3">
-              {footerLinks.suporte.map((link) => (
-                <li key={link.name}>
-                  <a 
-                    href={link.href}
-                    className="alvo-toque-h group flex items-center gap-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.name}
-                    <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {colunas.map((coluna) => (
+            <ColunaLinks key={coluna.chave} titulo={coluna.titulo} links={coluna.links} />
+          ))}
         </div>
       </div>
 

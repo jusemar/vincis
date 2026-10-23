@@ -113,6 +113,18 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     noMenuPrincipal: false,
     naCentral: true,
   },
+  {
+    // Páginas institucionais e navegação do site (CMS). Conteúdo da Vincis,
+    // não de escritório: exclusivo do Gestor em rota, menu e guarda de
+    // servidor, como os demais módulos da Central.
+    id: 'cms',
+    rota: '/admin/cms',
+    rotulo: 'Conteúdo do site',
+    rotuloNaCentral: 'Conteúdo',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
 ]
 
 /** Raiz da Central Vincis — a área global de gestão da plataforma. */
