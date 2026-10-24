@@ -19,7 +19,8 @@
     "db:local:contas-teste": "node --env-file=.env.local --import tsx scripts/banco-local/preparar-contas-teste.ts",
     "db:local:senhas": "node --env-file=.env.local --import tsx scripts/banco-local/redefinir-senhas-locais.ts",
     "db:local:clientes-recorrentes": "node --env-file=.env.local --import tsx scripts/banco-local/clientes-recorrentes.ts",
-    "db:online:migrar": "VINCIS_BANCO_ONLINE=1 drizzle-kit migrate"
+    "db:online:migrar": "VINCIS_BANCO_ONLINE=1 drizzle-kit migrate",
+    "publicar:homologacao": "node --env-file=.env -e \"require('child_process').execFileSync('bash',['scripts/publicar-homologacao.sh'],{stdio:'inherit',env:process.env})\""
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.92.2",
@@ -90,7 +91,7 @@
     "autoprefixer": "^10.4.23",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.0",
     "eslint-plugin-react-refresh": "^0.5.3",
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.5.0",
