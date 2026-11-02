@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# Vincis
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma especializada em conectar clientes a advogados e contadores, facilitando a descoberta de profissionais e o acesso a serviços jurídicos e contábeis.
 
-Currently, two official plugins are available:
+🌐 https://vincis.com.br
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Sobre o projeto
 
-## React Compiler
+A Vincis é uma plataforma web desenvolvida para aproximar clientes de advogados e contadores.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+O projeto envolve desenvolvimento full stack, perfis profissionais, busca, oportunidades, gerenciamento de conteúdo e diferentes recursos para profissionais e clientes.
 
-## Expanding the ESLint configuration
+## Principais recursos
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Perfis de advogados e contadores
+- Busca de profissionais
+- Oportunidades
+- Área do profissional
+- Área do cliente
+- Gerenciamento de perfis
+- Upload e gerenciamento de imagens
+- Armazenamento de documentos
+- Páginas e conteúdos dinâmicos
+- Interfaces responsivas
+- Integrações com serviços externos
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tecnologias
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- React
+- Next.js
+- TypeScript
+- Node.js
+- PostgreSQL
+- Tailwind CSS
+- APIs REST
+- Git
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Desenvolvimento assistido por IA
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Inteligência Artificial é utilizada como ferramenta de apoio durante o desenvolvimento, incluindo planejamento, implementação, testes, revisão, análise de problemas e evolução das funcionalidades.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Status
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Projeto em desenvolvimento contínuo e publicado em produção.
