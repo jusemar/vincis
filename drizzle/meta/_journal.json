@@ -568,6 +568,13 @@
       "when": 1793202934957,
       "tag": "0080_historico_alocacao_sem_contador",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1794770871636,
+      "tag": "0081_repasses_profissionais",
+      "breakpoints": true
     }
   ]
 }

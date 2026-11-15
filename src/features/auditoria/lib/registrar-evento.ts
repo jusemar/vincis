@@ -48,6 +48,8 @@ export const ACOES_AUDITORIA = {
   modeloContratacaoAlterado: 'modelo_contratacao_alterado',
   contadorResponsavelAlterado: 'contador_responsavel_alterado',
   comissaoServicosAvulsosAlterada: 'comissao_servicos_avulsos_alterada',
+  /** A Gestão registrou o repasse manual da parte do profissional. */
+  repasseProfissionalRegistrado: 'repasse_profissional_registrado',
   capacidadeContadorAlterada: 'capacidade_contador_alterada',
   /**
    * O Gestor alterou um prazo do Programa de Parceiros.

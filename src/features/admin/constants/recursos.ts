@@ -117,6 +117,17 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     naCentral: true,
   },
   {
+    // Repasses manuais aos profissionais: o que a Vincis recebeu, a parte de
+    // cada profissional e o registro do repasse feito por fora da plataforma.
+    id: 'repasses',
+    rota: '/admin/repasses',
+    rotulo: 'Repasses aos profissionais',
+    rotuloNaCentral: 'Repasses',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
+  {
     id: 'precificacao',
     rota: '/admin/precificacao',
     rotulo: 'Precificação',

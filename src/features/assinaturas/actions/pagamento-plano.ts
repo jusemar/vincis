@@ -11,6 +11,8 @@ import {
   sincronizarCobranca,
 } from '@/features/pagamentos/lib/cobrancas'
 import type { CobrancaPixDTO } from '@/features/pagamentos/types/cobranca'
+import { retratoComissaoVigente } from '@/features/pagamentos/lib/comissao-vincis'
+import { MENSAGEM_COMISSAO_PENDENTE } from '@/features/servicos/constants/comissao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import {
   contadorComVagaPara,
@@ -97,6 +99,13 @@ export async function iniciarPagamentoDoPlano(entrada: unknown): Promise<Resulta
 
   const devido = await valorDevidoAgora(db, assinatura)
   if (devido <= 0) return { situacao: 'recusado', mensagem: 'Não há valor em aberto nesta assinatura.' }
+  /*
+    Divisão Vincis × contador congelada no Pix (mesmo retrato dos avulsos):
+    o repasse de cada mês usa o percentual vigente quando o cliente pagou.
+    Sem percentual configurado, nenhum Pix de plano é emitido.
+  */
+  const comissaoVincis = await retratoComissaoVigente(devido)
+  if (!comissaoVincis) return { situacao: 'indisponivel', mensagem: MENSAGEM_COMISSAO_PENDENTE }
 
   const pedido = {
     finalidade: 'assinatura' as const,
@@ -106,7 +115,7 @@ export async function iniciarPagamentoDoPlano(entrada: unknown): Promise<Resulta
     valorCentavos: devido,
     descricao: `Vincis · ${assinatura.planoNome}`,
     // O mensal paga o mês 1 — gravado para a confirmação cobrir exatamente ele.
-    contexto: assinatura.periodicidade === 'mensal' ? { competenciaNumero: 1 } : {},
+    contexto: assinatura.periodicidade === 'mensal' ? { competenciaNumero: 1, comissaoVincis } : { comissaoVincis },
     expiracaoSegundos: EXPIRACAO_PIX_SEGUNDOS.assinatura,
   }
 
@@ -162,6 +171,8 @@ async function pagarMensalidade(assinatura: AssinaturaDoCliente): Promise<Result
     return mensalidadeDevida(tx, assinatura.id, agora)
   })
   if (!devida) return { situacao: 'pago' }
+  const comissaoVincis = await retratoComissaoVigente(devida.valorCentavos)
+  if (!comissaoVincis) return { situacao: 'indisponivel', mensagem: MENSAGEM_COMISSAO_PENDENTE }
 
   /*
     Um Pix vivo de outro mês (o devido mudou porque o mês dele foi quitado por
@@ -199,7 +210,7 @@ async function pagarMensalidade(assinatura: AssinaturaDoCliente): Promise<Result
       prestadorId: null,
       valorCentavos: devida.valorCentavos,
       descricao: `Vincis · ${assinatura.planoNome} · mensalidade ${formatarPeriodoCurto(devida.periodoInicio, devida.periodoFim)}`,
-      contexto: contextoDaMensalidade(devida),
+      contexto: { ...contextoDaMensalidade(devida), comissaoVincis },
       expiracaoSegundos: EXPIRACAO_PIX_SEGUNDOS.assinatura,
     }),
   )

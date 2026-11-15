@@ -88,6 +88,6 @@ export async function definirComissaoServicosAvulsos(entrada: unknown) {
   revalidatePath('/admin/central')
   return {
     sucesso: true as const,
-    mensagem: `Comissão da Vincis nos serviços avulsos definida em ${formatarPercentualMilesimos(milesimos)}.`,
+    mensagem: `Comissão da Vincis (avulsos e planos) definida em ${formatarPercentualMilesimos(milesimos)}.`,
   }
 }

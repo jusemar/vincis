@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileText,
+  HandCoins,
   LayoutDashboard,
   Megaphone,
   Users,
@@ -42,6 +43,7 @@ const ICONE_DO_MODULO: Record<string, LucideIcon> = {
   comunicados: Megaphone,
   consultorias: CalendarClock,
   planos: ClipboardList,
+  repasses: HandCoins,
   precificacao: BadgeDollarSign,
   cms: FileText,
 }

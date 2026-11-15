@@ -84,6 +84,8 @@ describe('registro de recursos administrativos', () => {
       '/admin/atendimentos-parados',
       // Planos contratados: alocar e trocar o contador responsável é da Vincis.
       '/admin/planos',
+      // Repasses aos profissionais: registrar repasse é decisão financeira da Vincis.
+      '/admin/repasses',
       // A Precificação nasceu exclusiva: quem define o preço da plataforma é
       // a Vincis, não o escritório que usa o painel.
       '/admin/precificacao',
@@ -132,6 +134,7 @@ describe('registro de recursos administrativos', () => {
       ['Consultorias', '/admin/consultorias'],
       ['Atendimentos parados', '/admin/atendimentos-parados'],
       ['Planos', '/admin/planos'],
+      ['Repasses', '/admin/repasses'],
       ['Precificação', '/admin/precificacao'],
       ['Parceiros', '/admin/parceiros'],
       ['Conteúdo', '/admin/cms'],

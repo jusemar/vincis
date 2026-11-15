@@ -46,7 +46,7 @@ export function ComissaoServicosAvulsosCard({ milesimos }: { milesimos: number |
           </div>
           <div className="min-w-0">
             <h2 className="flex flex-wrap items-center gap-2 font-semibold">
-              Comissão da Vincis nos serviços avulsos
+              Comissão da Vincis (avulsos e planos)
               {milesimos === null ? (
                 <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
                   Configuração pendente
@@ -58,15 +58,16 @@ export function ComissaoServicosAvulsosCard({ milesimos }: { milesimos: number |
               )}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Percentual que a Vincis retém do valor pago pelo cliente em cada serviço avulso; o restante é do
-              profissional. Independente da comissão do parceiro indicador.
+              Percentual que a Vincis retém do valor pago pelo cliente em serviços avulsos e planos recorrentes
+              intermediados pela Vincis; o restante é do profissional. A comissão do parceiro indicador sai da
+              parte da Vincis. Honorários advocatícios e recorrentes diretos de Autônomos ficam fora.
             </p>
           </div>
         </div>
 
         {milesimos === null ? (
           <p role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
-            Enquanto não houver percentual definido, serviços avulsos não podem ser contratados e pagos pela Vincis.
+            Enquanto não houver percentual definido, serviços avulsos e planos não podem ser pagos pela Vincis.
           </p>
         ) : null}
 
