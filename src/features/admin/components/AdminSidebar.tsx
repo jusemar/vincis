@@ -1,5 +1,6 @@
 "use client";
 
+import { moduloDemonstracaoOculto } from "../constants/modulos-demonstracao";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -207,6 +208,8 @@ export default function AdminSidebar({
           navItems
             .filter((item) => !("exigeFiscal" in item) || podeVerDocumentosFiscais)
             .filter((item) => !("exigeParceiroVincis" in item) || contadorParceiroVincis)
+            // Módulos com dados fictícios ficam fora do menu em produção.
+            .filter((item) => !moduloDemonstracaoOculto(item.id))
             .map((item) => {
           // Um item pode ser uma seção do painel (`?pagina=`) ou uma rota
           // própria. Quem tem `rota` acende pelo caminho aberto; os demais

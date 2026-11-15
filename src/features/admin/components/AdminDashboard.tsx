@@ -1,5 +1,6 @@
 "use client";
 
+import { moduloDemonstracaoOculto } from "../constants/modulos-demonstracao";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/usuarios";
@@ -70,7 +71,9 @@ export default function AdminDashboard({
   consultorias?: ConsultoriaDoPrestadorDTO2[]
 }) {
   const searchParams = useSearchParams();
-  const currentPage = searchParams.get("pagina") || "dashboard";
+  const paginaPedida = searchParams.get("pagina") || "dashboard";
+  // Módulo fictício oculto não abre nem por link direto: cai no Dashboard.
+  const currentPage = moduloDemonstracaoOculto(paginaPedida) ? "dashboard" : paginaPedida;
   const { usuario } = useAuth();
 
   /** Média e quantidade, no formato enxuto que o rodapé e o card consomem. */

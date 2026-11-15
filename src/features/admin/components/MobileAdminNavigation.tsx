@@ -1,5 +1,6 @@
 'use client'
 
+import { moduloDemonstracaoOculto } from '../constants/modulos-demonstracao'
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
@@ -130,9 +131,10 @@ export function MobileAdminNavigation({
   const [maisAberto, setMaisAberto] = useState(false)
   // Um item de rota própria acende pelo caminho aberto; os de seção, pela
   // seção — a gaveta "Mais" precisa refletir os dois.
-  const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais).filter(
-    (item) => !('exigeParceiroVincis' in item) || contadorParceiroVincis,
-  )
+  const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais)
+    .filter((item) => !('exigeParceiroVincis' in item) || contadorParceiroVincis)
+    // Módulos com dados fictícios ficam fora do menu em produção.
+    .filter((item) => !moduloDemonstracaoOculto(item.id))
   const paginaNoMais = DEMAIS.some((item) =>
     'rota' in item ? pathname.startsWith(item.rota) : item.id === paginaAtual,
   )
