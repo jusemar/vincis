@@ -50,6 +50,8 @@ export const ACOES_AUDITORIA = {
   comissaoServicosAvulsosAlterada: 'comissao_servicos_avulsos_alterada',
   /** A Gestão registrou o repasse manual da parte do profissional. */
   repasseProfissionalRegistrado: 'repasse_profissional_registrado',
+  /** A Gestão cadastrou o webhook Pix da Vincis na Efí (sem token nem chave nos metadados). */
+  webhookEfiCadastrado: 'webhook_efi_cadastrado',
   capacidadeContadorAlterada: 'capacidade_contador_alterada',
   /**
    * O Gestor alterou um prazo do Programa de Parceiros.

@@ -10,6 +10,7 @@ import {
   HandCoins,
   LayoutDashboard,
   Megaphone,
+  QrCode,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -44,6 +45,7 @@ const ICONE_DO_MODULO: Record<string, LucideIcon> = {
   consultorias: CalendarClock,
   planos: ClipboardList,
   repasses: HandCoins,
+  'integracao-pix': QrCode,
   precificacao: BadgeDollarSign,
   cms: FileText,
 }

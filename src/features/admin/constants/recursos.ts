@@ -128,6 +128,16 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     naCentral: true,
   },
   {
+    // Integração Pix (Efí): conferir e cadastrar o webhook da conta recebedora.
+    id: 'integracao-pix',
+    rota: '/admin/integracao-pix',
+    rotulo: 'Integração Pix (Efí)',
+    rotuloNaCentral: 'Integração Pix',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
+  {
     id: 'precificacao',
     rota: '/admin/precificacao',
     rotulo: 'Precificação',

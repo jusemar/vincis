@@ -72,6 +72,7 @@ function requisicaoUnica<T>(
   caminho: string,
   autorizacao: string,
   corpo?: unknown,
+  cabecalhos: Record<string, string> = {},
 ): Promise<T> {
   const url = new URL(caminho, configuracao.baseUrl)
   const payload = corpo === undefined ? undefined : JSON.stringify(corpo)
@@ -87,6 +88,7 @@ function requisicaoUnica<T>(
           Accept: 'application/json',
           'Accept-Encoding': 'identity',
           'Content-Type': 'application/json',
+          ...cabecalhos,
           Authorization: autorizacao,
         },
       },
@@ -155,8 +157,12 @@ async function comRetry<T>(
   throw ultimo
 }
 
-/** O caminho no log sem o txid inteiro: rastreável, mas não um índice de cobranças. */
-function rotuloDoCaminho(caminho: string) {
+/**
+ * O caminho no log sem o txid inteiro (rastreável, mas não um índice de
+ * cobranças) e **sem a chave Pix**: `/v2/webhook/{chave}` vira `/v2/webhook/…`.
+ */
+export function rotuloDoCaminho(caminho: string) {
+  if (caminho.startsWith('/v2/webhook/')) return '/v2/webhook/…'
   return caminho.replace(/\/([A-Za-z0-9]{26,35})(?=\/|$)/, (_, txid: string) => `/${txid.slice(0, 6)}…`)
 }
 
@@ -181,17 +187,23 @@ async function obterToken(configuracao: ConfiguracaoEfi): Promise<string> {
   return token.access_token
 }
 
-/** Chamada autenticada à API Pix. */
+/**
+ * Chamada autenticada à API Pix.
+ *
+ * `cabecalhos` existe para o que a Efí pede fora do padrão — hoje só o
+ * `x-skip-mtls-checking` do cadastro do webhook. Não substitui `Authorization`.
+ */
 export async function chamarApiPixEfi<T>(
   metodo: MetodoEfi,
   caminho: string,
   corpo?: unknown,
+  cabecalhos?: Record<string, string>,
 ): Promise<T> {
   const configuracao = obterConfiguracaoEfi()
   const executar = async () => {
     const token = await obterToken(configuracao)
     return comRetry(metodo, caminho, () =>
-      requisicaoUnica<T>(configuracao, metodo, caminho, `Bearer ${token}`, corpo),
+      requisicaoUnica<T>(configuracao, metodo, caminho, `Bearer ${token}`, corpo, cabecalhos),
     )
   }
   try {

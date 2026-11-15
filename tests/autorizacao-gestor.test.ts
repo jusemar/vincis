@@ -86,6 +86,8 @@ describe('registro de recursos administrativos', () => {
       '/admin/planos',
       // Repasses aos profissionais: registrar repasse é decisão financeira da Vincis.
       '/admin/repasses',
+      // Integração Pix: o webhook da conta recebedora é configuração da Vincis.
+      '/admin/integracao-pix',
       // A Precificação nasceu exclusiva: quem define o preço da plataforma é
       // a Vincis, não o escritório que usa o painel.
       '/admin/precificacao',
@@ -135,6 +137,7 @@ describe('registro de recursos administrativos', () => {
       ['Atendimentos parados', '/admin/atendimentos-parados'],
       ['Planos', '/admin/planos'],
       ['Repasses', '/admin/repasses'],
+      ['Integração Pix', '/admin/integracao-pix'],
       ['Precificação', '/admin/precificacao'],
       ['Parceiros', '/admin/parceiros'],
       ['Conteúdo', '/admin/cms'],
