@@ -35,7 +35,7 @@ const { alterarStatusDoAtendimento } = await import(
   '@/features/atendimentos/lib/alterar-status'
 )
 const { criarServico } = await import('@/features/servicos/actions/catalogo')
-const { contratarServico } = await import('@/features/servicos/actions/contratar')
+const { contratarServico } = await import('./setup/contratar-servico')
 const { canalDoAtendimento, canalDoConvite, canalDoUsuario } = await import(
   '@/integracoes/realtime/canais'
 )

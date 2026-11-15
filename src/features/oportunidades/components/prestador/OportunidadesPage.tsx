@@ -32,6 +32,7 @@ import { ListaDeAnexos } from '../compartilhado/ListaDeAnexos'
 import { RetratoDaSimulacao } from '../compartilhado/RetratoDaSimulacao'
 import { formatarDataHora, formatarValor } from '../compartilhado/formato'
 import { ModalEnviarProposta } from './ModalEnviarProposta'
+import { situacaoDoAcordoParaPrestador } from '../../lib/situacao-do-acordo'
 
 function formatarData(iso: string) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(iso))
@@ -65,6 +66,7 @@ export default function OportunidadesPage() {
   const destacada = searchParams.get('oportunidade')
 
   const [lista, setLista] = useState<OportunidadeParaPrestadorDTO[]>([])
+  const [podeProporRecorrente, setPodeProporRecorrente] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [selecionada, setSelecionada] =
     useState<OportunidadeParaPrestadorDTO | null>(null)
@@ -75,6 +77,7 @@ export default function OportunidadesPage() {
   const buscar = useCallback(async () => {
     const resultado = await carregarOportunidadesDisponiveis()
     setLista(resultado.sucesso ? (resultado.dados?.lista ?? []) : [])
+    setPodeProporRecorrente(resultado.sucesso ? Boolean(resultado.dados?.podeProporRecorrente) : false)
     setCarregando(false)
     // O banner do Dashboard é renderizado no servidor: sem o refresh, ele só
     // voltaria ao estado da meta no próximo F5.
@@ -217,7 +220,8 @@ export default function OportunidadesPage() {
                 {oportunidade.minhaProposta ? (
                   <span className="badge-success flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide">
                     <CheckCircle2 className="size-3.5" />
-                    Proposta enviada
+                    {/* Depois do aceite, "enviada" deixa de ser verdade. */}
+                    {oportunidade.minhaProposta.status === 'aceita' ? 'Proposta aceita' : 'Proposta enviada'}
                   </span>
                 ) : oportunidade.dispensada ? (
                   // Dispensada não some da lista: o prestador precisa poder ver
@@ -325,22 +329,17 @@ export default function OportunidadesPage() {
                         )}
                         .
                       </p>
-                      {/* O trabalho começa quando o Cliente paga — dizer isso
-                          evita que o prestador comece antes de haver
-                          contratação efetivada. */}
-                      {oportunidade.atendimento ? (
-                        <p className="flex items-center gap-2 font-semibold">
-                          <CheckCircle2 className="size-4 shrink-0" />
-                          Pagamento aprovado · atendimento{' '}
-                          {oportunidade.atendimento.protocolo} aberto.
-                        </p>
-                      ) : (
-                        <p className="flex items-center gap-2">
-                          <Clock className="size-4 shrink-0" />
-                          Aguardando o pagamento do Cliente para abrir o
-                          atendimento.
-                        </p>
-                      )}
+                      {/* "Pagamento aprovado" só com pagamento registrado pela
+                          Vincis. Recorrente do Autônomo (e honorários de
+                          advogado) abre o atendimento no aceite, sem pagamento
+                          intermediado: aí é "Proposta aceita". */}
+                      <SituacaoDoAcordo
+                        situacao={situacaoDoAcordoParaPrestador({
+                          pagoEm: oportunidade.pagoEm,
+                          natureza: oportunidade.minhaProposta.natureza,
+                          protocolo: oportunidade.atendimento?.protocolo ?? null,
+                        })}
+                      />
                     </div>
                   )}
 
@@ -529,6 +528,7 @@ export default function OportunidadesPage() {
           // oportunidade aberta anteriormente.
           key={selecionada.id}
           oportunidade={selecionada}
+          podeProporRecorrente={podeProporRecorrente}
           aberto
           onFechar={() => setSelecionada(null)}
           onEnviada={() => {
@@ -539,5 +539,22 @@ export default function OportunidadesPage() {
         />
       )}
     </div>
+  )
+}
+
+function SituacaoDoAcordo({ situacao }: { situacao: ReturnType<typeof situacaoDoAcordoParaPrestador> }) {
+  if (situacao.tipo === 'aguardando_pagamento') {
+    return (
+      <p className="flex items-center gap-2">
+        <Clock className="size-4 shrink-0" />
+        {situacao.texto}
+      </p>
+    )
+  }
+  return (
+    <p className="flex items-center gap-2 font-semibold">
+      <CheckCircle2 className="size-4 shrink-0" />
+      {situacao.texto}
+    </p>
   )
 }

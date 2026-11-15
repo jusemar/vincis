@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DISPONIVEL_NO_PRO } from "@/features/perfil-pro/constants/perfil-pro";
 import { anexarArquivoAoAtendimento } from "@/features/atendimentos/actions/anexar-arquivo";
 import { registrarConclusaoDoAtendimento } from "@/features/atendimentos/actions/conclusao";
 import { TAMANHO_MAXIMO_OBSERVACAO_FINAL } from "@/features/atendimentos/constants/atendimento";
@@ -22,6 +23,8 @@ interface Props {
   /** Checklist real, para mostrar o que ainda está aberto. */
   checklist: RealChecklistItem[];
   onAtualizar?: () => void;
+  /** `false`: advogado no Perfil Essencial — entrega por arquivo travada. */
+  documentosPelaVincis?: boolean;
 }
 
 /**
@@ -43,6 +46,7 @@ interface Props {
  */
 export const ConcluirAtendimentoDialog = ({
   open, onClose, atendimentoId, protocolo, arquivos, checklist, onAtualizar,
+  documentosPelaVincis = true,
 }: Props) => {
   const [observacao, setObservacao] = useState("");
   const [selecionados, setSelecionados] = useState<string[]>([]);
@@ -166,6 +170,7 @@ export const ConcluirAtendimentoDialog = ({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Arquivos de entrega</h3>
+              {documentosPelaVincis ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -176,6 +181,11 @@ export const ConcluirAtendimentoDialog = ({
                 <Paperclip className="h-3.5 w-3.5" />
                 {enviandoArquivo ? "Enviando…" : "Anexar"}
               </Button>
+              ) : (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  {DISPONIVEL_NO_PRO}
+                </span>
+              )}
               <input
                 ref={entrada}
                 type="file"

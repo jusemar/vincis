@@ -65,6 +65,16 @@ export const consultoriaPagamentos = pgTable(
     /** `simulado` hoje. O provedor real, quando existir. Nunca em branco. */
     origem: varchar('origem', { length: 20 }).notNull().default('simulado'),
     referencia: varchar('referencia', { length: 40 }).notNull(),
+    /**
+     * Retrato da comissão Vincis vigente quando o Pix foi emitido (serviço
+     * avulso pago pela plataforma). O Cliente paga `valor_centavos`; a Vincis
+     * retém `comissao_vincis_centavos` e o restante é do profissional. Nulos
+     * nos pagamentos anteriores à regra e nos simulados — nunca recalculados
+     * com o percentual de hoje. Independente da comissão do parceiro indicador.
+     */
+    comissaoVincisMilesimos: integer('comissao_vincis_milesimos'),
+    comissaoVincisCentavos: integer('comissao_vincis_centavos'),
+    valorProfissionalCentavos: integer('valor_profissional_centavos'),
     aprovadoEm: timestamp('aprovado_em').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -106,6 +116,15 @@ export const consultoriaPagamentos = pgTable(
     prestadorIdx: index('consultoria_pagamentos_prestador_idx').on(
       t.prestadorId,
       t.createdAt,
+    ),
+    // Retrato inteiro ou nenhum, e as partes fecham o valor pago.
+    comissaoCoerente: check(
+      'consultoria_pagamentos_comissao_coerente',
+      sql`(${t.comissaoVincisMilesimos} is null and ${t.comissaoVincisCentavos} is null and ${t.valorProfissionalCentavos} is null)
+        or (${t.comissaoVincisMilesimos} between 1 and 999
+          and ${t.comissaoVincisCentavos} >= 0
+          and ${t.valorProfissionalCentavos} >= 0
+          and ${t.comissaoVincisCentavos} + ${t.valorProfissionalCentavos} = ${t.valorCentavos})`,
     ),
     valorPositivo: check(
       'consultoria_pagamentos_valor_positivo',

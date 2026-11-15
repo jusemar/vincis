@@ -12,7 +12,7 @@ import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/l
 import { obterArquivoDoAtendimento } from '@/features/atendimentos/queries/obter-arquivo-do-atendimento'
 import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-prestador'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import { interpretarCanal } from '@/integracoes/realtime/canais'
 import {
   criarContas,

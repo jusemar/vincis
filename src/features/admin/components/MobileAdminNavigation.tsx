@@ -23,9 +23,14 @@ import {
   Users,
   UsersRound,
   type LucideIcon,
+  Handshake,
 } from 'lucide-react'
 import { recursosPermitidos } from '../constants/recursos'
 import { ROTA_MEUS_PRECOS } from '@/features/precificacao-profissional/constants/precificacao-profissional'
+import {
+  ROTA_MEUS_CLIENTES_VINCIS,
+  ROTULO_MEUS_CLIENTES_VINCIS,
+} from '@/features/assinaturas/constants/contador-responsavel'
 import {
   ROTA_DOCUMENTOS_FISCAIS,
   ROTULO_DOCUMENTOS_FISCAIS,
@@ -61,6 +66,14 @@ const DEMAIS = [
   { id: 'tickets', label: 'Mensagens', icon: Ticket },
   { id: 'atendimentos', label: 'Atendimentos', icon: Headphones },
   { id: 'oportunidades', label: 'Oportunidades', icon: Target },
+  // Só contador parceiro Vincis — ver o comentário em `AdminSidebar`.
+  {
+    id: 'meus-clientes-vincis',
+    label: ROTULO_MEUS_CLIENTES_VINCIS,
+    icon: Handshake,
+    rota: ROTA_MEUS_CLIENTES_VINCIS,
+    exigeParceiroVincis: true,
+  },
   { id: 'financial', label: 'Financeiro', icon: DollarSign },
   { id: 'reviews', label: 'Avaliações', icon: Star },
   // Rota própria — ver o comentário em `AdminSidebar`.
@@ -97,6 +110,7 @@ export function MobileAdminNavigation({
   ehGestor = false,
   ehPrestador = true,
   podeVerDocumentosFiscais = false,
+  contadorParceiroVincis = false,
 }: {
   /**
    * A sessão é do Gestor da Plataforma — resolvido pelo `AdminShell` a partir
@@ -107,6 +121,8 @@ export function MobileAdminNavigation({
   ehPrestador?: boolean
   /** O perfil enxerga documentos fiscais — mesma tabela que o servidor usa. */
   podeVerDocumentosFiscais?: boolean
+  /** Contador parceiro Vincis — mostra "Meus clientes Vincis". */
+  contadorParceiroVincis?: boolean
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -114,7 +130,9 @@ export function MobileAdminNavigation({
   const [maisAberto, setMaisAberto] = useState(false)
   // Um item de rota própria acende pelo caminho aberto; os de seção, pela
   // seção — a gaveta "Mais" precisa refletir os dois.
-  const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais)
+  const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais).filter(
+    (item) => !('exigeParceiroVincis' in item) || contadorParceiroVincis,
+  )
   const paginaNoMais = DEMAIS.some((item) =>
     'rota' in item ? pathname.startsWith(item.rota) : item.id === paginaAtual,
   )

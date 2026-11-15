@@ -1,3 +1,4 @@
+import type { NaturezaProposta } from '../constants/natureza-proposta'
 import type { EtapaComercial } from '@/features/pagamentos/lib/etapa-comercial'
 import type { RespostasPrecificacao } from '@/features/precificacao/types/precificacao'
 
@@ -99,6 +100,8 @@ export type MinhaPropostaDTO = {
   vigente: boolean
   valorAcordadoCentavos: number | null
   aceitaEm: string | null
+  /** `avulsa` | `recorrente` — declarada por quem propôs. */
+  natureza: NaturezaProposta
   /** Aguardando resposta deste prestador, quando existir. */
   contrapropostaPendente: ContrapropostaDTO | null
   /** Rodadas anteriores, da mais antiga para a mais recente. */
@@ -197,6 +200,8 @@ export type PropostaRecebidaDTO = {
   prestadorCidade: string | null
   prestadorEstado: string | null
   prestadorTipoProfissional: string | null
+  /** `recorrente` = relação contábil direta do Autônomo, sem Pix da Vincis. */
+  natureza: NaturezaProposta
   perfilPublico: PerfilPublicoDaPropostaDTO
   mensagem: string
   valorCentavos: number | null

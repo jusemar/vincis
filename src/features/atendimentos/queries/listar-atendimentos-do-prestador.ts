@@ -1,3 +1,4 @@
+import { situacoesDocumentos } from '@/features/perfil-pro/lib/perfil-pro'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
@@ -141,6 +142,10 @@ export async function listarAtendimentosDoPrestador(
   if (!registros.length) return []
 
   const ids = registros.map((registro) => registro.id)
+  const situacoes = await situacoesDocumentos(
+    db,
+    registros.map((registro) => registro.prestadorId),
+  )
   // Marcas de leitura de todos os cards numa consulta só: o quadro carrega até
   // 200 Atendimentos, e uma ida ao banco por card seria um problema real.
   const marcasDeLeitura = await obterMarcasDeLeitura(usuarioId, 'atendimento', ids)
@@ -338,6 +343,8 @@ export async function listarAtendimentosDoPrestador(
     // que depende de quem olha — um convidado trabalha no Atendimento, mas não
     // o encerra —, e por isso some do menu dele em vez de virar um erro depois
     // do clique.
+    documentosPelaVincis:
+      situacoes.get(registro.prestadorId)?.documentosPelaVincis ?? true,
     acoes: transicoesPermitidas(registro.status as StatusAtendimento)
       .filter((acao) => acao.destino !== 'concluido' || podeConcluir)
       .map((acao) => ({

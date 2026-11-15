@@ -45,6 +45,11 @@ export type DestinatarioDaSolicitacao = {
   id: string
   nome: string
   categorias: CategoriaOportunidade[]
+  /**
+   * Advogado no Perfil Essencial: recebe documentos por e-mail, não pela
+   * Vincis. O campo de anexos sai do formulário (o servidor também recusa).
+   */
+  documentosPorEmail?: boolean
 }
 
 /**
@@ -73,11 +78,23 @@ export function FormularioSolicitarOrcamento({
   onCancelar,
   onEnviada,
   destinatario,
+  descricaoInicial = '',
+  onPrecisaEntrar,
 }: {
   onCancelar: () => void
   onEnviada?: () => void
   /** Presente = solicitação privada, dirigida a este Profissional. */
   destinatario?: DestinatarioDaSolicitacao
+  /**
+   * Texto de partida — o serviço do catálogo que levou a pessoa a pedir
+   * orçamento. Só um rascunho: a pessoa edita, e o servidor valida tudo.
+   */
+  descricaoInicial?: string
+  /**
+   * Quem hospeda o formulário sabe abrir o login sem sair da página (o perfil
+   * do Profissional, por exemplo). Sem isto, vale o caminho de sempre.
+   */
+  onPrecisaEntrar?: () => void
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -93,7 +110,7 @@ export function FormularioSolicitarOrcamento({
     categoriasOferecidas[0] ?? 'contabilidade',
   )
   const [especialidades, setEspecialidades] = useState<string[]>([])
-  const [descricao, setDescricao] = useState('')
+  const [descricao, setDescricao] = useState(descricaoInicial)
   const [anexos, setAnexos] = useState<File[]>([])
   const [enviando, iniciarTransicao] = useTransition()
 
@@ -127,7 +144,9 @@ export function FormularioSolicitarOrcamento({
       if (!resultado.sucesso) {
         if (resultado.precisaEntrar) {
           toast.info(resultado.mensagem, { duration: DURACAO_AVISO_LOGIN })
-          router.push('/profissionais?entrar=1')
+          // O texto digitado continua neste formulário, que segue montado.
+          if (onPrecisaEntrar) onPrecisaEntrar()
+          else router.push('/profissionais?entrar=1')
           return
         }
         toast.error(resultado.mensagem, {
@@ -282,6 +301,15 @@ export function FormularioSolicitarOrcamento({
           </p>
         </div>
 
+        {destinatario?.documentosPorEmail ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Documentos</Label>
+            <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              Este profissional recebe documentos por e-mail, fora da Vincis. Descreva o caso aqui; o e-mail
+              profissional de contato aparece no atendimento, quando ele for aberto.
+            </p>
+          </div>
+        ) : (
         <div className="space-y-1.5">
           <Label htmlFor="oportunidade-anexos" className="text-xs">
             Anexos (opcional)
@@ -311,6 +339,7 @@ export function FormularioSolicitarOrcamento({
             ou PNG.
           </p>
         </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">

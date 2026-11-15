@@ -34,6 +34,11 @@ export type AcessoUsuario = {
    * só evita oferecer uma porta que será fechada.
    */
   elegivelCentralFiscal: boolean
+  /**
+   * Contador parceiro da Vincis habilitado (contabilidade, `modelo = vincis`).
+   * Decide o item "Meus clientes Vincis"; a rota confere de novo.
+   */
+  contadorParceiroVincis: boolean
   /** Onde a pessoa cai ao entrar. Não é a única área que ela pode abrir. */
   destino: string
   /**
@@ -107,6 +112,7 @@ export async function resolverAcessoUsuario(
       ehGestor,
       tipoPrestador: null,
       elegivelCentralFiscal: ehGestor,
+      contadorParceiroVincis: false,
       destino: ehGestor ? '/admin' : '/cliente',
       statusProfissional: null,
       habilitado: false,
@@ -118,6 +124,7 @@ export async function resolverAcessoUsuario(
       tipoPrestador: perfisProfissionais.tipoPrestador,
       tipoProfissional: perfisProfissionais.tipoProfissional,
       statusAnalise: perfisProfissionais.statusAnalise,
+      modeloContratacao: perfisProfissionais.modeloContratacao,
     })
     .from(perfisProfissionais)
     .where(eq(perfisProfissionais.usuarioId, usuarioId))
@@ -146,6 +153,13 @@ export async function resolverAcessoUsuario(
     ehGestor,
     tipoPrestador,
     elegivelCentralFiscal,
+    // Mesmas portas de `features/profissionais/queries/contadores-parceiros.ts`
+    // (conta ativa e verificada já foram conferidas acima).
+    contadorParceiroVincis:
+      habilitado &&
+      tipoPrestador === 'profissional' &&
+      cadastro?.tipoProfissional === 'contabilidade' &&
+      cadastro?.modeloContratacao === 'vincis',
     // Cadastro pendente leva ao cadastro, inclusive para o Gestor: ele precisa
     // conseguir completá-lo para atuar como profissional. O acesso à Gestão da
     // Plataforma não se perde por isso — está em `areasPermitidas`.

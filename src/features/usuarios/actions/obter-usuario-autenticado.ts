@@ -1,3 +1,4 @@
+import { usuarioContadorParceiroVincis } from '@/features/profissionais/queries/contadores-parceiros'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { usuarios } from '@/db/schema'
@@ -60,6 +61,7 @@ export async function obterUsuarioAutenticado(token: string): Promise<ResultadoU
       perfil: perfilOperacional,
       ehGestor,
       elegivelCentralFiscal: await usuarioElegivelParaCentralFiscal(usuario.id),
+      contadorParceiroVincis: await usuarioContadorParceiroVincis(usuario.id),
     },
     ),
   }

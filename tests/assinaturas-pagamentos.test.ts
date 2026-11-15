@@ -243,7 +243,14 @@ describe('a confirmação manual só existe em homologação', () => {
           readFileSync(arquivo, 'utf8'),
         ),
     )
-    expect(quemImporta.map((a) => path.relative(raiz, a))).toEqual([])
+    // O único caminho é o efeito do Pix confirmado pela Efí — que não é Server
+    // Action nem rota: só o núcleo de pagamentos o chama, depois da consulta
+    // autenticada à Efí.
+    expect(quemImporta.map((a) => path.relative(raiz, a))).toEqual([
+      path.join('features', 'assinaturas', 'lib', 'pagamento-pix.ts'),
+    ])
+    const efeito = path.join(raiz, 'features/assinaturas/lib/pagamento-pix.ts')
+    expect(readFileSync(efeito, 'utf8')).not.toMatch(/^\s*['"]use server['"]/m)
   })
 
   it('o módulo não lê pagamento simulado', () => {
@@ -407,7 +414,9 @@ describe('anual e mensal', () => {
       [1, '2026-04-30', '2026-05-29'],
       [2, '2026-05-30', '2026-06-29'],
     ])
-    expect(meses[1].status).toBe('prevista')
+    // Renovação mensal: o mês 2 está pago e o período dele (maio/2026) já
+    // começou, então entra em andamento na confirmação.
+    expect(meses[1].status).toBe('em_andamento')
     const cobertura = await coberturaDasCompetencias(db, id)
     expect(meses.map((m) => cobertura.get(m.id))).toEqual([40_000, 40_000])
   })
@@ -681,6 +690,7 @@ describe('a contratação de /precos continua igual', () => {
       planoCodigo: 'padrao',
       periodoCodigo: semestral.periodo,
       respostas,
+      contador: { escolha: 'vincis' },
     })
     sairDaSessao()
     if (!r.sucesso) throw new Error(r.mensagem)

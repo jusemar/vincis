@@ -15,6 +15,10 @@ export interface Professional {
   specialties: string[];
   about: string;
   certifications: string[];
+  /** Advocacia: Perfil Essencial ou Pro. Ausente nas demais categorias. */
+  perfilAdvocacia?: "essencial" | "pro" | null;
+  /** Contabilidade: modelo comercial definido pelo gestor. Ausente = não exibir. */
+  modeloContratacao?: "vincis" | "autonomo" | null;
 }
 
 export interface FilterState {

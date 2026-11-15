@@ -57,7 +57,7 @@ import { listarComissoesDoParceiro } from '@/features/parceiros/queries/listar-c
 import { listarSaquesParaGestao } from '@/features/parceiros/queries/listar-saques-gestao'
 import { obterParceiroDoUsuario } from '@/features/parceiros/queries/obter-parceiro'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import { criarContas, limparContas } from './setup/contas-de-teste'
 import { comSessao, entrarComo, sairDaSessao } from './setup/sessao'
 

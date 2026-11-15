@@ -15,10 +15,10 @@ export const CAPITULOS_PRECOS_E_PARCEIROS: CapituloManual[] = [
         situacao: 'parcial',
         campos: [
           { rotulo: 'Quem usa', conteudo: 'Qualquer visitante simula; só Cliente (ou Gestor) contrata' },
-          { rotulo: 'Planos', conteudo: 'Contabilidade Padrão · Contabilidade Consultiva · Assistência Jurídica · Pacote Empresarial Completo (Consultiva + Jurídica com desconto).' },
+          { rotulo: 'Planos', conteudo: 'Contabilidade Padrão · Contabilidade Consultiva. Assistência Jurídica e o Pacote Empresarial não são oferecidos em /precos: advocacia segue pelo pedido de orçamento ao advogado.' },
           { rotulo: 'Passo a passo', ordenada: true, conteudo: ['Escolhe o tipo de serviço.', 'Responde: enquadramento fiscal (MEI, Simples, Presumido, Real), ramo, quem emite as notas, quantidade de notas, faturamento, funcionários, forma de atendimento, quem cuida da rotina e adicionais.', 'Vê o preço mensal, a composição do valor e o preço com desconto em 6 e 12 meses.', 'Clica em Contratar (entra, se necessário) e confirma.'] },
           { rotulo: 'Como o preço é montado', conteudo: 'Preço-base do regime × fator do plano → soma funcionários acima de 2, faixa de notas (só quando a Vincis emite) e faixa de faturamento → aplica os acréscimos de ramo, atendimento e rotina → soma os adicionais → arredonda. O Jurídico não cobra notas nem faturamento.' },
-          { rotulo: 'Resultado', conteudo: '“Contratação registrada. O pagamento ainda não está disponível neste ambiente.” Nada é cobrado e o Cliente não tem tela para acompanhar essa contratação.' },
+          { rotulo: 'Resultado', conteudo: '“Contratação iniciada. Conclua o pagamento por Pix para ativar o plano.” O Pix (Efí) é gerado logo abaixo, automaticamente; o plano só é ativado quando a Efí confirma o pagamento.' },
           { rotulo: 'Regra', conteudo: 'Se a configuração da Precificação estiver incoerente, a página mostra um aviso comercial de indisponibilidade em vez de um preço errado.' },
         ],
       },

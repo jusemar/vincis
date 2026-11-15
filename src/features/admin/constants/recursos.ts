@@ -95,6 +95,28 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     naCentral: true,
   },
   {
+    // A fila de Atendimentos parados (7+ dias sem interação). É onde a Gestão
+    // acompanha o que entrou "Em revisão pela Vincis" e, quando preciso,
+    // encerra sem conclusão — decisão que só a Vincis toma.
+    id: 'atendimentos-parados',
+    rota: '/admin/atendimentos-parados',
+    rotulo: 'Atendimentos parados',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
+  {
+    // Planos contábeis contratados da Vincis e o contador parceiro
+    // responsável por cada cliente — onde a Gestão aloca e troca.
+    id: 'planos',
+    rota: '/admin/planos',
+    rotulo: 'Planos contratados',
+    rotuloNaCentral: 'Planos',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
+  {
     id: 'precificacao',
     rota: '/admin/precificacao',
     rotulo: 'Precificação',

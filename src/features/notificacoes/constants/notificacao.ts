@@ -73,6 +73,8 @@ export const TIPOS_NOTIFICACAO = {
   contrapropostaRecusada: 'contraproposta_oportunidade_recusada',
   propostaAceita: 'proposta_oportunidade_aceita',
   pagamentoAprovado: 'pagamento_oportunidade_aprovado',
+  /** Pix confirmado pela Efí de um serviço avulso do catálogo. */
+  servicoPago: 'servico_pago',
   atendimentoCriadoDaOportunidade: 'atendimento_criado_da_oportunidade',
   /**
    * Consultoria Agendada — a terceira porta de entrada do Atendimento.
@@ -104,6 +106,15 @@ export const TIPOS_NOTIFICACAO = {
    */
   consultoriaLembrete: 'consultoria_lembrete',
   consultoriaConcluida: 'consultoria_concluida',
+  /**
+   * Atendimento parado esperando por alguém (3 e 7 dias sem interação).
+   * Vai só para quem precisa agir: a equipe ou o Cliente, nunca os dois.
+   */
+  atendimentoSemMovimentacao: 'atendimento_sem_movimentacao',
+  /** 14 dias parado: a Gestão da Vincis é chamada a acompanhar. */
+  atendimentoEmRevisao: 'atendimento_em_revisao',
+  /** A Gestão encerrou o Atendimento sem conclusão. Texto neutro, sem dinheiro. */
+  atendimentoEncerradoSemConclusao: 'atendimento_encerrado_sem_conclusao',
 } as const
 
 export type TipoNotificacao =
@@ -157,6 +168,10 @@ export const ICONE_NOTIFICACAO: Record<string, string> = {
   [TIPOS_NOTIFICACAO.contrapropostaRecusada]: '↩️',
   [TIPOS_NOTIFICACAO.propostaAceita]: '🤝',
   [TIPOS_NOTIFICACAO.pagamentoAprovado]: '💳',
+  [TIPOS_NOTIFICACAO.servicoPago]: '💳',
+  [TIPOS_NOTIFICACAO.atendimentoSemMovimentacao]: '⏳',
+  [TIPOS_NOTIFICACAO.atendimentoEmRevisao]: '🔎',
+  [TIPOS_NOTIFICACAO.atendimentoEncerradoSemConclusao]: '📁',
   [TIPOS_NOTIFICACAO.atendimentoCriadoDaOportunidade]: '📋',
 }
 
@@ -182,6 +197,11 @@ export type DestinoNotificacao = {
   conviteId?: string
   /** Abre a lista de Oportunidades já destacando esta. */
   oportunidadeId?: string
+  /**
+   * Rota própria fora do `/admin?pagina=` — ex.: a fila da Gestão em
+   * `/admin/atendimentos-parados`. Quando presente, é o endereço do clique.
+   */
+  rota?: string
 }
 
 /** Teto da caixa carregada de uma vez: o sino é uma fila, não um arquivo. */

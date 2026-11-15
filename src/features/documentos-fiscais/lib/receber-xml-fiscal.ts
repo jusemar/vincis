@@ -3,6 +3,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { documentosFiscais } from '@/db/schema'
 import { ehAcessoInterno, resolverAcessoCliente } from '@/features/clientes/lib/acesso-cliente'
+import { exigirFranquiaDoEscritorio } from '@/features/franquia-armazenamento/lib/franquia'
+import { DocumentoBloqueado } from '@/features/perfil-pro/lib/perfil-pro'
 import { PERMISSOES_DOCUMENTOS_FISCAIS } from '../constants/permissoes'
 import {
   CODIGOS_DUPLICIDADE,
@@ -240,6 +242,15 @@ async function receberArquivo(
   const arquivoId = randomUUID()
   const chave = montarChaveOriginal(acesso.empresaId, documentoId, arquivoId)
 
+  // Franquia do contador Autônomo proprietário do escritório: só o arquivo
+  // novo é recusado; os já guardados seguem acessíveis.
+  try {
+    await exigirFranquiaDoEscritorio(db, acesso.empresaId, bytes.byteLength)
+  } catch (erro) {
+    if (erro instanceof DocumentoBloqueado) return recusar('ARMAZENAMENTO_ESGOTADO')
+    throw erro
+  }
+
   // Storage primeiro: se falhar, não existe linha — nenhum documento fantasma.
   try {
     await gravarOriginalPrivado(chave, bytes, MIME_XML_FISCAL)
@@ -278,7 +289,14 @@ async function receberArquivo(
       console.error('[DOCUMENTOS_FISCAIS_ORFAO]', { chave, nome: falha instanceof Error ? falha.name : 'desconhecido' })
     })
     const jaRegistrado = motivoDeJaRegistrado(erro)
-    if (jaRegistrado) return duplicado(jaRegistrado === 'chave' && porChave ? porChave : porArquivo)
+    if (jaRegistrado) {
+      // O mesmo arquivo viola os dois índices, mas o banco aponta só um: o
+      // arquivo idêntico já registrado tem precedência sobre "mesma NF-e".
+      if (jaRegistrado === 'chave' && (await buscarDocumento(acesso.empresaId, entrada.clienteId, porArquivo))) {
+        return duplicado(porArquivo)
+      }
+      return duplicado(jaRegistrado === 'chave' && porChave ? porChave : porArquivo)
+    }
     console.error('[DOCUMENTOS_FISCAIS_REGISTRO]', { nome: erro instanceof Error ? erro.name : 'desconhecido' })
     return recusar('FALHA_REGISTRO')
   }

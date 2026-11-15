@@ -29,6 +29,8 @@ export type PainelConsultoriaConfirmadaProps = {
   duracaoMinutos: number
   valorCentavos: number
   protocolo: string
+  /** Advogado: nada foi pago pela Vincis — não há "valor pago" a mostrar. */
+  honorariosDiretos?: boolean
 }
 
 export function PainelConsultoriaConfirmada({
@@ -39,6 +41,7 @@ export function PainelConsultoriaConfirmada({
   duracaoMinutos,
   valorCentavos,
   protocolo,
+  honorariosDiretos = false,
 }: PainelConsultoriaConfirmadaProps) {
   return (
     <div className="space-y-4">
@@ -106,12 +109,19 @@ export function PainelConsultoriaConfirmada({
             </dd>
           </div>
         </div>
-        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 sm:col-span-2">
-          <span className="text-sm font-medium text-muted-foreground">Valor pago</span>
-          <span className="text-base font-bold text-foreground">
-            {formatarPreco(valorCentavos)}
-          </span>
-        </div>
+        {honorariosDiretos ? (
+          <p className="border-t border-border pt-3 text-sm text-muted-foreground sm:col-span-2">
+            Os honorários são combinados diretamente entre você e o profissional — pela conversa do
+            atendimento ou como preferirem.
+          </p>
+        ) : (
+          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 sm:col-span-2">
+            <span className="text-sm font-medium text-muted-foreground">Valor pago</span>
+            <span className="text-base font-bold text-foreground">
+              {formatarPreco(valorCentavos)}
+            </span>
+          </div>
+        )}
       </dl>
     </div>
   )

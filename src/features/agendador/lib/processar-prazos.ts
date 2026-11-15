@@ -1,6 +1,9 @@
+import { processarInatividadeDosAtendimentos } from '@/features/atendimentos/lib/atendimentos-parados'
 import { expirarConvitesVencidos } from '@/features/atendimentos/lib/convites'
 import { processarAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
 import { processarOportunidadesVencidas } from '@/features/oportunidades/lib/processar-vencidas'
+import { reconciliarCobrancasPix } from '@/features/pagamentos/lib/webhook-efi'
+import { prepararMensalidadesDosPlanos } from '@/features/assinaturas/lib/mensalidades'
 import { processarLembretesDeConsultoria } from './processar-lembretes-consultoria'
 
 /**
@@ -19,6 +22,12 @@ export type ResumoDoAgendador = {
   avisosDePrazo: number
   /** Lembretes de consultoria emitidos (soma dos dois lados). */
   lembretesDeConsultoria: number
+  /** Avisos de inatividade emitidos (3 e 7 dias) e casos levados à revisão (14). */
+  inatividade: { lembretes: number; inativos: number; emRevisao: number }
+  /** Cobranças Pix vencidas conferidas na Efí (rede de segurança do webhook). */
+  cobrancasPixConferidas: number
+  /** Mensalidades de planos mensais disponibilizadas e meses pagos iniciados. */
+  mensalidades: { criadas: number; iniciadas: number }
   /** Rotinas que falharam, pelo nome. A causa vai para o log do servidor. */
   falhas: string[]
 }
@@ -126,6 +135,47 @@ export async function processarPrazos(agora = new Date()): Promise<ResumoDoAgend
     falhas,
   )
 
+  /**
+   * A reconciliação das cobranças Pix.
+   *
+   * Rede de segurança do webhook: Pix vencido ainda sem desfecho é conferido
+   * na Efí — pago vira confirmado, não pago vira expirado. Mesmo motivo dos
+   * lembretes para morar aqui: endpoint, autorização e isolamento já existem.
+   */
+  const cobrancasPix = await isolar(
+    { nome: 'reconciliar-cobrancas-pix', executar: () => reconciliarCobrancasPix(agora) },
+    { consultadas: 0, pagas: 0, encerradas: 0 },
+    falhas,
+  )
+
+  /**
+   * A régua de inatividade dos Atendimentos (3, 7 e 14 dias sem interação).
+   *
+   * Mesmo endpoint e mesmo isolamento das demais. Idempotente pela chave do
+   * aviso — repetir o disparo no mesmo dia não repete notificação. Não muda
+   * status, não cancela e não estorna: só avisa quem precisa agir.
+   */
+  const inatividade = await isolar(
+    { nome: 'inatividade-atendimentos', executar: () => processarInatividadeDosAtendimentos(agora) },
+    { analisados: 0, lembretes: 0, inativos: 0, emRevisao: 0 },
+    falhas,
+  )
+
+  /**
+   * A renovação dos planos mensais.
+   *
+   * Disponibiliza o mês seguinte quando a janela de antecedência abre e põe em
+   * andamento o mês pago cujo período começou. Não cobra, não debita e não
+   * cancela ninguém: o cliente paga pelo Pix em "Meus planos". Idempotente —
+   * a trava da assinatura e o índice único do mês impedem duplicar.
+   */
+  const mensalidades = await isolar(
+    { nome: 'mensalidades-planos', executar: () => prepararMensalidadesDosPlanos(agora) },
+    { analisadas: 0, criadas: 0, iniciadas: 0, falhas: 0 },
+    falhas,
+  )
+  if (mensalidades.falhas > 0) falhas.push('mensalidades-planos')
+
   return {
     duracaoMs: Date.now() - inicio,
     oportunidadesExpiradas: oportunidades.expiradas,
@@ -133,6 +183,13 @@ export async function processarPrazos(agora = new Date()): Promise<ResumoDoAgend
     convitesExpirados,
     avisosDePrazo,
     lembretesDeConsultoria,
+    inatividade: {
+      lembretes: inatividade.lembretes,
+      inativos: inatividade.inativos,
+      emRevisao: inatividade.emRevisao,
+    },
+    cobrancasPixConferidas: cobrancasPix.consultadas,
+    mensalidades: { criadas: mensalidades.criadas, iniciadas: mensalidades.iniciadas },
     falhas,
   }
 }

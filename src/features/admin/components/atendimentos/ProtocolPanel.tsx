@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DISPONIVEL_NO_PRO } from "@/features/perfil-pro/constants/perfil-pro";
 import { anexarArquivoAoAtendimento } from "@/features/atendimentos/actions/anexar-arquivo";
 import {
   adicionarEtapaChecklist,
@@ -455,6 +456,7 @@ export const ProtocolPanel = ({
           arquivos={real.files}
           checklist={real.checklist}
           onAtualizar={onAtualizar}
+          documentosPelaVincis={real.documentsViaVincis}
         />
       )}
 
@@ -976,6 +978,18 @@ const FilesTab = ({
         <h4 className="text-sm font-semibold">Arquivos do protocolo</h4>
         {/* Mesmo botão de sempre; nos reais ele abre o seletor de arquivo e
             envia pelo mesmo caminho autorizado que o Cliente usa. */}
+        {/* Advogado no Perfil Essencial: o botão continua visível, travado,
+            com o selo — e o servidor recusa o envio de qualquer forma. */}
+        {protocol.real && !protocol.real.documentsViaVincis ? (
+          <span className="flex items-center gap-2">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+              {DISPONIVEL_NO_PRO}
+            </span>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled>
+              <Lock className="h-3.5 w-3.5" /> Anexar
+            </Button>
+          </span>
+        ) : (
         <Button
           size="sm"
           variant="outline"
@@ -985,6 +999,7 @@ const FilesTab = ({
         >
           <Plus className="h-3.5 w-3.5" /> {enviando ? "Enviando…" : "Anexar"}
         </Button>
+        )}
         <input
           ref={entrada}
           type="file"

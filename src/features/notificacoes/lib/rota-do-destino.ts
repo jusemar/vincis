@@ -13,6 +13,8 @@ import type { DestinoNotificacao } from '../constants/notificacao'
  * conta própria. Nenhum link contorna permissão.
  */
 export function rotaDoDestino(destino: DestinoNotificacao) {
+  // Só caminhos internos do painel: um destino gravado nunca vira link externo.
+  if (destino.rota?.startsWith('/admin/')) return destino.rota
   const parametros = new URLSearchParams({ pagina: destino.pagina })
   if (destino.atendimento) parametros.set('atendimento', destino.atendimento)
   if (destino.aba) parametros.set('aba', destino.aba)

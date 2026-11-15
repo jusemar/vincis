@@ -16,6 +16,17 @@ export const PASSOS_CONTRATACAO = [
 ] as const
 
 /** Índice de cada etapa na trilha. Detalhes é o único que esta etapa alcança. */
+/**
+ * A trilha da consultoria **jurídica**: mesma posição das etapas, com
+ * "Confirmação" no lugar de "Pagamento" — advogado combina honorários direto
+ * com o Cliente, e a Vincis não cobra a consulta.
+ */
+export const PASSOS_CONSULTORIA_JURIDICA = [
+  { rotulo: 'Detalhes' },
+  { rotulo: 'Confirmação' },
+  { rotulo: 'Concluído' },
+] as const
+
 export const PASSO_DETALHES = 0
 export const PASSO_PAGAMENTO = 1
 export const PASSO_CONCLUIDO = 2

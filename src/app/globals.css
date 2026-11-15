@@ -14,7 +14,12 @@
     --popover: 60 9% 97%;
     --popover-foreground: 24 9% 10%;
     --primary: 37 92% 50%;
-    --primary-foreground: 47 100% 96%;
+    /*
+      Texto sobre o âmbar: azul-marinho (o mesmo `--on-primary` e o mesmo do
+      tema escuro). O creme anterior dava ~2:1 de contraste — botões primários
+      pareciam desativados mesmo habilitados.
+    */
+    --primary-foreground: 222 47% 11%;
     --secondary: 24 5% 44%;
     --secondary-foreground: 60 9% 97%;
     --muted: 23 5% 82%;
@@ -300,6 +305,25 @@ html[data-theme="dark"] .admin-dashboard input, html[data-theme="dark"] .admin-d
 [data-theme="dark"] .admin-dashboard .badge-red { background: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; border: 1px solid rgba(239, 68, 68, 0.2) !important; }
 [data-theme="dark"] .admin-dashboard .badge-blue { background: rgba(59, 130, 246, 0.1) !important; color: #3b82f6 !important; border: 1px solid rgba(59, 130, 246, 0.2) !important; }
 [data-theme="dark"] .admin-dashboard .badge-gray { background: rgba(255, 255, 255, 0.05) !important; color: #8888a0 !important; border: 1px solid rgba(255, 255, 255, 0.06) !important; }
+
+/*
+  Botão primário (e quem usa `text-primary-foreground`) no admin escuro.
+
+  As regras acima forçam `#f0f0f5 !important` em todo descendente, inclusive
+  no texto e no ícone do botão âmbar — branco sobre âmbar, contraste ~1,9:1,
+  o que deixava o botão com cara de desativado. Aqui o texto volta ao token
+  do próprio botão (azul-marinho), e o desativado usa o neutro do tema.
+*/
+html[data-theme="dark"] .admin-dashboard .text-primary-foreground,
+html[data-theme="dark"] .admin-dashboard .text-primary-foreground *,
+html[data-theme="dark"] .admin-dashboard [data-slot="button"][data-variant="default"],
+html[data-theme="dark"] .admin-dashboard [data-slot="button"][data-variant="default"] *,
+.admin-dashboard[data-theme="dark"] [data-slot="button"][data-variant="default"],
+.admin-dashboard[data-theme="dark"] [data-slot="button"][data-variant="default"] * { color: hsl(var(--primary-foreground)) !important; }
+html[data-theme="dark"] .admin-dashboard [data-slot="button"][data-variant="default"]:disabled,
+html[data-theme="dark"] .admin-dashboard [data-slot="button"][data-variant="default"]:disabled *,
+.admin-dashboard[data-theme="dark"] [data-slot="button"][data-variant="default"]:disabled,
+.admin-dashboard[data-theme="dark"] [data-slot="button"][data-variant="default"]:disabled * { color: #a0a0b0 !important; }
 
 /*
   Badges de status, prazo e categoria dos Atendimentos no tema escuro.

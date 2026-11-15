@@ -36,6 +36,7 @@ const STATUS_NO_QUADRO: Record<string, Status> = {
   concluido: 'concluido',
   recusado: 'recusado',
   cancelado: 'cancelado',
+  encerrado_sem_conclusao: 'encerrado-sem-conclusao',
 }
 
 const ROTULO_MODELO_PRECO: Record<string, string> = {
@@ -311,6 +312,7 @@ export function mapearAtendimentoParaCard(
         responsibleId: atendimento.responsavel.id,
       },
       files: mapearArquivos(atendimento.id, atendimento.arquivos, agora),
+      documentsViaVincis: atendimento.documentosPelaVincis,
       checklist: atendimento.checklist.map<RealChecklistItem>((item) => ({
         id: item.id,
         label: item.titulo,
@@ -413,6 +415,7 @@ const STATUS_NO_BANCO: Record<Status, string> = {
   concluido: 'concluido',
   recusado: 'recusado',
   cancelado: 'cancelado',
+  'encerrado-sem-conclusao': 'encerrado_sem_conclusao',
 }
 
 export function statusDoBanco(status: Status) {

@@ -1,5 +1,6 @@
+import { exigirEspacoParaDocumento } from '@/features/franquia-armazenamento/lib/franquia'
 import { db } from '@/db/connection'
-import { atendimentoArquivos, atendimentoEventos, usuarios } from '@/db/schema'
+import { atendimentoArquivos, atendimentoEventos, atendimentos, usuarios } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import {
   ACOES_AUDITORIA,
@@ -46,6 +47,19 @@ export async function anexarArquivoNoAtendimento({
   if (!acesso) {
     throw new Error('Você não tem autorização para anexar neste atendimento.')
   }
+
+  /*
+    Perfil Essencial (advogado sem Perfil Pro) não troca documentos pela
+    Vincis — nem enviando, nem recebendo — e o Pro respeita o limite de
+    armazenamento quando ele existir; o contador Autônomo respeita a franquia
+    dele. Antes do upload: nada chega a ser gravado.
+  */
+  const [dono] = await db
+    .select({ prestadorId: atendimentos.prestadorId })
+    .from(atendimentos)
+    .where(eq(atendimentos.id, atendimentoId))
+    .limit(1)
+  if (dono) await exigirEspacoParaDocumento(db, dono.prestadorId, arquivo.size)
 
   const origem: OrigemArquivo = acesso.vinculo === 'cliente' ? 'cliente' : 'prestador'
   const enviado = await enviarArquivoAtendimento(atendimentoId, arquivo)

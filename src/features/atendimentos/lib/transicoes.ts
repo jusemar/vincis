@@ -49,6 +49,9 @@ export const TRANSICOES_ATENDIMENTO: Record<StatusAtendimento, AcaoTransicao[]> 
     concluido: [],
     recusado: [],
     cancelado: [],
+    // Só a Gestão chega aqui, por ação própria (`encerrarSemConclusao`), nunca
+    // pelo menu de transições da equipe.
+    encerrado_sem_conclusao: [],
   }
 
 export function transicoesPermitidas(status: StatusAtendimento) {

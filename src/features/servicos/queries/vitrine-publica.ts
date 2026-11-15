@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { servicos } from '@/db/schema'
+import { prestadorCobraDiretamente } from '@/features/profissionais/lib/honorarios'
 import { rotuloAcao, rotuloPreco } from '../lib/formatar-preco'
 import type { ModeloPreco } from '../schemas/servico'
 
@@ -40,7 +41,27 @@ export async function listarServicosPublicos(
     )
     .orderBy(asc(servicos.ordem), asc(servicos.nome), asc(servicos.id))
 
+  /*
+    Advogado: honorário combinado diretamente com o Cliente. O serviço aparece,
+    mas sem preço e sem "Contratar agora" — a ação é o pedido de orçamento
+    privado que o perfil já tem. O catálogo do advogado não muda no banco.
+  */
+  const juridico = await prestadorCobraDiretamente(db, prestadorId)
+
   return registros.map((servico) => {
+    if (juridico) {
+      return {
+        id: servico.id,
+        title: servico.nome,
+        description: servico.descricaoCurta,
+        price: 'Consultar honorários',
+        chips: servico.itensIncluidos,
+        cta: rotuloAcao('sob_orcamento'),
+        priceNote: servico.descricaoDetalhada ?? '',
+        isOrcamento: true,
+        modeloPreco: 'sob_orcamento' as ModeloPreco,
+      }
+    }
     const modeloPreco = servico.modeloPreco as ModeloPreco
     return {
       id: servico.id,

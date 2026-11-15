@@ -1,5 +1,6 @@
 'use server'
 
+import { planoContratavel } from '../constants/assinatura'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
@@ -21,8 +22,10 @@ import { podeAgirComoCliente } from '@/features/usuarios/lib/capacidades'
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { periodicidadeDosMeses } from '../constants/assinatura'
+import { contadorComVagaPara } from '@/features/profissionais/queries/contadores-parceiros'
 import { gerarCompetenciasPrevistas } from '../lib/competencias'
-import { chaveDaOferta, montarOferta } from '../lib/oferta'
+import { AlocacaoRecusada, definirContadorResponsavel } from '../lib/contador-responsavel'
+import { chaveDeIntencao, montarOferta } from '../lib/oferta'
 import { ContratarPlanoSchema } from '../schemas/contratacao'
 
 const CONTA_NAO_CONFIRMADA =
@@ -36,7 +39,7 @@ const PRECISA_ENTRAR =
  * não houve, e o ambiente ainda não cobra.
  */
 const REGISTRADA =
-  'Contratação registrada. O pagamento ainda não está disponível neste ambiente.'
+  'Contratação iniciada. Conclua o pagamento por Pix para ativar o plano.'
 
 function recusa(mensagem: string) {
   return {
@@ -104,7 +107,7 @@ export async function contratarPlanoVincis(entrada: unknown) {
   if (!validacao.success) {
     return recusa(validacao.error.issues[0]?.message ?? 'Contratação inválida.')
   }
-  const { planoCodigo, periodoCodigo, respostas } = validacao.data
+  const { planoCodigo, periodoCodigo, respostas, contador } = validacao.data
 
   let tabela: TabelaPrecificacao
   try {
@@ -118,7 +121,7 @@ export async function contratarPlanoVincis(entrada: unknown) {
   const servico = tabela.servicos.find(
     (candidato) => candidato.codigo === planoCodigo && candidato.ativo,
   )
-  if (!servico) {
+  if (!servico || !planoContratavel(planoCodigo)) {
     return recusa('Este plano não está disponível para contratação.')
   }
 
@@ -137,8 +140,22 @@ export async function contratarPlanoVincis(entrada: unknown) {
     return recusa('Escolha um prazo de contratação válido.')
   }
 
+  // O contador escolhido precisa ser parceiro apto agora — a lista da tela é
+  // só sugestão; Autônomo ou cadastro suspenso não passam daqui.
+  // No limite da capacidade conta como indisponível para novos clientes.
+  if (contador.escolha === 'cliente') {
+    // O próprio cliente que já ocupa vaga com ele (repetir a confirmação,
+    // segundo plano) não conta como entrada nova.
+    const { temVaga } = await contadorComVagaPara(db, contador.contadorId, sessao.id)
+    if (!temVaga) {
+      return recusa('Este contador não está disponível. Escolha outro ou deixe a Vincis escolher.')
+    }
+  }
+
   const oferta = montarOferta({ tabela, servico, resultado, periodo, respostas })
-  const chaveIntencao = chaveDaOferta(oferta)
+  // A escolha do contador faz parte da intenção: confirmar de novo com outra
+  // escolha é outra contratação pendente; repetir a mesma reencontra a mesma.
+  const chaveIntencao = chaveDeIntencao(oferta, contador.escolha === 'cliente' ? contador.contadorId : 'vincis')
 
   const buscarPendente = async () => {
     const [linha] = await db
@@ -194,8 +211,21 @@ export async function contratarPlanoVincis(entrada: unknown) {
           oferta,
           chaveIntencao,
           status: 'aguardando_pagamento',
+          escolhaContador: contador.escolha,
         })
         .returning({ id: assinaturas.id })
+
+      // Escolha do cliente: o responsável nasce com o contrato, já no
+      // histórico. "Deixar a Vincis escolher" nasce sem responsável — o
+      // Gestor aloca depois, sem profissional provisório.
+      if (contador.escolha === 'cliente') {
+        await definirContadorResponsavel(tx, {
+          assinaturaId: criada.id,
+          contadorId: contador.contadorId,
+          origem: 'cliente',
+          alteradoPorId: sessao.id,
+        })
+      }
 
       /*
         Os meses que o contrato cobre nascem junto com ele, previstos.
@@ -228,6 +258,7 @@ export async function contratarPlanoVincis(entrada: unknown) {
             valorTotalCentavos: periodo.totalPeriodoCentavos,
             status: 'aguardando_pagamento',
             competenciasPrevistas: competencias,
+            escolhaContador: contador.escolha,
           },
         },
         tx,
@@ -236,6 +267,10 @@ export async function contratarPlanoVincis(entrada: unknown) {
       return criada.id
     })
   } catch (erro) {
+    // O contador lotou (ou saiu do ar) entre a conferência e a gravação.
+    if (erro instanceof AlocacaoRecusada) {
+      return recusa('Este contador não está disponível. Escolha outro ou deixe a Vincis escolher.')
+    }
     // O índice único parcial é o que sobrevive ao clique duplo: quando ele
     // dispara, a contratação já existe, e devolvê-la é o resultado certo.
     const gravada = await buscarPendente()

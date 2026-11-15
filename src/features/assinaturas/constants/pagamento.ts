@@ -37,7 +37,9 @@ export type StatusPagamentoAssinatura =
  * existir, com a confirmação vinda de webhook validado.
  */
 export const PROVEDOR_HOMOLOGACAO = 'homologacao_manual' as const
-export const PROVEDORES_PAGAMENTO_ASSINATURA = [PROVEDOR_HOMOLOGACAO] as const
+/** Pix confirmado pela Efí — consulta autenticada, nunca o navegador. */
+export const PROVEDOR_EFI = 'efi' as const
+export const PROVEDORES_PAGAMENTO_ASSINATURA = [PROVEDOR_HOMOLOGACAO, PROVEDOR_EFI] as const
 export type ProvedorPagamentoAssinatura =
   (typeof PROVEDORES_PAGAMENTO_ASSINATURA)[number]
 

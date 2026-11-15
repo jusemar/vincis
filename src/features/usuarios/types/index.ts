@@ -57,6 +57,12 @@ export type DadosUsuarioAutenticado = {
    * e cada action conferem no servidor.
    */
   elegivelCentralFiscal: boolean
+  /**
+   * Contador parceiro da Vincis (contabilidade, `modelo_contratacao = vincis`)
+   * — decide o item "Meus clientes Vincis" no menu. Nunca autoriza nada: a
+   * rota confere no servidor.
+   */
+  contadorParceiroVincis: boolean
 }
 
 export type ResultadoLogin = ResultadoPadrao & {

@@ -1,4 +1,5 @@
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
 import { usuarios } from '../usuarios/tabela'
 
 /**
@@ -90,6 +91,32 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   emailProfissional: varchar('email_profissional', { length: 255 }).notNull(),
   statusAnalise: varchar('status_analise', { length: 30 }).notNull().default('rascunho'),
   observacaoAnalise: text('observacao_analise'),
+  /**
+   * Modelo comercial do profissional **contábil**, definido pelo gestor:
+   *
+   * - `vincis`: o cliente contrata e paga pela Vincis, que administra a
+   *   contratação e remunera o profissional pelas regras da plataforma;
+   * - `autonomo`: independente — anuncia o perfil, conversa, e a relação
+   *   recorrente (negociação e pagamento) é direta entre cliente e
+   *   profissional, sem Pix, repasse ou comissão da Vincis;
+   * - nulo: **não definido**. Cadastros antigos não são classificados por
+   *   palpite; enquanto nulo, nada público é exibido e o fluxo existente segue.
+   *
+   * Não se aplica à advocacia nem às outras categorias (o CHECK abaixo recusa
+   * valor fora de `tipo_profissional = 'contabilidade'`).
+   */
+  modeloContratacao: varchar('modelo_contratacao', { length: 20 }),
+  /**
+   * Capacidade máxima de clientes recorrentes do contador parceiro
+   * (`modelo_contratacao = 'vincis'`), definida pelo Gestor.
+   *
+   * Nula = sem limite definido. Conta só vínculos realmente ativos (plano
+   * `ativa`, ou seja, com pagamento confirmado) — ver
+   * `features/assinaturas/queries/carteira-do-contador.ts`. No limite, o
+   * contador continua com os clientes atuais e deixa de receber novos; nada é
+   * removido automaticamente. Ignorada em qualquer outro modelo.
+   */
+  capacidadeClientesRecorrentes: integer('capacidade_clientes_recorrentes'),
   enviadoEm: timestamp('enviado_em'),
   analisadoEm: timestamp('analisado_em'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -102,5 +129,13 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   tipoPrestadorIdx: index('perfis_profissionais_tipo_prestador_idx').on(
     t.tipoPrestador,
     t.statusAnalise,
+  ),
+  modeloContratacaoValido: check(
+    'perfis_profissionais_modelo_contratacao_valido',
+    sql`${t.modeloContratacao} is null or (${t.tipoProfissional} = 'contabilidade' and ${t.modeloContratacao} in ('vincis', 'autonomo'))`,
+  ),
+  capacidadePositiva: check(
+    'perfis_profissionais_capacidade_positiva',
+    sql`${t.capacidadeClientesRecorrentes} is null or ${t.capacidadeClientesRecorrentes} > 0`,
   ),
 }))

@@ -82,9 +82,7 @@ export function VisaoGeralCliente({
   const indicadores = montarIndicadores({ oportunidades, atendimentos })
   const atividade = montarAtividade({ oportunidades, atendimentos })
 
-  const ativos = atendimentos.filter(
-    (item) => !['concluido', 'recusado', 'cancelado'].includes(item.status),
-  )
+  const ativos = atendimentos.filter((item) => item.andamento.fase === 'em_atendimento')
   const solicitacoesAbertas = oportunidades.filter((item) => item.ativa)
 
   return (

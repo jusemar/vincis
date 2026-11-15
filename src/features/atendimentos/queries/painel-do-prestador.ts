@@ -100,7 +100,7 @@ export async function obterResumoDoPainel(
           condicaoAlcanceAtendimento(usuarioId),
           isNotNull(atendimentos.prazoEm),
           // Atendimento encerrado não tem prazo a cobrar.
-          sql`${atendimentos.status} not in ('concluido', 'recusado', 'cancelado')`,
+          sql`${atendimentos.status} not in ('concluido', 'recusado', 'cancelado', 'encerrado_sem_conclusao')`,
         ),
       ),
     listarConvitesDaPessoa(usuarioId),

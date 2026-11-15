@@ -1,0 +1,4 @@
+ALTER TABLE "assinatura_contador_alocacoes" DROP CONSTRAINT "assinatura_contador_alocacoes_troca_real";--> statement-breakpoint
+ALTER TABLE "assinatura_contador_alocacoes" ALTER COLUMN "contador_novo_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "assinatura_contador_alocacoes" ADD CONSTRAINT "assinatura_contador_alocacoes_troca_real" CHECK (("assinatura_contador_alocacoes"."contador_novo_id" is not null and ("assinatura_contador_alocacoes"."contador_anterior_id" is null or "assinatura_contador_alocacoes"."contador_anterior_id" <> "assinatura_contador_alocacoes"."contador_novo_id"))
+        or ("assinatura_contador_alocacoes"."contador_novo_id" is null and "assinatura_contador_alocacoes"."contador_anterior_id" is not null));

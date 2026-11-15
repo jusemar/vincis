@@ -9,9 +9,11 @@ import {
   documentosFiscaisArquivos,
   documentosFiscaisEventos,
   documentosFiscaisExtracoes,
+  configuracoesPlataforma,
   empresaMembros,
   eventosAuditoria,
   perfisPermissoes,
+  perfisProfissionais,
 } from '@/db/schema'
 import {
   excedeLimitesDoLote,
@@ -65,6 +67,8 @@ vi.mock('@/features/documentos-fiscais/lib/armazenamento-fiscal', async (importO
 })
 
 const { receberXmlsFiscais } = await import('@/features/documentos-fiscais/lib/receber-xml-fiscal')
+const { CHAVE_FRANQUIA_AUTONOMO } = await import('@/features/franquia-armazenamento/constants/franquia')
+const { usoDoAutonomo } = await import('@/features/franquia-armazenamento/lib/franquia')
 const { validarXmlFiscal, calcularSha256 } = await import('@/features/documentos-fiscais/lib/validar-xml-fiscal')
 const { POST } = await import('@/app/api/documentos-fiscais/xml/route')
 const { GET } = await import('@/app/api/documentos-fiscais/[documentoId]/arquivos/[arquivoId]/route')
@@ -579,6 +583,49 @@ describe('limite total do lote', () => {
       sucesso: true,
       arquivos: [{ codigo: 'ARQUIVO_MUITO_GRANDE' }, { codigo: 'ACEITO' }],
     })
+  })
+})
+
+describe('franquia do contador Autônomo proprietário', () => {
+  const definirFranquia = (valor: string) =>
+    db
+      .insert(configuracoesPlataforma)
+      .values({ chave: CHAVE_FRANQUIA_AUTONOMO, valor })
+      .onConflictDoUpdate({ target: configuracoesPlataforma.chave, set: { valor } })
+  const definirModelo = (modelo: 'autonomo' | null) =>
+    db
+      .update(perfisProfissionais)
+      .set({ modeloContratacao: modelo })
+      .where(eq(perfisProfissionais.usuarioId, cenario.ids.proprietario))
+
+  it('XMLs da Central consomem a franquia do proprietário; no limite, só o arquivo novo é recusado', async () => {
+    await definirModelo('autonomo')
+    try {
+      const inicial = await usoDoAutonomo(db, cenario.ids.proprietario)
+      const nota = xmlNfe()
+      const aceito = await enviar('proprietario', [arquivo(nota)], cenario.clienteA)
+      expect(aceito).toMatchObject({ sucesso: true, arquivos: [{ codigo: 'ACEITO' }] })
+      expect(await usoDoAutonomo(db, cenario.ids.proprietario)).toBe(inicial + bytesDe(nota).byteLength)
+
+      await definirFranquia(String(await usoDoAutonomo(db, cenario.ids.proprietario)))
+      const antes = await estadoDoUpload()
+      const recusado = await enviar('proprietario', [arquivo(xmlNfe())], cenario.clienteA)
+      expect(recusado).toMatchObject({
+        sucesso: true,
+        arquivos: [{ codigo: 'ARMAZENAMENTO_ESGOTADO', mensagem: MENSAGENS_UPLOAD_FISCAL.ARMAZENAMENTO_ESGOTADO }],
+      })
+      // Nada gravado no storage nem no banco; o que já existia continua.
+      expect(await estadoDoUpload()).toEqual(antes)
+
+      // Contador que não é Autônomo não tem franquia.
+      await definirModelo(null)
+      expect(await enviar('proprietario', [arquivo(xmlNfe())], cenario.clienteA)).toMatchObject({
+        arquivos: [{ codigo: 'ACEITO' }],
+      })
+    } finally {
+      await definirModelo(null)
+      await definirFranquia(String(1024 ** 3))
+    }
   })
 })
 

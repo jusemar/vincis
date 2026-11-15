@@ -1,3 +1,4 @@
+import { modeloContratacaoPublico } from '@/features/profissionais/constants/modelo-contratacao'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
@@ -49,6 +50,8 @@ export async function obterPrecificacaoPublicaDoProfissional(
   const [prestador] = await db
     .select({
       nome: usuarios.nome,
+      tipoProfissional: perfisProfissionais.tipoProfissional,
+      modeloContratacao: perfisProfissionais.modeloContratacao,
       publicado: precificacaoProfissional.publicado,
       publicadoEm: precificacaoProfissional.publicadoEm,
     })
@@ -112,5 +115,6 @@ export async function obterPrecificacaoPublicaDoProfissional(
     primeiroNome,
     tabela: tabelaDoProfissional(estrutura, valores, { primeiroNome }),
     publicadoEm: prestador.publicadoEm,
+    modeloContratacao: modeloContratacaoPublico(prestador.tipoProfissional, prestador.modeloContratacao),
   }
 }

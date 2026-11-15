@@ -13,6 +13,14 @@ export const STATUS_ATENDIMENTO = [
   'concluido',
   'recusado',
   'cancelado',
+  /**
+   * Encerrado pelo Gestor da Plataforma por falta de retorno.
+   *
+   * Terminal e sem efeito financeiro: não é cancelamento com estorno nem
+   * conclusão de serviço. O motivo e a nota interna moram em
+   * `atendimento_encerramentos`, fora do alcance do Cliente.
+   */
+  'encerrado_sem_conclusao',
 ] as const
 export type StatusAtendimento = (typeof STATUS_ATENDIMENTO)[number]
 
@@ -29,7 +37,13 @@ export const STATUS_TERMINAIS: StatusAtendimento[] = [
   'concluido',
   'recusado',
   'cancelado',
+  'encerrado_sem_conclusao',
 ]
+
+/** O Atendimento já terminou (por qualquer caminho)? */
+export function ehStatusEncerrado(status: string): boolean {
+  return (STATUS_TERMINAIS as string[]).includes(status)
+}
 
 /** Rótulos oficiais. Mesmos textos que a tela aprovada já exibia. */
 export const ROTULO_STATUS_ATENDIMENTO: Record<StatusAtendimento, string> = {
@@ -40,7 +54,34 @@ export const ROTULO_STATUS_ATENDIMENTO: Record<StatusAtendimento, string> = {
   concluido: 'Concluído',
   recusado: 'Recusado',
   cancelado: 'Cancelado',
+  encerrado_sem_conclusao: 'Encerrado sem conclusão',
 }
+
+/**
+ * Por que a Gestão encerrou um Atendimento parado.
+ *
+ * Lista fechada (espelha o `check` de `atendimento_encerramentos`). Nenhum
+ * motivo carrega decisão financeira — ver a tabela.
+ */
+export const MOTIVOS_ENCERRAMENTO_SEM_CONCLUSAO = [
+  'cliente_nao_responde',
+  'profissional_nao_responde',
+  'ambos_nao_respondem',
+  'outro',
+] as const
+export type MotivoEncerramentoSemConclusao =
+  (typeof MOTIVOS_ENCERRAMENTO_SEM_CONCLUSAO)[number]
+
+export const ROTULO_MOTIVO_ENCERRAMENTO: Record<MotivoEncerramentoSemConclusao, string> = {
+  cliente_nao_responde: 'Cliente não responde',
+  profissional_nao_responde: 'Profissional não responde',
+  ambos_nao_respondem: 'Ambas as partes não respondem',
+  outro: 'Outro',
+}
+
+/** Mínimo da observação administrativa: uma frase, não um carimbo. */
+export const TAMANHO_MINIMO_OBSERVACAO_ENCERRAMENTO = 10
+export const TAMANHO_MAXIMO_OBSERVACAO_ENCERRAMENTO = 2000
 
 export const PRIORIDADES_ATENDIMENTO = ['alta', 'media', 'baixa'] as const
 export type PrioridadeAtendimento = (typeof PRIORIDADES_ATENDIMENTO)[number]
@@ -303,6 +344,8 @@ export const TIPOS_EVENTO_ATENDIMENTO = {
   ajusteAceito: 'ajuste_aceito',
   ajusteRecusado: 'ajuste_recusado',
   atendimentoReaberto: 'atendimento_reaberto',
+  /** A Gestão encerrou por falta de retorno. Visível ao Cliente, sem a nota interna. */
+  atendimentoEncerradoSemConclusao: 'atendimento_encerrado_sem_conclusao',
   participanteAtribuido: 'participante_atribuido',
   participanteRemovido: 'participante_removido',
   conviteEnviado: 'convite_enviado',

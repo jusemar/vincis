@@ -43,7 +43,7 @@ import { listarMembrosAtribuiveis } from '@/features/atendimentos/queries/listar
 import { listarAtendimentosDoPrestador } from '@/features/atendimentos/queries/listar-atendimentos-do-prestador'
 import { obterResumoDoPainel } from '@/features/atendimentos/queries/painel-do-prestador'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { limparAtendimentosDosPrestadores } from './setup/limpeza-atendimentos'
 import { entrarComo, sairDaSessao } from './setup/sessao'

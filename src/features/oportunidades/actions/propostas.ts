@@ -1,5 +1,6 @@
 'use server'
 
+import { MENSAGEM_RECORRENTE_SO_AUTONOMO, podeProporRecorrente } from '../constants/natureza-proposta'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
@@ -56,15 +57,28 @@ export async function carregarOportunidadesDisponiveis() {
   if (!sessao) return SEM_AUTORIZACAO_COM_DADOS
   if (!tipoPrestadorDoPerfil(sessao.perfilTipo)) return SEM_AUTORIZACAO_COM_DADOS
 
-  const [lista, disponiveis] = await Promise.all([
+  const [lista, disponiveis, [perfil]] = await Promise.all([
     listarOportunidadesDoPrestador(sessao.id),
     contarOportunidadesDisponiveis(sessao.id),
+    db
+      .select({
+        tipoProfissional: perfisProfissionais.tipoProfissional,
+        modeloContratacao: perfisProfissionais.modeloContratacao,
+      })
+      .from(perfisProfissionais)
+      .where(eq(perfisProfissionais.usuarioId, sessao.id))
+      .limit(1),
   ])
 
   return {
     sucesso: true as const,
     mensagem: 'Oportunidades carregadas.',
-    dados: { lista, disponiveis },
+    dados: {
+      lista,
+      disponiveis,
+      // Só para mostrar a escolha no formulário; o envio confere de novo.
+      podeProporRecorrente: podeProporRecorrente(perfil?.tipoProfissional, perfil?.modeloContratacao),
+    },
   }
 }
 
@@ -105,6 +119,7 @@ export async function enviarProposta(entrada: unknown) {
     .select({
       tipoPrestador: perfisProfissionais.tipoPrestador,
       tipoProfissional: perfisProfissionais.tipoProfissional,
+      modeloContratacao: perfisProfissionais.modeloContratacao,
       statusAnalise: perfisProfissionais.statusAnalise,
       areasAtuacao: perfisProfissionais.areasAtuacao,
       especialidades: perfisProfissionais.especialidades,
@@ -115,6 +130,11 @@ export async function enviarProposta(entrada: unknown) {
 
   if (!prestadorHabilitado(perfil ?? null)) {
     return semPermissaoPara('enviar propostas')
+  }
+  // Recorrente direta é do Autônomo. O parceiro Vincis tem os planos da
+  // Vincis para isso; o advogado segue a regra própria de honorários.
+  if (dados.natureza === 'recorrente' && !podeProporRecorrente(perfil?.tipoProfissional, perfil?.modeloContratacao)) {
+    return { sucesso: false as const, mensagem: MENSAGEM_RECORRENTE_SO_AUTONOMO }
   }
 
   const [oportunidade] = await db
@@ -204,6 +224,7 @@ export async function enviarProposta(entrada: unknown) {
         valorCentavos,
         prazoEstimadoDias: dados.prazoEstimadoDias ?? null,
         validaAte,
+        natureza: dados.natureza,
       })
       .onConflictDoUpdate({
         target: [
@@ -215,6 +236,7 @@ export async function enviarProposta(entrada: unknown) {
           valorCentavos,
           prazoEstimadoDias: dados.prazoEstimadoDias ?? null,
           validaAte,
+          natureza: dados.natureza,
           updatedAt: new Date(),
         },
         // Proposta já aceita não é revisada: o acordo está fechado.
@@ -236,6 +258,7 @@ export async function enviarProposta(entrada: unknown) {
       metadados: {
         oportunidadeId: oportunidade.id,
         categoria: oportunidade.categoria,
+        natureza: dados.natureza,
       },
     })
 

@@ -13,7 +13,9 @@ import {
   Dado,
   Pilula,
 } from '@/features/portal-cliente/components/ui/primitivos'
+import { honorariosDiretos } from '@/features/profissionais/constants/honorarios'
 import { aceitarProposta, criarContraproposta } from '../../actions/negociacao'
+import { ROTULO_NATUREZA_PROPOSTA } from '../../constants/natureza-proposta'
 import { LIMITE_MENSAGEM_CONTRAPROPOSTA } from '../../constants/oportunidade'
 import type { PropostaRecebidaDTO } from '../../types/oportunidade'
 import { CartaoPrestadorPublico } from '../compartilhado/CartaoPrestadorPublico'
@@ -52,6 +54,15 @@ export function PropostaRecebida({
   const [processando, iniciarTransicao] = useTransition()
 
   const aceita = proposta.status === 'aceita'
+  /*
+    Advogado: o aceite só registra que Cliente e advogado concordaram. Não há
+    "aguardando pagamento", "pago" nem botão Pagar — honorário é combinado
+    entre eles, e o atendimento já abre no aceite.
+  */
+  const juridico = honorariosDiretos(proposta.prestadorTipoProfissional)
+  // Recorrente do contador Autônomo: mesmo desenho direto — sem Pix da Vincis.
+  const recorrente = proposta.natureza === 'recorrente'
+  const direto = juridico || recorrente
   const podeAgir =
     oportunidadeAtiva && proposta.vigente && !proposta.contrapropostaPendente
 
@@ -98,8 +109,8 @@ export function PropostaRecebida({
 
         {aceita ? (
           <Pilula
-            rotulo={pago ? 'Pagamento aprovado' : 'Aguardando pagamento'}
-            tom={pago ? 'sucesso' : 'atencao'}
+            rotulo={direto ? 'Proposta aceita' : pago ? 'Pagamento aprovado' : 'Aguardando pagamento'}
+            tom={direto || pago ? 'sucesso' : 'atencao'}
           />
         ) : !proposta.vigente ? (
           <Pilula rotulo="Fora da validade" tom="neutro" />
@@ -109,6 +120,13 @@ export function PropostaRecebida({
           <Pilula rotulo="Aguardando você" tom="destaque" />
         )}
       </div>
+
+      {recorrente && (
+        <p className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+          <b className="text-foreground">{ROTULO_NATUREZA_PROPOSTA.recorrente.titulo}.</b>{' '}
+          {ROTULO_NATUREZA_PROPOSTA.recorrente.descricao}
+        </p>
+      )}
 
       <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
         {proposta.mensagem}
@@ -151,7 +169,21 @@ export function PropostaRecebida({
           {/* O acordo combina o preço; a contratação só se efetiva com o
               pagamento, e é ele que abre o atendimento. Dizer isso aqui evita
               que o Cliente ache que já terminou. */}
-          {!pago ? (
+          {direto ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild size="sm">
+                <Link href={`/cliente/orcamentos?pagar=${oportunidadeId}`}>
+                  <Handshake className="size-4" />
+                  Ver acordo e atendimento
+                </Link>
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {juridico
+                  ? 'Os honorários são combinados diretamente com o profissional.'
+                  : 'O pagamento é combinado diretamente com o contador.'}
+              </span>
+            </div>
+          ) : !pago ? (
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild size="sm">
                 <Link href={`/cliente/orcamentos?pagar=${oportunidadeId}`}>

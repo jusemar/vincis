@@ -14,7 +14,8 @@ export type Status =
   | "aguardando-assinatura"
   | "concluido"
   | "recusado"
-  | "cancelado";
+  | "cancelado"
+  | "encerrado-sem-conclusao";
 export type Priority = "alta" | "media" | "baixa";
 export type Deadline = "normal" | "proximo" | "vencido";
 /**
@@ -226,6 +227,8 @@ export interface RealProtocolData {
    */
   consultoria: AtendimentoConsultoriaDTO | null;
   files: RealFile[];
+  /** `false`: advogado no Perfil Essencial — upload travado ("Disponível no Perfil Pro"). */
+  documentsViaVincis: boolean;
   events: RealEvent[];
   messages: RealMessage[];
   /** Protocolo — separado da Conversa, sem nenhum dado em comum. */

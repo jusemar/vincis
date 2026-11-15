@@ -21,6 +21,7 @@ import {
   BookOpen,
   FileText,
   type LucideIcon,
+  Handshake,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -30,6 +31,10 @@ import {
   ROTA_ADMIN,
 } from "../constants/recursos";
 import { ROTA_MEUS_PRECOS } from "@/features/precificacao-profissional/constants/precificacao-profissional";
+import {
+  ROTA_MEUS_CLIENTES_VINCIS,
+  ROTULO_MEUS_CLIENTES_VINCIS,
+} from "@/features/assinaturas/constants/contador-responsavel";
 import {
   ROTA_DOCUMENTOS_FISCAIS,
   ROTULO_DOCUMENTOS_FISCAIS,
@@ -64,6 +69,8 @@ interface SidebarProps {
    * tudo de novo — isto só evita oferecer uma porta fechada.
    */
   podeVerDocumentosFiscais?: boolean;
+  /** Contador parceiro Vincis — mostra "Meus clientes Vincis". Vem da sessão. */
+  contadorParceiroVincis?: boolean;
   /**
    * A conta exerce operação profissional.
    *
@@ -103,6 +110,15 @@ const navItems = [
   // Oportunidade é a etapa anterior à contratação: entra como destino próprio,
   // vizinho de Atendimentos, e nunca dentro deles.
   { id: "oportunidades", label: "Oportunidades", icon: Target },
+  // Só contador parceiro Vincis: planos recorrentes da Vincis sob a
+  // responsabilidade dele. Rota própria, carregada no servidor.
+  {
+    id: "meus-clientes-vincis",
+    label: ROTULO_MEUS_CLIENTES_VINCIS,
+    icon: Handshake,
+    rota: ROTA_MEUS_CLIENTES_VINCIS,
+    exigeParceiroVincis: true,
+  },
   { id: "financial", label: "Financeiro", icon: DollarSign },
   { id: "reviews", label: "Avaliações", icon: Star },
   // Rota própria, e não uma seção de `?pagina=`: a tela lê a grade de
@@ -138,6 +154,7 @@ export default function AdminSidebar({
   ehGestor = false,
   ehPrestador = true,
   podeVerDocumentosFiscais = false,
+  contadorParceiroVincis = false,
 }: SidebarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -189,6 +206,7 @@ export default function AdminSidebar({
         {ehPrestador &&
           navItems
             .filter((item) => !("exigeFiscal" in item) || podeVerDocumentosFiscais)
+            .filter((item) => !("exigeParceiroVincis" in item) || contadorParceiroVincis)
             .map((item) => {
           // Um item pode ser uma seção do painel (`?pagina=`) ou uma rota
           // própria. Quem tem `rota` acende pelo caminho aberto; os demais

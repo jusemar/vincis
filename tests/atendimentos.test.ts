@@ -67,7 +67,7 @@ import { mapearAtendimentoParaCard } from '@/features/admin/lib/atendimentos-rea
 import { garantirAtendimentoDaContratacao } from '@/features/atendimentos/lib/criar-atendimento-da-contratacao'
 import { obterAcessoAtendimento } from '@/features/atendimentos/lib/autorizacao'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { limparAtendimentosDosPrestadores } from './setup/limpeza-atendimentos'
 import { entrarComo, sairDaSessao } from './setup/sessao'

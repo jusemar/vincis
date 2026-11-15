@@ -1,3 +1,4 @@
+import { honorariosDiretos } from '@/features/profissionais/constants/honorarios'
 import { and, asc, between, eq, gt, lt, ne } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
@@ -85,6 +86,7 @@ async function carregarConfiguracao(
         consultoriaConfiguracoes.antecedenciaMinimaMinutos,
       horizonteDias: consultoriaConfiguracoes.horizonteDias,
       timezone: consultoriaConfiguracoes.timezone,
+      tipoProfissional: perfisProfissionais.tipoProfissional,
     })
     .from(consultoriaConfiguracoes)
     .innerJoin(usuarios, eq(usuarios.id, consultoriaConfiguracoes.prestadorId))
@@ -104,9 +106,15 @@ async function carregarConfiguracao(
     .limit(1)
 
   if (!registro) return null
+  const { tipoProfissional, ...configuracao } = registro
+  const juridico = honorariosDiretos(tipoProfissional)
   return {
-    ...registro,
+    ...configuracao,
     modalidade: registro.modalidade as ModalidadeConsultoria,
+    // Advogado: o valor configurado não sai para o público — honorário é
+    // combinado direto. A reserva lê o valor da configuração no servidor.
+    valorCentavos: juridico ? 0 : registro.valorCentavos,
+    honorariosDiretos: juridico,
   }
 }
 

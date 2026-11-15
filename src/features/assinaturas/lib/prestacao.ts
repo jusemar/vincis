@@ -5,10 +5,12 @@ import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
 } from '@/features/auditoria/lib/registrar-evento'
+import { situacaoOperacionalDoPlano } from '../constants/contador-responsavel'
 import {
   garantirComissaoRecorrenteSemDerrubar,
   type ResultadoDaComissaoRecorrente,
 } from '@/features/parceiros/lib/comissao-recorrente'
+import { coberturaDasCompetencias } from './pagamentos'
 
 export type ResultadoDoCumprimento =
   | {
@@ -17,7 +19,7 @@ export type ResultadoDoCumprimento =
       jaEstavaCumprida: boolean
       comissao: ResultadoDaComissaoRecorrente
     }
-  | { ok: false; motivo: 'competencia_inexistente' | 'competencia_cancelada' }
+  | { ok: false; motivo: 'competencia_inexistente' | 'competencia_cancelada' | 'pagamento_nao_confirmado' }
 
 /**
  * Registra que um mês de assinatura foi prestado.
@@ -25,9 +27,17 @@ export type ResultadoDoCumprimento =
  * ## Prestado, não pago
  *
  * É o outro lado do pagamento: pagar adiantado não cumpre mês nenhum, e cumprir
- * um mês não prova que ele foi pago. Por isso esta função não olha dinheiro — só
- * move o mês de `prevista`/`em_andamento` para `cumprida`. Mês cancelado não se
- * cumpre.
+ * um mês não prova que ele foi pago. Mas a prestação só **começa** depois do
+ * primeiro pagamento confirmado: plano `aguardando_pagamento` recusa
+ * (`pagamento_nao_confirmado`).
+ *
+ * No plano **mensal**, cada mês só é cumprido com o próprio valor coberto por
+ * pagamento `confirmado` — a renovação é paga mês a mês, e mês em aberto (ou em
+ * atraso) não é prestado (`pagamento_nao_confirmado`). Semestral e anual foram
+ * pagos adiantados na contratação e seguem a regra de antes. Fora isso, só move
+ * o mês de `prevista`/`em_andamento` para `cumprida`. Mês cancelado não se
+ * cumpre. Mês que já estava cumprido continua cumprido — repetir não reconfere
+ * dinheiro nem desfaz nada.
  *
  * ## E então a comissão
  *
@@ -55,6 +65,7 @@ export async function cumprirCompetencia({
         assinaturaId: assinaturaCompetencias.assinaturaId,
         numero: assinaturaCompetencias.numero,
         status: assinaturaCompetencias.status,
+        valorBaseCentavos: assinaturaCompetencias.valorBaseCentavos,
       })
       .from(assinaturaCompetencias)
       .where(eq(assinaturaCompetencias.id, competenciaId))
@@ -64,8 +75,30 @@ export async function cumprirCompetencia({
     if (competencia.status === 'cancelada') {
       return { ok: false as const, motivo: 'competencia_cancelada' as const }
     }
+    /*
+      Prestação só depois do pagamento confirmado. Enquanto o plano espera o
+      primeiro pagamento, o contador vê a contratação mas não começa a prestar
+      — e o mês não pode ser dado como cumprido. A confirmação da Efí ativa o
+      plano (`lib/pagamentos.ts`) e esta porta abre sozinha.
+    */
+    const [plano] = await tx
+      .select({ status: assinaturas.status, periodicidade: assinaturas.periodicidade })
+      .from(assinaturas)
+      .where(eq(assinaturas.id, competencia.assinaturaId))
+      .limit(1)
+    if (!plano || situacaoOperacionalDoPlano(plano.status) === 'aguardando_pagamento') {
+      return { ok: false as const, motivo: 'pagamento_nao_confirmado' as const }
+    }
 
     const jaEstavaCumprida = competencia.status === 'cumprida'
+
+    // Mensal: o mês precisa estar pago (confirmado) para ser dado como prestado.
+    if (!jaEstavaCumprida && plano.periodicidade === 'mensal') {
+      const cobertura = await coberturaDasCompetencias(tx, competencia.assinaturaId)
+      if ((cobertura.get(competencia.id) ?? 0) < competencia.valorBaseCentavos) {
+        return { ok: false as const, motivo: 'pagamento_nao_confirmado' as const }
+      }
+    }
     if (!jaEstavaCumprida) {
       const agora = new Date()
       await tx

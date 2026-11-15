@@ -83,9 +83,13 @@ export function ModalResponsivo({
             // Celular: folha ancorada na base, com teto de altura em `dvh`.
             "fixed inset-x-0 bottom-0 z-[60] flex max-h-[92dvh] w-full flex-col overflow-hidden",
             "rounded-t-3xl border border-b-0 border-border/50 bg-card shadow-2xl outline-none",
-            // Desktop: `inset-0 + m-auto + h-fit` centraliza sem `translate`,
-            // que quebraria a rolagem interna, e o teto vira 88dvh.
-            "sm:inset-0 sm:bottom-auto sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:rounded-2xl sm:border-b",
+            // Desktop: `inset-0 + m-auto + h-fit` centraliza nos dois eixos sem
+            // `translate`, que quebraria a rolagem interna. As quatro bordas
+            // precisam estar ancoradas: um `bottom-auto` aqui desfazia o
+            // `inset-0` e o `m-auto` vertical virava zero, colando o painel no
+            // topo. O teto de 88dvh deixa ~6dvh de respiro em cima e embaixo, e
+            // o excedente de conteúdo vira rolagem do miolo.
+            "sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[88dvh] sm:rounded-2xl sm:border-b",
             LARGURAS[largura],
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
             "data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4",

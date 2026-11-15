@@ -1,3 +1,4 @@
+import type { CobrancaPixDTO } from '@/features/pagamentos/types/cobranca'
 import type { ModalidadeConsultoria } from '../constants/consultoria'
 import type { DataLocal } from '../lib/tempo'
 
@@ -25,6 +26,8 @@ export type ResumoContratacaoDTO = {
   valorCentavos: number
   descricao: string
   clienteNome: string
+  /** Advogado: sem Pix — a reserva é confirmada direto, sem etapa de pagamento. */
+  honorariosDiretos: boolean
 }
 
 /**
@@ -99,8 +102,11 @@ export type ResultadoPagamentoConsultoria =
       agendamentoId: string
       atendimentoId: string
       protocolo: string
-      referencia: string
+      /** `null` na consultoria jurídica: nada é pago pela Vincis. */
+      referencia: string | null
       valorCentavos: number
+      /** Advogado: honorário combinado direto — a tela não mostra valor pago. */
+      honorariosDiretos?: boolean
       data: DataLocal
       inicio: string
       fim: string
@@ -113,3 +119,18 @@ export type ResultadoPagamentoConsultoria =
   | { situacao: 'conta_nao_confirmada'; mensagem: string }
   | { situacao: 'dados_invalidos'; mensagem: string }
   | { situacao: 'falhou'; mensagem: string }
+
+/**
+ * As respostas do pagamento real (Pix Efí) da consultoria.
+ *
+ * Reaproveita os desfechos do pagamento — `confirmado` é o mesmo "Concluído",
+ * com protocolo — e acrescenta os estados de espera do Pix: a cobrança emitida
+ * (`cobranca`), a geração em andamento, a Efí indisponível e o caso raro de
+ * Pix recebido depois de o horário ter sido ocupado (estorno manual).
+ */
+export type ResultadoPixConsultoria =
+  | Exclude<ResultadoPagamentoConsultoria, { situacao: 'recusado' }>
+  | { situacao: 'cobranca'; cobranca: CobrancaPixDTO; valorFormatado: string }
+  | { situacao: 'gerando'; mensagem: string }
+  | { situacao: 'indisponivel'; mensagem: string }
+  | { situacao: 'pago_sem_horario'; mensagem: string }

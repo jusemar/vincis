@@ -3,6 +3,7 @@ import { and, eq, inArray, like } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   clientes,
+  cobrancasPix,
   contratacoesServico,
   perfis,
   perfisProfissionais,
@@ -19,7 +20,8 @@ import {
   excluirServico,
   listarMeusServicos,
 } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
+import { iniciarPagamentoDoServico } from '@/features/servicos/actions/contratar'
 import {
   alterarStatusContratacao,
   listarContratacoesDoPrestador,
@@ -329,24 +331,21 @@ describe('contratação', () => {
     expect(linhas).toHaveLength(1)
   })
 
-  it('sob orçamento nasce sem valor e aguardando orçamento', async () => {
+  it('sob orçamento não cobra nem contrata: vai para a solicitação de orçamento', async () => {
     const id = await criarComo('profA', {
       nome: 'Regularização Teste',
       modeloPreco: 'sob_orcamento',
       valor: '',
     })
     entrarComo(contas.clienteA.token)
-    await contratarServico({ servicoId: id })
+    const resultado = await iniciarPagamentoDoServico({ servicoId: id })
 
-    const [contratacao] = await db
-      .select()
-      .from(contratacoesServico)
-      .where(eq(contratacoesServico.servicoId, id))
-    expect(contratacao.status).toBe('aguardando_orcamento')
-    expect(contratacao.valorSnapshotCentavos).toBeNull()
+    expect(resultado.situacao).toBe('requer_orcamento')
+    expect(await db.select().from(contratacoesServico)).toHaveLength(0)
+    expect(await db.select().from(cobrancasPix)).toHaveLength(0)
   })
 
-  it('a partir de e por hora preservam o modelo na contratação', async () => {
+  it('"a partir de" não cobra o mínimo como preço final, e "por hora" vai para a agenda', async () => {
     const base = await criarComo('profA', {
       nome: 'Base',
       modeloPreco: 'a_partir_de',
@@ -358,18 +357,11 @@ describe('contratação', () => {
       valor: '180,00',
     })
     entrarComo(contas.clienteA.token)
-    await contratarServico({ servicoId: base })
-    await contratarServico({ servicoId: hora })
+    expect((await iniciarPagamentoDoServico({ servicoId: base })).situacao).toBe('requer_orcamento')
+    expect((await iniciarPagamentoDoServico({ servicoId: hora })).situacao).toBe('requer_agenda')
 
-    const linhas = await db
-      .select()
-      .from(contratacoesServico)
-      .where(eq(contratacoesServico.clienteUsuarioId, contas.clienteA.id))
-    const porNome = new Map(linhas.map((l) => [l.nomeServicoSnapshot, l]))
-    expect(porNome.get('Base')!.modeloPrecoSnapshot).toBe('a_partir_de')
-    expect(porNome.get('Base')!.valorSnapshotCentavos).toBe(10000)
-    expect(porNome.get('Hora')!.modeloPrecoSnapshot).toBe('por_hora')
-    expect(porNome.get('Hora')!.valorSnapshotCentavos).toBe(18000)
+    expect(await db.select().from(contratacoesServico)).toHaveLength(0)
+    expect(await db.select().from(cobrancasPix)).toHaveLength(0)
   })
 
   it('visitante sem sessão é encaminhado ao login', async () => {
@@ -521,19 +513,18 @@ describe('separação entre catálogo e contratações', () => {
     expect(admin.dados![0].nomeServico).toBe('Declaração de IRPF Teste')
   })
 
-  it('solicitação de orçamento também entra na tela operacional', async () => {
+  it('serviço sob orçamento não vira contratação na tela operacional', async () => {
     const id = await criarComo('profA', {
       nome: 'Regularização Teste',
       modeloPreco: 'sob_orcamento',
       valor: '',
     })
     entrarComo(contas.clienteA.token)
-    await contratarServico({ servicoId: id })
+    expect((await contratarServico({ servicoId: id })).sucesso).toBe(false)
 
     entrarComo(contas.profA.token)
     const admin = await listarContratacoesDoPrestador()
-    expect(admin.dados).toHaveLength(1)
-    expect(admin.dados![0].status).toBe('aguardando_orcamento')
+    expect(admin.dados).toEqual([])
   })
 })
 

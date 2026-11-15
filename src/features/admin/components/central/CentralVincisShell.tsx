@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   BadgeDollarSign,
   CalendarClock,
+  ClipboardList,
   FileText,
   LayoutDashboard,
   Megaphone,
@@ -40,6 +41,7 @@ const ICONE_DO_MODULO: Record<string, LucideIcon> = {
   usuarios: Users,
   comunicados: Megaphone,
   consultorias: CalendarClock,
+  planos: ClipboardList,
   precificacao: BadgeDollarSign,
   cms: FileText,
 }

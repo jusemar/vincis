@@ -271,6 +271,9 @@
 .viva-confirmacao::before { content: ""; position: absolute; inset: 3px; border: 1px solid #ffffff8c; border-radius: 6px; }
 .viva-confirmacao svg { color: #126343; }
 .viva-confirmacao-status { display: inline-flex; flex-shrink: 0; }
+/* O balão usa o IconeConcluido do design system (o mesmo do stepper). A regra
+   `.viva-balao svg` pinta ícones do balão; o check do selo precisa seguir branco. */
+.viva-balao .viva-resposta-concluida svg { color: #fff; }
 @media (min-width:768px) and (max-width:1100px) {
   .viva-profissional { width: 31%; grid-template-columns: 60% 37%; }
   .viva-profissional-0 { top: 8%; }

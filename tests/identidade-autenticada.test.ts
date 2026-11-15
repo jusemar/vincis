@@ -152,6 +152,8 @@ describe('as duas portas descrevem toda conta do mesmo jeito', () => {
       // primeiro F5 — que foi como o defeito original se escondeu.
       expect(doSessao).toEqual(dados.usuario)
       expect(Object.keys(dados.usuario).sort()).toEqual([
+        // Contador parceiro Vincis — decide o item "Meus clientes Vincis".
+        'contadorParceiroVincis',
         'ehGestor',
         // Área de atuação que abre a Central Fiscal — capacidade nova, e por
         // isso precisa chegar pelas duas portas desde o primeiro carregamento.

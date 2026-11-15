@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BadgeDollarSign, CalendarClock, Megaphone, Users } from 'lucide-react'
+import { BadgeDollarSign, CalendarClock, ClipboardList, Megaphone, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -43,6 +43,12 @@ const ATALHOS = [
     icon: CalendarClock,
     titulo: 'Consultorias',
     descricao: 'Acompanhamento operacional das consultorias agendadas.',
+  },
+  {
+    href: '/admin/planos',
+    icon: ClipboardList,
+    titulo: 'Planos contratados',
+    descricao: 'Contador parceiro responsável por cada cliente: alocar e trocar.',
   },
   {
     href: '/admin/precificacao',

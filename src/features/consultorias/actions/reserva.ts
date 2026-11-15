@@ -130,6 +130,7 @@ export async function reservarHorarioDaConsultoria(
         .select({
           id: consultoriaConfiguracoes.id,
           intervaloMinutos: consultoriaConfiguracoes.intervaloMinutos,
+          valorCentavos: consultoriaConfiguracoes.valorCentavos,
         })
         .from(consultoriaConfiguracoes)
         .where(eq(consultoriaConfiguracoes.id, resumo.consultoriaId))
@@ -252,7 +253,9 @@ export async function reservarHorarioDaConsultoria(
           inicioEm: resumo.inicioEm,
           fimEm: resumo.fimEm,
           expiraEm: expiracaoDe(agora, HOLD_CONSULTORIA_MINUTOS),
-          valorCentavos: resumo.valorCentavos,
+          // Advogado: o resumo público não traz valor (honorário combinado
+          // direto); o snapshot interno vem da configuração, só para registro.
+          valorCentavos: resumo.honorariosDiretos ? configuracao.valorCentavos : resumo.valorCentavos,
           duracaoMinutos: resumo.duracaoMinutos,
           timezone: resumo.timezone,
           descricao: resumo.descricao,

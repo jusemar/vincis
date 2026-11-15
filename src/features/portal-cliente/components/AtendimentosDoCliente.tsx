@@ -29,10 +29,10 @@ import {
   publicarManifestacao,
 } from '@/features/atendimentos/actions/operacao'
 import {
-  ROTULO_STATUS_ATENDIMENTO,
   rotuloCategoria,
 } from '@/features/atendimentos/constants/atendimento'
 import { useRolagemDaConversa } from '@/features/atendimentos/hooks/useRolagemDaConversa'
+import { AndamentoDoAtendimento } from '@/features/atendimentos/components/cliente/AndamentoDoAtendimento'
 import { SolicitacaoDeAjusteDoCliente } from '@/features/atendimentos/components/cliente/SolicitacaoDeAjusteDoCliente'
 import { AvaliacaoDoAtendimento } from '@/features/avaliacoes/components/cliente/AvaliacaoDoAtendimento'
 import { PainelVideochamada } from '@/features/videochamada/components/PainelVideochamada'
@@ -87,16 +87,14 @@ const FILTROS_ATENDIMENTO = [
 
 type FiltroAtendimentos = (typeof FILTROS_ATENDIMENTO)[number]['id']
 
-const ENCERRADOS = ['concluido', 'recusado', 'cancelado']
-
 function aplicarFiltroAtendimentos(
   atendimentos: AtendimentoDoClienteDTO[],
   filtro: FiltroAtendimentos,
 ) {
   if (filtro === 'andamento')
-    return atendimentos.filter((item) => !ENCERRADOS.includes(item.status))
+    return atendimentos.filter((item) => item.andamento.fase === 'em_atendimento')
   if (filtro === 'aguardando')
-    return atendimentos.filter((item) => item.status === 'aguardando_cliente')
+    return atendimentos.filter((item) => item.andamento.situacao === 'aguardando_voce')
   if (filtro === 'concluidos')
     return atendimentos.filter((item) => item.status === 'concluido')
   return atendimentos
@@ -221,10 +219,8 @@ export function AtendimentosDoCliente({
                   <span className="font-mono text-xs text-muted-foreground">
                     {atendimento.protocolo}
                   </span>
+                  {/* A situação para o Cliente — e não o status operacional. */}
                   <Pilula rotulo={resumo.statusRotulo} tom={resumo.tom} />
-                  {resumo.aguardandoCliente ? (
-                    <Pilula rotulo="Precisa de você" tom="atencao" />
-                  ) : null}
                   {atendimento.conclusao && !atendimento.avaliacao ? (
                     <Pilula rotulo="Avaliação pendente" tom="info" />
                   ) : null}
@@ -236,6 +232,9 @@ export function AtendimentosDoCliente({
                 <h2 className="mt-3 text-base font-semibold leading-snug">
                   {atendimento.titulo}
                 </h2>
+                {resumo.micro ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{resumo.micro}</p>
+                ) : null}
 
                 <dl className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <Dado rotulo="Profissional" valor={atendimento.prestador.nome} />
@@ -430,10 +429,9 @@ function DetalheAtendimento({
               {atendimento.prestador.nome}
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            {ROTULO_STATUS_ATENDIMENTO[atendimento.status]}
-          </span>
         </div>
+
+        <AndamentoDoAtendimento atendimento={atendimento} />
 
         {/*
           Entrega, no mesmo cartão do detalhe.
@@ -553,6 +551,7 @@ function DetalheAtendimento({
             status={atendimento.status}
             ajuste={atendimento.ajuste}
             onAtualizar={onAtualizar}
+            documentosPelaVincis={atendimento.documentos.pelaVincis}
           />
         )}
 
@@ -739,6 +738,7 @@ function DetalheAtendimento({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Arquivos do atendimento</h3>
+              {atendimento.documentos.pelaVincis ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -747,6 +747,7 @@ function DetalheAtendimento({
               >
                 <Plus className="size-3.5" /> {enviando ? 'Enviando…' : 'Anexar'}
               </Button>
+              ) : null}
               <input
                 ref={entradaArquivo}
                 type="file"
@@ -758,6 +759,28 @@ function DetalheAtendimento({
                 }}
               />
             </div>
+            {/* Advogado no Perfil Essencial: documentos por e-mail, fora da
+                Vincis. O servidor recusa o upload de qualquer forma; os
+                arquivos que já existem continuam disponíveis abaixo. */}
+            {!atendimento.documentos.pelaVincis ? (
+              <div className="rounded-xl border bg-muted/30 p-3 text-sm">
+                <p className="font-medium text-foreground">Este profissional recebe documentos por e-mail.</p>
+                {atendimento.documentos.emailContato ? (
+                  <p className="mt-1 text-muted-foreground">
+                    Envie para{' '}
+                    <a
+                      className="font-medium text-primary underline underline-offset-2"
+                      href={`mailto:${atendimento.documentos.emailContato}?subject=${encodeURIComponent(`Documentos — atendimento ${atendimento.protocolo}`)}`}
+                    >
+                      {atendimento.documentos.emailContato}
+                    </a>{' '}
+                    informando o protocolo {atendimento.protocolo}. A Vincis não armazena esses documentos.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-muted-foreground">Combine o envio pela conversa do atendimento.</p>
+                )}
+              </div>
+            ) : null}
             {atendimento.arquivos.length === 0 ? (
               <p className="rounded-xl border border-dashed py-8 text-center text-sm text-muted-foreground">
                 Nenhum arquivo enviado.
@@ -840,8 +863,8 @@ function DetalheAtendimento({
               valor={rotuloCategoria(atendimento.categoria)}
             />
             <Informacao
-              rotulo="Status"
-              valor={ROTULO_STATUS_ATENDIMENTO[atendimento.status]}
+              rotulo="Situação"
+              valor={atendimento.andamento.apresentacao.rotulo}
             />
             <Informacao
               rotulo={atendimento.origemOportunidade ? 'Aberto em' : 'Contratado em'}

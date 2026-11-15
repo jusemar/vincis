@@ -1,5 +1,5 @@
+import { honorariosDiretos } from '@/features/profissionais/constants/honorarios'
 import type { AtendimentoDoClienteDTO } from '@/features/atendimentos/types/atendimento'
-import { ROTULO_STATUS_ATENDIMENTO } from '@/features/atendimentos/constants/atendimento'
 import { calcularProgresso } from '@/features/atendimentos/lib/progresso-checklist'
 import { rotuloDaCategoria } from '@/features/oportunidades/constants/oportunidade'
 import type { OportunidadeDoClienteDTO } from '@/features/oportunidades/types/oportunidade'
@@ -102,6 +102,10 @@ export function montarItensDeAtencao({
       (proposta) => proposta.status === 'aceita',
     )
     if (!acordo) continue
+    // Advogado: honorário combinado direto — nunca uma pendência de pagamento na Vincis.
+    if (honorariosDiretos(acordo.prestadorTipoProfissional)) continue
+    // Recorrente do Autônomo: pagamento direto ao contador — também nunca pendência na Vincis.
+    if (acordo.natureza === 'recorrente') continue
     itens.push({
       id: `pagamento-${oportunidade.id}`,
       tom: 'atencao',
@@ -115,7 +119,9 @@ export function montarItensDeAtencao({
 
   // 4. Atendimento parado esperando o Cliente.
   for (const atendimento of atendimentos) {
-    if (atendimento.status !== 'aguardando_cliente') continue
+    // A situação derivada, e não o status cru: inclui a resposta do
+    // profissional na conversa, e não só o pedido formal.
+    if (atendimento.andamento.situacao !== 'aguardando_voce') continue
     itens.push({
       id: `atendimento-${atendimento.id}`,
       tom: 'atencao',
@@ -182,7 +188,7 @@ export function montarIndicadores({
     {
       rotulo: 'Atendimentos ativos',
       valor: atendimentos.filter(
-        (item) => !['concluido', 'recusado', 'cancelado'].includes(item.status),
+        (item) => item.andamento.fase === 'em_atendimento',
       ).length,
     },
     {
@@ -280,24 +286,18 @@ export function resumoDoAtendimento(atendimento: AtendimentoDoClienteDTO) {
   // primeiro item é a última coisa que aconteceu.
   const ultimoEvento = atendimento.eventos[0] ?? null
   return {
-    statusRotulo: ROTULO_STATUS_ATENDIMENTO[atendimento.status],
-    tom: tomDoStatus(atendimento.status),
+    // A situação para o Cliente ("Aguardando profissional", "Prazo vencido ·
+    // Aguardando você"…), não o status operacional ("Novo").
+    statusRotulo: atendimento.andamento.apresentacao.rotulo,
+    micro: atendimento.andamento.apresentacao.micro,
+    tom: atendimento.andamento.apresentacao.tom,
     progresso,
-    aguardandoCliente: atendimento.status === 'aguardando_cliente',
+    aguardandoCliente: atendimento.andamento.situacao === 'aguardando_voce',
     ultimaAtualizacao: ultimoEvento
       ? { descricao: ultimoEvento.descricao, quando: dataHora(ultimoEvento.criadoEm) }
       : null,
     prazo: atendimento.prazoEm ? dataCurta(atendimento.prazoEm) : null,
   }
-}
-
-export function tomDoStatus(status: string): Tom {
-  if (status === 'concluido') return 'sucesso'
-  if (status === 'aguardando_cliente' || status === 'aguardando_assinatura')
-    return 'atencao'
-  if (status === 'recusado' || status === 'cancelado') return 'neutro'
-  if (status === 'em_andamento') return 'info'
-  return 'destaque'
 }
 
 export const formatarDataCurta = dataCurta

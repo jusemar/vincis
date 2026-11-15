@@ -64,8 +64,25 @@ export const assinaturas = pgTable(
     clienteUsuarioId: uuid('cliente_usuario_id')
       .notNull()
       .references(() => usuarios.id),
-    /** O profissional executor, quando a Vincis alocar um. Opcional de propósito. */
+    /**
+     * O profissional executor, quando a Vincis alocar um. Opcional de propósito.
+     *
+     * Nos planos contábeis da vitrine é o **contador parceiro responsável
+     * atual** — escolhido pelo cliente na contratação ou alocado depois pelo
+     * Gestor. Trocar de contador muda só esta coluna: contrato, pagamentos e
+     * competências continuam os mesmos. Cada mudança fica registrada em
+     * `assinatura_contador_alocacoes`, que é o histórico; esta coluna é o estado.
+     */
     prestadorId: uuid('prestador_id').references(() => usuarios.id),
+    /**
+     * Como o cliente quis o contador, no momento da contratação.
+     *
+     * `cliente` — escolheu um contador parceiro da lista;
+     * `vincis` — deixou a Vincis escolher (fica aguardando o Gestor alocar).
+     * Nulo nos planos que não têm contador (Perfil Pro, armazenamento) e nas
+     * assinaturas anteriores a esta escolha.
+     */
+    escolhaContador: varchar('escolha_contador', { length: 20 }),
     /** O serviço do catálogo da Vincis (`precificacao_servicos.codigo`). */
     planoCodigo: varchar('plano_codigo', { length: 30 }).notNull(),
     planoNome: varchar('plano_nome', { length: 160 }).notNull(),
@@ -122,6 +139,9 @@ export const assinaturas = pgTable(
       t.clienteUsuarioId,
       t.createdAt,
     ),
+    // Carteira do contador responsável ("Meus clientes Vincis") e contagem da
+    // capacidade (vínculos ativos por contador).
+    doContadorIdx: index('assinaturas_contador_idx').on(t.prestadorId, t.status),
     statusValido: check(
       'assinaturas_status_valido',
       sql`${t.status} in ('aguardando_pagamento', 'ativa', 'cancelada', 'encerrada')`,
@@ -131,6 +151,10 @@ export const assinaturas = pgTable(
       sql`${t.periodicidade} in ('mensal', 'semestral', 'anual')`,
     ),
     mesesPositivos: check('assinaturas_meses_positivos', sql`${t.meses} > 0`),
+    escolhaContadorValida: check(
+      'assinaturas_escolha_contador_valida',
+      sql`${t.escolhaContador} is null or ${t.escolhaContador} in ('cliente', 'vincis')`,
+    ),
     valoresPositivos: check(
       'assinaturas_valores_positivos',
       sql`${t.valorMensalCentavos} > 0 and ${t.valorMensalCheioCentavos} > 0`,

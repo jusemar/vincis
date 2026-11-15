@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  check,
   index,
   integer,
   pgTable,
@@ -57,6 +58,19 @@ export const oportunidadePropostas = pgTable(
     aceitaEm: timestamp('aceita_em'),
     /** Valor efetivamente acordado — o da proposta ou o da contraproposta. */
     valorAcordadoCentavos: integer('valor_acordado_centavos'),
+    /**
+     * Natureza do que está sendo proposto, declarada pelo prestador.
+     *
+     * - `avulsa`: serviço pontual. Pode ser pago pela Vincis (Pix), e então a
+     *   comissão Vincis configurada é obrigatória.
+     * - `recorrente`: relação contábil recorrente do contador **Autônomo**.
+     *   Negociação e pagamento são diretos entre cliente e contador: sem Pix,
+     *   sem cobrança, sem comissão e sem plano da Vincis.
+     *
+     * Classificação explícita — nunca inferida do texto da proposta. Propostas
+     * anteriores nascem `avulsa`, que é exatamente o que elas já eram.
+     */
+    natureza: varchar('natureza', { length: 20 }).notNull().default('avulsa'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -87,6 +101,10 @@ export const oportunidadePropostas = pgTable(
     oportunidadeIdx: index('oportunidade_propostas_oportunidade_idx').on(
       t.oportunidadeId,
       t.createdAt,
+    ),
+    naturezaValida: check(
+      'oportunidade_propostas_natureza_valida',
+      sql`${t.natureza} in ('avulsa', 'recorrente')`,
     ),
     // O prestador consulta "já respondi esta?" e "o que eu enviei".
     prestadorIdx: index('oportunidade_propostas_prestador_idx').on(

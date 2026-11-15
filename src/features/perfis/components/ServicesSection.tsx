@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { professionalData } from '../constants/perfil';
-import { contratarServico } from '@/features/servicos/actions/contratar';
 import type { ServicoVitrine } from '@/features/servicos/queries/vitrine-publica';
 
 type ServicesSectionProps = {
@@ -20,24 +19,15 @@ export default function ServicesSection({ servicos }: ServicesSectionProps = {})
   // Mesmo formato de dado do mock anterior: o JSX abaixo não muda.
   const lista = servicos ?? professionalData.services;
 
+  /**
+   * Vitrine legada (perfil de colaborador, sem prestador real): contratar
+   * acontece no perfil público do Profissional, onde existe o pagamento por
+   * Pix. Este botão só orienta — ele nunca criou contratação paga.
+   */
   function contratar(servicoId: string | undefined) {
     if (!servicoId) return;
-    iniciarTransicao(async () => {
-      const resultado = await contratarServico({ servicoId });
-      if (!resultado.sucesso) {
-        // Visitante sem sessão volta para o fluxo de login já existente,
-        // guardando a intenção para retomar o serviço certo depois.
-        if (resultado.precisaEntrar) {
-          const destino = `${window.location.pathname}${window.location.search}`;
-          window.location.href = `/?entrar=1&retorno=${encodeURIComponent(
-            `${destino}#servico-${servicoId}`,
-          )}`;
-          return;
-        }
-        toast.error(resultado.mensagem);
-        return;
-      }
-      toast.success(resultado.mensagem);
+    iniciarTransicao(() => {
+      toast.info('Abra o perfil do profissional para contratar este serviço.');
     });
   }
 

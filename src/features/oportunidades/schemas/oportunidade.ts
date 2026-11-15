@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { NATUREZAS_PROPOSTA } from '../constants/natureza-proposta'
 import { ABRANGENCIAS } from '../constants/abrangencia'
 import {
   CATEGORIAS_OPORTUNIDADE,
@@ -187,6 +188,8 @@ export const NovaPropostaSchema = z.object({
     )
     .optional()
     .default(VALIDADE_PADRAO_HORAS),
+  /** Explícita, nunca inferida do texto. Recorrente só para o Autônomo (servidor). */
+  natureza: z.enum(NATUREZAS_PROPOSTA).optional().default('avulsa'),
 })
 
 /**

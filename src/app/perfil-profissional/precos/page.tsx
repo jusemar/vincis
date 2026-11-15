@@ -74,6 +74,7 @@ export default async function PrecosDoProfissionalRoute({
       primeiroNome={precificacao.primeiroNome}
       prestadorId={precificacao.prestadorId}
       autenticado={sessao !== null}
+      modeloContratacao={precificacao.modeloContratacao}
       voltarPara={`/perfil-profissional?prestador=${encodeURIComponent(precificacao.prestadorId)}`}
     />
   )

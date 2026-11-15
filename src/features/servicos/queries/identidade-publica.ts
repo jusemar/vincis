@@ -1,3 +1,5 @@
+import { modeloContratacaoPublico } from '@/features/profissionais/constants/modelo-contratacao'
+import { situacaoDocumentos } from '@/features/perfil-pro/lib/perfil-pro'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
@@ -42,6 +44,9 @@ export async function obterIdentidadePublica(prestadorId: string) {
       tipoProfissional: perfisProfissionais.tipoProfissional,
       sobreTitulo: perfisProfissionais.sobreTitulo,
       sobreTexto: perfisProfissionais.sobreTexto,
+      numeroRegistro: perfisProfissionais.numeroRegistro,
+      estadoRegistro: perfisProfissionais.estadoRegistro,
+      modeloContratacaoBruto: perfisProfissionais.modeloContratacao,
     })
     .from(usuarios)
     .innerJoin(
@@ -73,10 +78,34 @@ export async function obterIdentidadePublica(prestadorId: string) {
    * mostrar o estado vazio em vez de afirmar uma nota que ninguém deu.
    */
   const reputacao = await obterReputacaoDoPrestador(prestadorId)
+  // Perfil Essencial/Pro — só advocacia; identifica recursos, não qualidade.
+  const documentos = await situacaoDocumentos(db, prestadorId)
 
+  const { numeroRegistro, estadoRegistro, modeloContratacaoBruto, ...publico } = prestador
   return {
-    ...prestador,
+    ...publico,
+    // Registro da OAB já salvo no cadastro (sem campo novo), para "Formação".
+    registroProfissional:
+      prestador.tipoProfissional === 'advocacia' ? rotuloRegistroOab(numeroRegistro, estadoRegistro) : null,
+    // Mesma regra da listagem: honorário de advogado não sai para o público.
+    valorHoraCentavos:
+      prestador.tipoProfissional === 'advocacia' ? null : prestador.valorHoraCentavos,
     avaliacaoMedia: reputacao.mediaEmDecimos,
+    perfilAdvocacia: documentos.nivel,
+    // Contábil: modelo comercial só quando definido pelo gestor.
+    modeloContratacao: modeloContratacaoPublico(prestador.tipoProfissional, modeloContratacaoBruto),
     totalAvaliacoes: reputacao.total,
   }
+}
+
+/**
+ * "OAB/MG 123456" a partir de `numero_registro` + `estado_registro`. Número que
+ * já traz a sigla (ex.: "OAB/MG 123456") sai como foi digitado, sem duplicar.
+ */
+export function rotuloRegistroOab(numero: string | null, estado: string | null): string | null {
+  const limpo = numero?.trim()
+  if (!limpo) return null
+  if (/^oab\b/i.test(limpo)) return limpo
+  const uf = estado?.trim().toUpperCase()
+  return uf ? `OAB/${uf} ${limpo}` : `OAB ${limpo}`
 }

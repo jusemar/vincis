@@ -1,5 +1,7 @@
 'use server'
 
+import { exigirEspacoParaDocumento } from '@/features/franquia-armazenamento/lib/franquia'
+import { DocumentoBloqueado } from '@/features/perfil-pro/lib/perfil-pro'
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -176,6 +178,30 @@ export async function criarOportunidade(formData: FormData) {
       return {
         sucesso: false as const,
         mensagem: 'Este profissional não atende a categoria escolhida.',
+        precisaEntrar: false,
+        contaNaoConfirmada: false,
+      }
+    }
+  }
+
+  /*
+    Pedido privado com anexos para advogado no Perfil Essencial: documentos não
+    passam pela Vincis. O Cliente envia por e-mail ao profissional. Com Pro,
+    vale o limite de armazenamento quando houver; para o contador Autônomo, a
+    franquia dele.
+  */
+  if (destinatario && anexos.arquivos.length) {
+    try {
+      await exigirEspacoParaDocumento(
+        db,
+        destinatario.id,
+        anexos.arquivos.reduce((total, arquivo) => total + arquivo.size, 0),
+      )
+    } catch (erro) {
+      if (!(erro instanceof DocumentoBloqueado)) throw erro
+      return {
+        sucesso: false as const,
+        mensagem: `${erro.message} Envie a solicitação sem anexos e mande os documentos por e-mail.`,
         precisaEntrar: false,
         contaNaoConfirmada: false,
       }

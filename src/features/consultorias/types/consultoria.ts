@@ -23,6 +23,11 @@ export type ConsultoriaPublicaDTO = {
   /** Necessários para a tela saber até onde navegar e o que já está fora. */
   horizonteDias: number
   antecedenciaMinimaMinutos: number
+  /**
+   * Advogado: honorário combinado direto com o Cliente. A agenda funciona, mas
+   * sem Pix e sem preço exposto (`valorCentavos` chega 0 ao público).
+   */
+  honorariosDiretos?: boolean
 }
 
 /** Um dia com pelo menos um horário livre. */
@@ -124,4 +129,6 @@ export type SelecaoDeConsultoria = {
   duracaoMinutos: number
   valorCentavos: number
   modalidade: ModalidadeConsultoria
+  /** Advogado: sem Pix, honorário combinado direto. */
+  honorariosDiretos?: boolean
 }

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import {
+  BadgeCheck,
+  HardDrive,
   BriefcaseBusiness,
   CheckCircle2,
   DollarSign,
@@ -24,6 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PainelArmazenamentoAutonomo } from "@/features/franquia-armazenamento/components/PainelArmazenamentoAutonomo";
+import { PainelPerfilPro } from "@/features/perfil-pro/components/painel/PainelPerfilPro";
 import { Textarea } from "@/components/ui/textarea";
 import {
   obterMeuPerfilProfissional,
@@ -171,7 +175,13 @@ export function ProfessionalProfileContent({
   const router = useRouter();
   const parametros = useSearchParams();
   const abaInicial =
-    parametros.get("aba") === "servicos" ? "servicos" : "dados";
+    parametros.get("aba") === "servicos"
+      ? "servicos"
+      : parametros.get("aba") === "perfil-pro"
+        ? "perfil-pro"
+        : parametros.get("aba") === "armazenamento"
+          ? "armazenamento"
+          : "dados";
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const {
     register,
@@ -231,6 +241,11 @@ export function ProfessionalProfileContent({
   const temAvaliacoes =
     perfil.totalAvaliacoes > 0 && perfil.avaliacaoMedia !== null;
   const perfilAprovado = perfil.statusAnalise === "aprovado";
+  const advogado = perfil.tipoProfissional === "advocacia";
+  // Franquia de armazenamento: só o contador Autônomo tem.
+  const autonomo =
+    perfil.tipoProfissional === "contabilidade" &&
+    perfil.modeloContratacao === "autonomo";
 
   const erro = (campo: keyof typeof errors) =>
     errors[campo] ? (
@@ -299,6 +314,19 @@ export function ProfessionalProfileContent({
               {CATEGORIAS[perfil.tipoProfissional as keyof typeof CATEGORIAS]}
             </p>
             <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {/* O mesmo identificador público que o perfil público exibe
+                  (`perfis_profissionais.codigo_publico`), só leitura. */}
+              {perfil.codigoPublico ? (
+                <>
+                  <span>
+                    ID profissional{" "}
+                    <span className="font-medium tabular-nums text-foreground">
+                      {perfil.codigoPublico}
+                    </span>
+                  </span>
+                  <span className="hidden text-amber-500 sm:inline">•</span>
+                </>
+              ) : null}
               <span>{perfil.numeroRegistro || "Registro não aplicável"}</span>
               <span className="hidden text-amber-500 sm:inline">•</span>
               <span>
@@ -349,7 +377,7 @@ export function ProfessionalProfileContent({
           barra de categorias de um aplicativo. A grade volta a partir de `lg`,
           onde as quatro cabem sem apertar.
         */}
-        <TabsList className="rolagem-contida hide-scrollbar -mx-1 flex h-auto w-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border border-amber-500/15 bg-muted/70 p-1.5 lg:mx-0 lg:grid lg:w-full lg:grid-cols-4 lg:overflow-visible">
+        <TabsList className={`rolagem-contida hide-scrollbar -mx-1 flex h-auto w-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border border-amber-500/15 bg-muted/70 p-1.5 lg:mx-0 lg:grid lg:w-full ${advogado || autonomo ? "lg:grid-cols-5" : "lg:grid-cols-4"} lg:overflow-visible`}>
           <TabsTrigger
             value="dados"
             className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
@@ -378,6 +406,25 @@ export function ProfessionalProfileContent({
             <Package />
             Serviços
           </TabsTrigger>
+          {/* Perfil Essencial / Pro e Armazenamento: só para advocacia. */}
+          {advogado ? (
+            <TabsTrigger
+              value="perfil-pro"
+              className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
+            >
+              <BadgeCheck />
+              Perfil Pro
+            </TabsTrigger>
+          ) : null}
+          {autonomo ? (
+            <TabsTrigger
+              value="armazenamento"
+              className="h-11 shrink-0 flex-none gap-2 whitespace-nowrap rounded-lg px-3 text-sm lg:flex-1 lg:px-2 lg:text-xs xl:text-sm"
+            >
+              <HardDrive />
+              Armazenamento
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="dados" className="mt-0 space-y-4">
@@ -745,6 +792,16 @@ export function ProfessionalProfileContent({
         <TabsContent value="servicos" className="mt-0">
           <CatalogoServicos />
         </TabsContent>
+        {advogado ? (
+          <TabsContent value="perfil-pro" className="mt-0">
+            <PainelPerfilPro />
+          </TabsContent>
+        ) : null}
+        {autonomo ? (
+          <TabsContent value="armazenamento" className="mt-0">
+            <PainelArmazenamentoAutonomo />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       {/*

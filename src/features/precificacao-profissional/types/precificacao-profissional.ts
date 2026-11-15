@@ -70,6 +70,8 @@ export type PrecificacaoPublicaDoProfissional = {
   primeiroNome: string
   tabela: TabelaPrecificacao
   publicadoEm: Date | null
+  /** Contábil: 'vincis' | 'autonomo'; nulo = não definido (nada é exibido). */
+  modeloContratacao: 'vincis' | 'autonomo' | null
 }
 
 /** O que uma gravação do painel devolve para a tela. */

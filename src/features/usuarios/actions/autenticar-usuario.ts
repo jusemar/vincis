@@ -1,3 +1,4 @@
+import { usuarioContadorParceiroVincis } from '@/features/profissionais/queries/contadores-parceiros'
 import { LoginSchema, type LoginDTO } from '../schemas/login'
 import { buscarUsuarioPorLogin } from '../queries/buscar-usuario-por-login'
 import { compararHash } from '../lib/hash-senha'
@@ -68,6 +69,7 @@ export async function autenticarUsuario(dados: LoginDTO): Promise<ResultadoLogin
       perfil: perfilOperacional,
       ehGestor,
       elegivelCentralFiscal: await usuarioElegivelParaCentralFiscal(usuario.id),
+      contadorParceiroVincis: await usuarioContadorParceiroVincis(usuario.id),
     },
   )
 

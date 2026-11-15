@@ -64,8 +64,11 @@ export const GRUPOS_COMPARATIVO: GrupoComparativo[] = [
   },
 ];
 
-export function ofertasComparadas(tab: ServicoTab): OfertaComparada[] {
-  if (tab === "juridico") return ["juridico"];
-  if (tab === "combo") return ["combo"];
+/**
+ * As colunas do comparativo da vitrine pública: só Padrão e Consultiva.
+ * Jurídico e Completo continuam no catálogo (a Gestão de precificação os lê),
+ * mas não são oferecidos em `/precos`.
+ */
+export function ofertasComparadas(_tab: ServicoTab): OfertaComparada[] {
   return ["padrao", "consultiva"];
 }

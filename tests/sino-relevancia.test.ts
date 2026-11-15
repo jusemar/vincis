@@ -11,7 +11,7 @@ import { definirPrioridadeDoAtendimento } from '@/features/atendimentos/lib/ajus
 import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
 import { listarNotificacoesDoUsuario } from '@/features/notificacoes/queries/listar-notificacoes'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import {
   criarContas,
   limparContas,

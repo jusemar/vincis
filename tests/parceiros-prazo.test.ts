@@ -518,6 +518,9 @@ describe('nada do que já existia mudou', () => {
       select table_name from information_schema.tables
       where table_schema = 'public'
         and (table_name like '%pix%' or table_name like '%conta_banc%')
+        -- A cobrança Pix é dinheiro **entrando** (Cliente → Vincis). O que
+        -- este teste guarda é a ausência de dinheiro **saindo** para parceiro.
+        and table_name <> 'cobrancas_pix'
     `)
     expect([...integracoes]).toHaveLength(0)
 

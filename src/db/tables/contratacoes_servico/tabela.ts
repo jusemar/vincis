@@ -1,13 +1,17 @@
+import { sql } from 'drizzle-orm'
 import {
+  check,
   index,
   integer,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
 import { clientes } from '../clientes/tabela'
+import { cobrancasPix } from '../cobrancas_pix/tabela'
 import { servicos } from '../servicos/tabela'
 import { usuarios } from '../usuarios/tabela'
 
@@ -51,6 +55,29 @@ export const contratacoesServico = pgTable(
     status: varchar('status', { length: 30 }).notNull().default('pendente'),
     observacoes: text('observacoes'),
     concluidoEm: timestamp('concluido_em'),
+    /**
+     * A cobrança Pix que pagou esta contratação.
+     *
+     * Única: o webhook repetido, a reconciliação e o polling do navegador
+     * podem todos tentar efetivar o mesmo pagamento, e o banco deixa nascer
+     * uma contratação só. Nulo nas contratações anteriores ao pagamento real.
+     */
+    cobrancaId: uuid('cobranca_id').references(() => cobrancasPix.id),
+    /**
+     * Retrato da comissão da Vincis vigente quando o Pix foi emitido.
+     *
+     * O Cliente paga o valor do catálogo à Vincis; a Vincis retém
+     * `comissao_vincis_centavos` e o restante (`valor_profissional_centavos`)
+     * pertence ao profissional. O percentual vem da configuração da Gestão e é
+     * congelado aqui: mudar a configuração amanhã não reescreve contratação
+     * antiga. Não tem relação com a comissão do parceiro indicador.
+     *
+     * Nulos nas contratações anteriores a esta regra (sem retrato) — nunca
+     * recalculados com o percentual de hoje.
+     */
+    comissaoVincisMilesimos: integer('comissao_vincis_milesimos'),
+    comissaoVincisCentavos: integer('comissao_vincis_centavos'),
+    valorProfissionalCentavos: integer('valor_profissional_centavos'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -64,5 +91,17 @@ export const contratacoesServico = pgTable(
       t.createdAt,
     ),
     servicoIdx: index('contratacoes_servico_servico_idx').on(t.servicoId),
+    cobrancaUnica: uniqueIndex('contratacoes_servico_cobranca_unica')
+      .on(t.cobrancaId)
+      .where(sql`cobranca_id is not null`),
+    // Retrato inteiro ou nenhum, e as partes fecham o valor pago.
+    comissaoCoerente: check(
+      'contratacoes_servico_comissao_coerente',
+      sql`(${t.comissaoVincisMilesimos} is null and ${t.comissaoVincisCentavos} is null and ${t.valorProfissionalCentavos} is null)
+        or (${t.comissaoVincisMilesimos} between 1 and 999
+          and ${t.comissaoVincisCentavos} >= 0
+          and ${t.valorProfissionalCentavos} >= 0
+          and ${t.comissaoVincisCentavos} + ${t.valorProfissionalCentavos} = ${t.valorSnapshotCentavos})`,
+    ),
   }),
 )

@@ -23,9 +23,7 @@ vi.mock('@/features/usuarios/lib/comprovante-profissional', () => ({
 const { analisarPerfilProfissional } = await import(
   '@/features/usuarios/actions/analisar-perfil-profissional'
 )
-const { contratarServico } = await import(
-  '@/features/servicos/actions/contratar'
-)
+const { contratarServico } = await import('./setup/contratar-servico')
 const { listarContratacoesDoPrestador, listarMinhasContratacoes } = await import(
   '@/features/servicos/actions/contratacoes'
 )

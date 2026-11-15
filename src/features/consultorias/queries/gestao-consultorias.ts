@@ -172,6 +172,8 @@ function condicaoDeProblema() {
     and(
       eq(consultoriaAgendamentos.status, 'agendada'),
       isNull(consultoriaPagamentos.id),
+      // Consultoria jurídica não tem pagamento pela Vincis por regra: não é problema.
+      sql`not exists (select 1 from perfis_profissionais pp where pp.usuario_id = ${consultoriaAgendamentos.prestadorId} and pp.tipo_profissional = 'advocacia')`,
     ),
   )
 }

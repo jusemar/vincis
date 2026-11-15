@@ -15,10 +15,26 @@ import { RespostasSimulacaoSchema } from '@/features/precificacao-profissional/s
  */
 const codigo = z.string().trim().min(1).max(40)
 
+/**
+ * Quem vai ser o contador responsável: um contador parceiro escolhido pelo
+ * cliente, ou a Vincis escolhe depois. Obrigatório e explícito — nada é
+ * pré-selecionado. O id é só um pedido: a elegibilidade é conferida no
+ * servidor.
+ */
+export const EscolhaContadorSchema = z.discriminatedUnion(
+  'escolha',
+  [
+    z.object({ escolha: z.literal('cliente'), contadorId: z.string().uuid('Escolha um contador da lista.') }),
+    z.object({ escolha: z.literal('vincis') }),
+  ],
+  { message: 'Escolha um contador ou deixe a Vincis escolher.' },
+)
+
 export const ContratarPlanoSchema = z.object({
   planoCodigo: codigo,
   periodoCodigo: codigo,
   respostas: RespostasSimulacaoSchema,
+  contador: EscolhaContadorSchema,
 })
 
 export type ContratarPlanoDTO = z.input<typeof ContratarPlanoSchema>

@@ -115,7 +115,8 @@ function paraAcoes(consultoria: ConsultoriaDoClienteDTO) {
     fim: consultoria.fim,
     timezone: consultoria.timezone,
     duracaoMinutos: consultoria.duracaoMinutos,
-    valorCentavos: consultoria.valorCentavos,
+    // Consultoria jurídica não tem pagamento pela Vincis: sem valor a mostrar.
+    valorCentavos: consultoria.pagamentoStatus ? consultoria.valorCentavos : 0,
     status: consultoria.status,
     protocolo: consultoria.protocolo,
     podeAlterar: consultoria.podeAlterar,
@@ -275,7 +276,10 @@ export function ConsultoriasDoCliente({
                 <Clock className="size-4 shrink-0" aria-hidden />
                 <span>
                   {duracaoPorExtenso(proxima.duracaoMinutos)} ·{' '}
-                  {formatarPreco(proxima.valorCentavos)}
+                  {/* Sem pagamento pela Vincis (consultoria jurídica): não há valor a mostrar. */}
+                  {proxima.pagamentoStatus
+                    ? formatarPreco(proxima.valorCentavos)
+                    : 'Honorários combinados com o profissional'}
                 </span>
               </p>
               {/*

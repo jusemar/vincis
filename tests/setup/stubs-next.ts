@@ -46,3 +46,17 @@ vi.mock('next/cache', () => ({
   updateTag: vi.fn(),
   unstable_cache: <T extends (...args: never[]) => unknown>(funcao: T) => funcao,
 }))
+
+/**
+ * A Efí da suíte (`efi-de-teste.ts`): só o transporte do Pix é trocado. txid,
+ * conversão de valores e todo o núcleo de cobrança continuam os reais.
+ */
+vi.mock('@/integracoes/efi/pix', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/integracoes/efi/pix')>()
+  const { efiDeTeste } = await import('./efi-de-teste')
+  return {
+    ...real,
+    criarCobrancaPixImediata: efiDeTeste.criarCobrancaPixImediata,
+    consultarCobrancaPix: efiDeTeste.consultarCobrancaPix,
+  }
+})

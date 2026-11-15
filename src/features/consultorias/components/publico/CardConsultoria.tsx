@@ -252,6 +252,7 @@ export function CardConsultoria({
       duracaoMinutos: consultoria.duracaoMinutos,
       valorCentavos: consultoria.valorCentavos,
       modalidade: consultoria.modalidade,
+      honorariosDiretos: consultoria.honorariosDiretos,
     })
   }
 
@@ -259,8 +260,9 @@ export function CardConsultoria({
     <Moldura nome={nomeExibido} fotoUrl={fotoUrl} controlesFoto={controlesFoto}>
       <div className="p-6">
         <div className="flex items-baseline gap-1 mb-6">
-          <span className="text-3xl font-bold text-foreground">
-            {formatarPreco(consultoria.valorCentavos)}
+          {/* Advogado: honorário combinado direto, sem preço na vitrine. */}
+          <span className={consultoria.honorariosDiretos ? 'text-xl font-bold text-foreground' : 'text-3xl font-bold text-foreground'}>
+            {consultoria.honorariosDiretos ? 'Consultar honorários' : formatarPreco(consultoria.valorCentavos)}
           </span>
           {/*
             Antes dizia "/ hora". A duração é configurável por Profissional, e

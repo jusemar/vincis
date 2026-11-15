@@ -48,6 +48,7 @@ export function SolicitacaoDeAjusteDoCliente({
   status,
   ajuste,
   onAtualizar,
+  documentosPelaVincis = true,
 }: {
   atendimentoId: string
   protocolo: string
@@ -56,6 +57,8 @@ export function SolicitacaoDeAjusteDoCliente({
   /** A solicitação mais recente. Nula quando o Cliente nunca pediu. */
   ajuste: SolicitacaoDeAjusteDTO | null
   onAtualizar: () => void
+  /** `false`: advogado no Perfil Essencial — pedido só por texto. */
+  documentosPelaVincis?: boolean
 }) {
   const [abrindo, setAbrindo] = useState(false)
   const [motivo, setMotivo] = useState('')
@@ -190,6 +193,7 @@ export function SolicitacaoDeAjusteDoCliente({
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-1.5">
+            {documentosPelaVincis ? (
             <Button
               size="sm"
               variant="ghost"
@@ -198,6 +202,9 @@ export function SolicitacaoDeAjusteDoCliente({
             >
               <Paperclip className="size-3.5" /> Anexar
             </Button>
+            ) : (
+              <span className="px-2 text-xs text-muted-foreground">Documentos por e-mail</span>
+            )}
             {/* Mesmo formato aceito pela anexação de sempre: o arquivo entra
                 pelo sistema de Arquivos privados já existente. */}
             <input

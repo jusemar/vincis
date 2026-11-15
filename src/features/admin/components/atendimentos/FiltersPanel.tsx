@@ -17,6 +17,7 @@ export const STATUS: { id: Status; label: string }[] = [
   { id: "concluido", label: "Concluído" },
   { id: "recusado", label: "Recusado" },
   { id: "cancelado", label: "Cancelado" },
+  { id: "encerrado-sem-conclusao", label: "Encerrado sem conclusão" },
 ];
 const PRIORITIES: { id: Priority; label: string; dot: string }[] = [
   { id: "alta", label: "Alta", dot: "bg-priority-high" },

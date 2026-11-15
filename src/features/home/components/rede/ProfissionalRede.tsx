@@ -1,8 +1,12 @@
 import { Check, MapPin } from "lucide-react";
 import type { AtendimentoVisual } from "../../lib/fluxo-demonstracao";
+import { IconeConcluido } from "@/components/ui/icone-concluido";
 import { Personagem } from "./Personagem";
 
-/** O texto adjacente comunica o resultado; o selo é apenas seu reforço visual. */
+/**
+ * Selo da barra de status da demonstração. O balão de resposta usa o
+ * `IconeConcluido` do design system; este continua só no rodapé.
+ */
 export function ConfirmacaoVincis() {
   return <span className="viva-confirmacao" aria-hidden="true"><Check size={15} strokeWidth={2.5} /></span>;
 }
@@ -19,7 +23,8 @@ export function ProfissionalRede({ visual, executando }: { visual: AtendimentoVi
         {profissional.complemento && <span className="viva-profissional-vinculo">{profissional.complemento}</span>}
       </div>
       {profissionalAtivo && <div className="viva-profissional-resposta">
-        {respondendo && <ConfirmacaoVincis />}
+        {/* Mesmo selo de "concluído" do stepper de contratação. */}
+        {respondendo && <IconeConcluido className="viva-resposta-concluida" />}
         <span>{mensagemProfissional}</span>
       </div>}
     </div>

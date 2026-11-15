@@ -105,8 +105,18 @@ export async function salvarPerfilProfissional(
   }
   const arquivo = formularioArquivo?.get("comprovante");
   const exigeComprovante = valor.tipoProfissional !== "especialista_fiscal";
+  /*
+    O comprovante é exigência da **análise** do cadastro. Depois de aprovado,
+    pedi-lo de novo a cada salvamento bloqueava a edição de qualquer outro
+    campo (valor por hora, disponibilidade, especialidades…) de quem foi
+    aprovado sem arquivo guardado — a recusa vinha num toast genérico e nada
+    era gravado. Aprovado, o arquivo continua aceito se enviado, mas não é
+    condição para salvar o resto.
+  */
+  const cadastroAprovado = anterior?.statusAnalise === "aprovado";
   if (
     exigeComprovante &&
+    !cadastroAprovado &&
     !(arquivo instanceof File && arquivo.size > 0) &&
     !anterior?.comprovanteRegistroChave
   ) {

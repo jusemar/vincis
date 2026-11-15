@@ -117,6 +117,7 @@ export async function listarOportunidadesDoPrestador(
         validaAte: oportunidadePropostas.validaAte,
         aceitaEm: oportunidadePropostas.aceitaEm,
         valorAcordadoCentavos: oportunidadePropostas.valorAcordadoCentavos,
+        natureza: oportunidadePropostas.natureza,
       })
       .from(oportunidadePropostas)
       .where(eq(oportunidadePropostas.prestadorId, prestadorId)),
@@ -156,6 +157,7 @@ export async function listarOportunidadesDoPrestador(
       propostaValidaAte: minhaProposta.validaAte,
       propostaAceitaEm: minhaProposta.aceitaEm,
       propostaValorAcordado: minhaProposta.valorAcordadoCentavos,
+      propostaNatureza: minhaProposta.natureza,
       dispensadaEm: minhaDispensa.criadoEm,
       visibilidade: oportunidades.visibilidade,
       origem: oportunidades.origem,
@@ -269,6 +271,7 @@ export async function listarOportunidadesDoPrestador(
             }),
             valorAcordadoCentavos: linha.propostaValorAcordado ?? null,
             aceitaEm: linha.propostaAceitaEm?.toISOString() ?? null,
+            natureza: linha.propostaNatureza === 'recorrente' ? 'recorrente' : 'avulsa',
             contrapropostaPendente:
               negociacoes.get(linha.propostaId)?.pendente ?? null,
             historicoContrapropostas:

@@ -41,7 +41,7 @@ import {
   listarNotificacoesDoUsuario,
 } from '@/features/notificacoes/queries/listar-notificacoes'
 import { criarServico } from '@/features/servicos/actions/catalogo'
-import { contratarServico } from '@/features/servicos/actions/contratar'
+import { contratarServico } from './setup/contratar-servico'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { emitirAvisosDePrazo } from '@/features/notificacoes/lib/avisos-de-prazo'
 import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
@@ -183,6 +183,14 @@ async function criarAtendimento() {
   })
   if (!contratacao.sucesso) throw new Error(contratacao.mensagem)
   sairDaSessao()
+
+  /*
+    A contratação agora é paga por Pix, e o pagamento confirmado avisa o
+    Profissional (\`servico_pago\`). Esse aviso é coberto em
+    \`pagamentos-pix.test.ts\`; aqui os cenários contam só os avisos da
+    conversa, então ele sai da caixa antes de cada um começar.
+  */
+  await db.delete(notificacoes).where(eq(notificacoes.tipo, 'servico_pago'))
 
   return (contratacao.dados as { atendimentoId: string }).atendimentoId
 }

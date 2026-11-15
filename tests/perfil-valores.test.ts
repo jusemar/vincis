@@ -170,6 +170,37 @@ describe('validação de endereço conforme o estágio do cadastro', () => {
 })
 
 describe('salvar Valor por hora', () => {
+  it('cadastro aprovado sem comprovante guardado também salva (não pede o arquivo de novo)', async () => {
+    // O caso real de PRO-WZ37YX: aprovado, sem arquivo gravado. Antes, todo
+    // salvamento era recusado com "Anexe o comprovante…" e o valor sumia.
+    await db
+      .update(perfisProfissionais)
+      .set({ comprovanteRegistroChave: null })
+      .where(eq(perfisProfissionais.usuarioId, ids.aprovadoCepVazio))
+    entrarComo(tokens.aprovadoCepVazio)
+    const resultado = await salvarPerfilProfissional(payload({ valorHora: 130 }))
+    expect(resultado.sucesso).toBe(true)
+
+    const [perfil] = await db
+      .select({ valor: perfisProfissionais.valorHoraCentavos })
+      .from(perfisProfissionais)
+      .where(eq(perfisProfissionais.usuarioId, ids.aprovadoCepVazio))
+    expect(perfil.valor).toBe(13000)
+  })
+
+  it('cadastro ainda em análise continua exigindo o comprovante', async () => {
+    await db
+      .update(perfisProfissionais)
+      .set({ comprovanteRegistroChave: null })
+      .where(eq(perfisProfissionais.usuarioId, ids.pendente))
+    entrarComo(tokens.pendente)
+    const resultado = await salvarPerfilProfissional(
+      payload({ valorHora: 130, cep: '01001000', logradouro: 'Praça da Sé', numero: '1', bairro: 'Sé' }),
+    )
+    expect(resultado.sucesso).toBe(false)
+    expect(resultado.mensagem).toContain('comprovante')
+  })
+
   it('persiste sem esbarrar no CEP bloqueado', async () => {
     entrarComo(tokens.aprovadoCepVazio)
     const resultado = await salvarPerfilProfissional(payload({ valorHora: 420 }))

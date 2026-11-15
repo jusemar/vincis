@@ -1,3 +1,4 @@
+import { situacoesDocumentos } from '@/features/perfil-pro/lib/perfil-pro'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/connection'
@@ -10,9 +11,11 @@ import {
   atendimentos,
   avaliacoesAtendimento,
   consultoriaAgendamentos,
+  consultoriaPagamentos,
   contratacoesServico,
   oportunidadePagamentos,
   oportunidadePropostas,
+  perfisProfissionais,
   usuarios,
 } from '@/db/schema'
 import type {
@@ -24,7 +27,9 @@ import type {
   StatusAtendimento,
   VisibilidadeChecklist,
 } from '../constants/atendimento'
+import { apresentarAndamento, calcularAndamento } from '../lib/andamento'
 import { consultoriaDoAtendimento } from '../lib/consultoria-do-atendimento'
+import { resumirInteracoes } from '../lib/interacoes'
 import { obterUltimosAjustes } from '../lib/solicitacoes-ajuste'
 import type { AtendimentoDoClienteDTO } from '../types/atendimento'
 
@@ -66,6 +71,7 @@ export async function listarAtendimentosDoCliente(
       concluidoPorNome: conclusaoConta.nome,
       observacaoFinal: atendimentos.observacaoFinal,
       prestadorNome: prestadorConta.nome,
+      prestadorId: atendimentos.prestadorId,
       contratacaoId: contratacoesServico.id,
       contratacaoNomeServico: contratacoesServico.nomeServicoSnapshot,
       contratacaoModeloPreco: contratacoesServico.modeloPrecoSnapshot,
@@ -73,6 +79,7 @@ export async function listarAtendimentosDoCliente(
       contratacaoPrazoDias: contratacoesServico.prazoEstimadoDias,
       contratacaoStatus: contratacoesServico.status,
       contratacaoCriadaEm: contratacoesServico.createdAt,
+      contratacaoCobrancaId: contratacoesServico.cobrancaId,
       // A outra porta de entrada: acordo fechado numa solicitação pública.
       oportunidadeId: atendimentos.oportunidadeId,
       acordoValorCentavos: oportunidadePropostas.valorAcordadoCentavos,
@@ -88,6 +95,9 @@ export async function listarAtendimentosDoCliente(
       consultoriaStatus: consultoriaAgendamentos.status,
       consultoriaMotivoCancelamento: consultoriaAgendamentos.motivoCancelamento,
       consultoriaValorCentavos: consultoriaAgendamentos.valorCentavos,
+      // Consultoria jurídica não tem pagamento (honorário combinado direto):
+      // "Pagamento confirmado" só quando existe a linha de pagamento.
+      consultoriaPagamentoId: consultoriaPagamentos.id,
     })
     .from(atendimentos)
     .innerJoin(prestadorConta, eq(prestadorConta.id, atendimentos.prestadorId))
@@ -99,6 +109,10 @@ export async function listarAtendimentosDoCliente(
     .leftJoin(
       consultoriaAgendamentos,
       eq(consultoriaAgendamentos.id, atendimentos.consultoriaAgendamentoId),
+    )
+    .leftJoin(
+      consultoriaPagamentos,
+      eq(consultoriaPagamentos.agendamentoId, consultoriaAgendamentos.id),
     )
     .leftJoin(
       oportunidadePagamentos,
@@ -251,6 +265,22 @@ export async function listarAtendimentosDoCliente(
     // só os deste Cliente — o recorte de propriedade foi feito acima.
     obterUltimosAjustes(ids),
   ])
+  // Quem precisa agir e há quanto tempo nada acontece — derivado, não gravado.
+  const interacoes = await resumirInteracoes(db, ids)
+  const prestadorIds = registros.map((registro) => registro.prestadorId)
+  const situacoes = await situacoesDocumentos(db, prestadorIds)
+  const essenciais = prestadorIds.filter((id) => situacoes.get(id)?.documentosPelaVincis === false)
+  const emails = new Map(
+    essenciais.length
+      ? (
+          await db
+            .select({ id: perfisProfissionais.usuarioId, email: perfisProfissionais.emailProfissional })
+            .from(perfisProfissionais)
+            .where(inArray(perfisProfissionais.usuarioId, essenciais))
+        ).map((linha) => [linha.id, linha.email])
+      : [],
+  )
+  const agora = new Date()
 
   return registros.map((registro) => {
     const arquivosDoAtendimento = arquivos.filter(
@@ -260,12 +290,35 @@ export async function listarAtendimentosDoCliente(
       (linha) => linha.atendimentoId === registro.id,
     )
 
+    const andamento = calcularAndamento({
+      status: registro.status,
+      criadoEm: registro.criadoEm,
+      prazoEm: registro.prazoEm,
+      interacoes: interacoes.get(registro.id) ?? { ultimaDoCliente: null, ultimaDoProfissional: null },
+      // Pix confirmado, consultoria (só nasce paga) ou acordo pago.
+      pago: Boolean(registro.contratacaoCobrancaId || registro.consultoriaPagamentoId || registro.pagamentoReferencia),
+      agora,
+    })
+
     return {
     id: registro.id,
     protocolo: registro.protocolo,
     titulo: registro.titulo,
     categoria: registro.categoria,
     status: registro.status as StatusAtendimento,
+    documentos: {
+      pelaVincis: situacoes.get(registro.prestadorId)?.documentosPelaVincis ?? true,
+      emailContato: emails.get(registro.prestadorId) ?? null,
+    },
+    andamento: {
+      fase: andamento.fase,
+      jornada: andamento.jornada,
+      situacao: andamento.situacao,
+      alerta: andamento.alerta,
+      prazoVencido: andamento.prazoVencido,
+      diasSemInteracao: andamento.diasSemInteracao,
+      apresentacao: apresentarAndamento(andamento, { profissional: registro.prestadorNome }),
+    },
     prioridade: registro.prioridade as PrioridadeAtendimento,
     criadoEm: registro.criadoEm.toISOString(),
     prazoEm: registro.prazoEm?.toISOString() ?? null,

@@ -103,7 +103,7 @@ const { canalDoAtendimento, canalDoUsuario } = await import(
   '@/integracoes/realtime/canais'
 )
 const { criarServico } = await import('@/features/servicos/actions/catalogo')
-const { contratarServico } = await import('@/features/servicos/actions/contratar')
+const { contratarServico } = await import('./setup/contratar-servico')
 const { criarContas } = await import('./setup/contas-de-teste')
 const { limparAtendimentosDosPrestadores } = await import(
   './setup/limpeza-atendimentos'

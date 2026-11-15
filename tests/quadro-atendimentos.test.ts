@@ -503,7 +503,9 @@ describe('status sem coluna no quadro', () => {
    * acontecer sem ninguém precisar lembrar de mexer no componente.
    */
   it('são exatamente os encerramentos excepcionais', () => {
-    expect([...STATUS_SEM_COLUNA].sort()).toEqual(['cancelado', 'recusado'])
+    // `encerrado-sem-conclusao` é o encerramento administrativo da Gestão:
+    // excepcional como os outros dois, alcançável pelo filtro.
+    expect([...STATUS_SEM_COLUNA].sort()).toEqual(['cancelado', 'encerrado-sem-conclusao', 'recusado'])
   })
 
   it('nenhum deles aparece entre as colunas do Kanban', () => {

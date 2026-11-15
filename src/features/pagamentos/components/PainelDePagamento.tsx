@@ -2,7 +2,6 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ExternalLink,
-  FlaskConical,
   Handshake,
   Receipt,
 } from 'lucide-react'
@@ -22,7 +21,9 @@ import {
   TRILHA_APOS_ACORDO,
   posicaoNaTrilha,
 } from '../lib/etapa-comercial'
-import { FormularioPagamentoSimulado } from './FormularioPagamentoSimulado'
+import { honorariosDiretos } from '@/features/profissionais/constants/honorarios'
+import { AbrirAtendimentoJuridico } from './AbrirAtendimentoJuridico'
+import { PagamentoPixDoAcordo } from './PagamentoPixDoAcordo'
 
 function reais(centavos: number | null | undefined) {
   if (centavos == null) return 'A combinar'
@@ -81,6 +82,16 @@ export function PainelDePagamento({
   }
 
   const pago = oportunidade.pagamento !== null
+  /*
+    Advogado: honorários combinados diretamente entre Cliente e profissional.
+    Esta tela não tem etapa financeira para ele — sem trilha de pagamento, sem
+    Pix, sem "aguardando"/"aprovado". O acordo só registra que os dois
+    concordaram com a proposta; o atendimento é o lugar da conversa.
+  */
+  const juridico = honorariosDiretos(acordo.prestadorTipoProfissional)
+  // Recorrente do contador Autônomo: pagamento direto, sem etapa financeira aqui.
+  const recorrente = acordo.natureza === 'recorrente'
+  const direto = juridico || recorrente
   const posicao = posicaoNaTrilha(oportunidade.etapa)
   const valorAcordado = acordo.valorAcordadoCentavos ?? acordo.valorCentavos
 
@@ -90,14 +101,18 @@ export function PainelDePagamento({
         contexto="Acordo fechado"
         titulo={oportunidade.titulo}
         descricao={
-          pago
-            ? 'Pagamento aprovado. O atendimento já está aberto e o profissional foi avisado.'
-            : 'Vocês chegaram a um acordo. Conclua o pagamento para abrir o atendimento.'
+          juridico
+            ? 'Você e o profissional concordaram com a proposta. Os honorários são combinados diretamente entre vocês.'
+            : recorrente
+              ? 'Você e o contador fecharam uma relação contábil recorrente. O pagamento é combinado diretamente entre vocês.'
+              : pago
+              ? 'Pagamento aprovado. O atendimento já está aberto e o profissional foi avisado.'
+              : 'Vocês chegaram a um acordo. Conclua o pagamento para abrir o atendimento.'
         }
         acoes={<VoltarParaOrcamentos />}
       />
 
-      <Trilha passos={TRILHA_APOS_ACORDO} atual={posicao} />
+      {direto ? null : <Trilha passos={TRILHA_APOS_ACORDO} atual={posicao} />}
 
       <Superficie className="overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b p-5">
@@ -131,8 +146,8 @@ export function PainelDePagamento({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Pilula
-              rotulo={pago ? 'Pagamento aprovado' : 'Aguardando pagamento'}
-              tom={pago ? 'sucesso' : 'atencao'}
+              rotulo={direto ? 'Acordo fechado' : pago ? 'Pagamento aprovado' : 'Aguardando pagamento'}
+              tom={direto || pago ? 'sucesso' : 'atencao'}
             />
             <Button asChild variant="outline" size="sm">
               <Link href={acordo.perfilPublico.perfilUrl}>
@@ -208,17 +223,33 @@ export function PainelDePagamento({
         </div>
       </Superficie>
 
-      {pago ? (
+      {direto ? (
+        <Superficie className="p-5">
+          <h2 className="text-sm font-semibold">
+            {juridico ? 'Honorários combinados diretamente' : 'Pagamento combinado diretamente'}
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {juridico
+              ? 'A forma de pagamento dos honorários é combinada entre você e o profissional — pela conversa do atendimento ou como preferirem. A Vincis não processa nem acompanha esse pagamento.'
+              : 'Os valores e a forma de pagamento da relação recorrente são combinados entre você e o contador. A Vincis não emite Pix, não cobra e não acompanha esse pagamento.'}
+          </p>
+          <div className="mt-4">
+            {oportunidade.atendimento ? (
+              <Button asChild size="sm">
+                <Link href={`/cliente/atendimentos?atendimento=${oportunidade.atendimento.id}`}>
+                  Abrir atendimento
+                </Link>
+              </Button>
+            ) : juridico ? (
+              <AbrirAtendimentoJuridico oportunidadeId={oportunidade.id} />
+            ) : null}
+          </div>
+        </Superficie>
+      ) : pago ? (
         <ComprovanteSimulado oportunidade={oportunidade} />
       ) : (
         <Superficie className="p-5">
-          <AvisoDeSimulacao />
-          <div className="mt-5">
-            <FormularioPagamentoSimulado
-              oportunidadeId={oportunidade.id}
-              precisaInformarValor={valorAcordado == null}
-            />
-          </div>
+          <PagamentoPixDoAcordo oportunidadeId={oportunidade.id} />
         </Superficie>
       )}
     </div>
@@ -233,30 +264,6 @@ function VoltarParaOrcamentos() {
         Voltar
       </Link>
     </Button>
-  )
-}
-
-/**
- * O aviso mais importante desta tela.
- *
- * Fica acima do botão, não abaixo, e usa palavra direta: enquanto não houver
- * gateway, o Cliente precisa saber que está num ambiente de teste **antes** de
- * clicar, não depois.
- */
-function AvisoDeSimulacao() {
-  return (
-    <div className="flex gap-3 rounded-lg border border-warning/30 bg-warning/5 p-4">
-      <FlaskConical className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
-      <div className="space-y-1">
-        <p className="text-sm font-semibold">{ROTULO_PAGAMENTO_SIMULADO}</p>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          O pagamento online ainda não está integrado. Esta etapa registra a
-          contratação e abre o atendimento sem qualquer cobrança: nenhum valor é
-          debitado, nenhum dado de cartão ou PIX é solicitado e nada financeiro é
-          armazenado.
-        </p>
-      </div>
-    </div>
   )
 }
 

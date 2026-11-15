@@ -56,9 +56,7 @@ const { alterarStatusDoAtendimento } = await import(
 const { concluirAtendimento } = await import(
   '@/features/atendimentos/lib/concluir-atendimento'
 )
-const { contratarServico } = await import(
-  '@/features/servicos/actions/contratar'
-)
+const { contratarServico } = await import('./setup/contratar-servico')
 const { POST } = await import('@/app/api/auth/cadastro/route')
 
 const SUFIXO = '@parceiros.contratacao.teste'

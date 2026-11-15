@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
   assinaturaCompetencias,
@@ -61,6 +61,13 @@ export type PagamentoConfirmado = {
   confirmadoEm?: Date
   /** Quem acionou, para a auditoria. Nulo quando é o sistema. */
   autorId?: string | null
+  /**
+   * O mês que este dinheiro paga, quando a cobrança foi emitida para um mês
+   * específico (Pix da mensalidade). Com ele, o pagamento cobre **esse** mês
+   * ou é recusado — nunca escorrega para outro. Sem ele (homologação manual,
+   * Pix antigo), vale a regra de sempre: o primeiro mês em aberto.
+   */
+  competenciaNumero?: number | null
 }
 
 export type MotivoDaRecusa =
@@ -75,6 +82,7 @@ export type MotivoDaRecusa =
   | 'evento_de_outra_assinatura'
   | 'pagamento_nao_confirmavel'
   | 'sem_competencia_a_cobrir'
+  | 'competencia_alvo_indisponivel'
   | 'valor_divergente'
 
 export type ResultadoDaConfirmacao =
@@ -148,6 +156,7 @@ type Alvo = { id: string; numero: number; aCobrir: number }
 async function competenciasACobrir(
   tx: Transacao,
   assinatura: { id: string; periodicidade: string; status: string },
+  numeroAlvo: number | null = null,
 ): Promise<Alvo[]> {
   const cobertura = await coberturaDasCompetencias(tx, assinatura.id)
   const listar = async () =>
@@ -173,6 +182,16 @@ async function competenciasACobrir(
   const todas = await listar()
   const abertas = todas.filter((c) => c.aCobrir > 0)
   if (assinatura.periodicidade !== 'mensal') return abertas
+  /*
+    Pix emitido para um mês específico: cobre esse mês, e só ele. Se ele já foi
+    quitado por outro caminho (um Pix vencido pago no limite, por exemplo) ou
+    foi cancelado, não há alvo — o dinheiro não vai quitar o mês seguinte por
+    engano, e a cobrança vira conflito para a equipe tratar.
+  */
+  if (numeroAlvo !== null) {
+    const alvo = todas.find((c) => c.numero === numeroAlvo)
+    return alvo && alvo.aCobrir > 0 ? [alvo] : []
+  }
   if (abertas.length) return [abertas[0]]
 
   // Mensal em dia: este dinheiro é o do próximo mês. Só para contrato ativo —
@@ -185,6 +204,39 @@ async function competenciasACobrir(
   })
   if (resultado !== 'criada') return []
   return (await listar()).filter((c) => c.numero === proximo && c.aCobrir > 0)
+}
+
+/**
+ * Quanto cobrar **agora** desta assinatura, sem gravar nada.
+ *
+ * A mesma conta de `competenciasACobrir` — semestre/ano inteiro em aberto, ou o
+ * primeiro mês em aberto do mensal — mas sem materializar o mês seguinte: a
+ * renovação mensal (contrato em dia) não é cobrada por Pix avulso nesta fase.
+ * Zero significa "nada a cobrar agora". É este número que o Pix carrega, e é
+ * o mesmo que `confirmarPagamentoDeAssinatura` vai exigir que bata.
+ */
+export async function valorDevidoAgora(
+  executor: Leitor,
+  assinatura: { id: string; periodicidade: string },
+): Promise<number> {
+  const cobertura = await coberturaDasCompetencias(executor, assinatura.id)
+  const competencias = await executor
+    .select({
+      id: assinaturaCompetencias.id,
+      valor: assinaturaCompetencias.valorBaseCentavos,
+      status: assinaturaCompetencias.status,
+    })
+    .from(assinaturaCompetencias)
+    .where(eq(assinaturaCompetencias.assinaturaId, assinatura.id))
+    .orderBy(asc(assinaturaCompetencias.numero))
+  const abertas = competencias
+    .filter((c) => c.status !== 'cancelada')
+    .map((c) => c.valor - (cobertura.get(c.id) ?? 0))
+    .filter((aCobrir) => aCobrir > 0)
+  if (!abertas.length) return 0
+  return assinatura.periodicidade === 'mensal'
+    ? abertas[0]
+    : abertas.reduce((total, valor) => total + valor, 0)
 }
 
 /**
@@ -239,6 +291,54 @@ async function iniciarVigencia(tx: Transacao, assinaturaId: string, inicio: Date
         eq(assinaturaCompetencias.status, 'prevista'),
       ),
     )
+}
+
+/**
+ * Põe em andamento os meses já pagos cujo período começou.
+ *
+ * Só `prevista` → `em_andamento`, e só com o valor do mês inteiro coberto por
+ * pagamento `confirmado`: mês em aberto não começa a ser prestado. Cumprido e
+ * cancelado nunca são tocados. Chamado pela confirmação do pagamento e pela
+ * rotina diária das mensalidades — o que chegar primeiro; repetir não muda nada.
+ * Devolve os números dos meses iniciados agora.
+ */
+export async function iniciarCompetenciasPagasEmCurso(
+  tx: Transacao,
+  assinaturaId: string,
+  hoje: string,
+): Promise<number[]> {
+  const candidatas = await tx
+    .select({
+      id: assinaturaCompetencias.id,
+      numero: assinaturaCompetencias.numero,
+      valor: assinaturaCompetencias.valorBaseCentavos,
+    })
+    .from(assinaturaCompetencias)
+    .where(
+      and(
+        eq(assinaturaCompetencias.assinaturaId, assinaturaId),
+        eq(assinaturaCompetencias.status, 'prevista'),
+        lte(assinaturaCompetencias.periodoInicio, hoje),
+      ),
+    )
+  if (!candidatas.length) return []
+  const cobertura = await coberturaDasCompetencias(tx, assinaturaId)
+  const pagas = candidatas.filter((c) => (cobertura.get(c.id) ?? 0) >= c.valor)
+  if (!pagas.length) return []
+  const iniciadas = await tx
+    .update(assinaturaCompetencias)
+    .set({ status: 'em_andamento', updatedAt: new Date() })
+    .where(
+      and(
+        inArray(
+          assinaturaCompetencias.id,
+          pagas.map((c) => c.id),
+        ),
+        eq(assinaturaCompetencias.status, 'prevista'),
+      ),
+    )
+    .returning({ numero: assinaturaCompetencias.numero })
+  return iniciadas.map((c) => c.numero).sort((a, b) => a - b)
 }
 
 /** Os meses que um pagamento cobre, pelo id. */
@@ -417,8 +517,14 @@ export async function confirmarPagamentoDeAssinatura(
         throw new Recusa('assinatura_nao_pagavel')
       }
 
-      const alvo = await competenciasACobrir(tx, assinatura)
-      if (!alvo.length) throw new Recusa('sem_competencia_a_cobrir')
+      const numeroAlvo =
+        Number.isInteger(evento.competenciaNumero) && (evento.competenciaNumero ?? 0) > 0
+          ? (evento.competenciaNumero as number)
+          : null
+      const alvo = await competenciasACobrir(tx, assinatura, numeroAlvo)
+      if (!alvo.length) {
+        throw new Recusa(numeroAlvo === null ? 'sem_competencia_a_cobrir' : 'competencia_alvo_indisponivel')
+      }
       const devido = alvo.reduce((total, c) => total + c.aCobrir, 0)
       if (evento.valorCentavos !== devido) throw new Recusa('valor_divergente')
 
@@ -478,6 +584,15 @@ export async function confirmarPagamentoDeAssinatura(
           usuarioId: assinatura.clienteUsuarioId,
           nome: assinatura.planoNome,
         })
+      }
+
+      /*
+        Mensal: o mês pago cujo período já começou entra em andamento agora —
+        a mensalidade paga com atraso libera a prestação na hora. (O primeiro
+        mês já foi posto em andamento por `iniciarVigencia`.)
+      */
+      if (assinatura.periodicidade === 'mensal') {
+        await iniciarCompetenciasPagasEmCurso(tx, assinatura.id, dataLocalDoInstante(agora, TIMEZONE_PADRAO))
       }
 
       /*

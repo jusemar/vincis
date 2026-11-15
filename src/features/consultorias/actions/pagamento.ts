@@ -1,10 +1,11 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db/connection'
 import {
+  cobrancasPix,
   consultoriaAgendamentos,
   consultoriaConfiguracoes,
   consultoriaPagamentos,
@@ -15,12 +16,20 @@ import {
   ACOES_AUDITORIA,
   registrarEventoAuditoria,
 } from '@/features/auditoria/lib/registrar-evento'
-import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
 import {
-  emitirNotificacoes,
-  resumirTexto,
-} from '@/features/notificacoes/lib/emitir'
+  EXPIRACAO_PIX_SEGUNDOS,
+  FOLGA_RESERVA_APOS_PIX_SEGUNDOS,
+} from '@/features/pagamentos/constants/cobranca'
 import { ORIGEM_SIMULADA } from '@/features/pagamentos/constants/pagamento'
+import {
+  abrirCobrancaPix,
+  paraDTO,
+  sincronizarCobranca,
+} from '@/features/pagamentos/lib/cobrancas'
+import { simulacaoPermitida } from '@/features/pagamentos/lib/ambiente'
+import { retratoComissaoVigente } from '@/features/pagamentos/lib/comissao-vincis'
+import { MENSAGEM_COMISSAO_PENDENTE } from '@/features/servicos/constants/comissao'
+import { MENSAGEM_HONORARIOS_DIRETOS, prestadorCobraDiretamente } from '@/features/profissionais/lib/honorarios'
 import {
   DESFECHOS_SIMULACAO,
   processarPagamentoSimulado,
@@ -28,12 +37,24 @@ import {
 import { obterEstadoDaContaDaSessao } from '@/features/usuarios/lib/estado-da-conta-da-sessao'
 import { obterSessaoServidor } from '@/features/usuarios/lib/sessao-servidor'
 import { MENSAGEM_RESERVA_EXPIRADA } from '../constants/reserva'
+import {
+  avisarConsultoriaAgendada,
+  efetivarConsultoria,
+  rotularHorario,
+} from '../lib/efetivar-consultoria'
+import { formatarPreco } from '../lib/formato'
 import { dataLocalDoInstante, horaDeMinutos, minutosLocaisDoInstante } from '../lib/tempo'
-import type { ResultadoPagamentoConsultoria } from '../types/contratacao'
+import type {
+  ResultadoPagamentoConsultoria,
+  ResultadoPixConsultoria,
+} from '../types/contratacao'
 
-const PagarConsultoriaSchema = z.object({
+const ReservaSchema = z.object({
   /** O único identificador que o navegador envia. Todo o resto vem do banco. */
   reservaId: z.string().uuid('Reserva inválida.'),
+})
+
+const PagarConsultoriaSchema = ReservaSchema.extend({
   /** Só o simulador usa. Ausente significa aprovar. */
   desfecho: z.enum(DESFECHOS_SIMULACAO).optional(),
 })
@@ -44,82 +65,297 @@ const EXPIRADA = {
 } as const
 
 /**
- * Paga (de mentira) e confirma a consultoria.
+ * A reserva precisa ter pelo menos isto de vida para um Pix ser emitido.
+ *
+ * Emitir com segundos restantes criaria um QR Code para um horário que pode
+ * ser de outra pessoa antes de o pagador abrir o app do banco.
+ */
+const VIDA_MINIMA_RESERVA_MS = 30_000
+
+async function exigirSessao() {
+  const sessao = await obterSessaoServidor()
+  if (sessao) return { sessao }
+  const estado = await obterEstadoDaContaDaSessao()
+  return {
+    recusa:
+      estado === 'nao_confirmada'
+        ? ({
+            situacao: 'conta_nao_confirmada',
+            mensagem: 'Confirme sua conta para concluir a contratação.',
+          } as const)
+        : ({ situacao: 'precisa_entrar', mensagem: 'Entre na sua conta para continuar.' } as const),
+  }
+}
+
+/** A consultoria confirmada, no formato que o painel "Concluído" mostra. */
+function confirmadoDaReserva(
+  reserva: typeof consultoriaReservas.$inferSelect,
+  dados: {
+    novo: boolean
+    agendamentoId: string
+    atendimentoId: string
+    protocolo: string
+    referencia: string | null
+    valorCentavos: number
+    honorariosDiretos?: boolean
+  },
+): Extract<ResultadoPagamentoConsultoria, { situacao: 'confirmado' }> {
+  return {
+    situacao: 'confirmado',
+    ...dados,
+    data: dataLocalDoInstante(reserva.inicioEm, reserva.timezone),
+    inicio: horaDeMinutos(minutosLocaisDoInstante(reserva.inicioEm, reserva.timezone)),
+    fim: horaDeMinutos(minutosLocaisDoInstante(reserva.fimEm, reserva.timezone)),
+    timezone: reserva.timezone,
+    duracaoMinutos: reserva.duracaoMinutos,
+  }
+}
+
+/** A reserva deste Cliente. De outro Cliente, é como se não existisse. */
+async function reservaDoCliente(reservaId: string, clienteId: string) {
+  const [reserva] = await db
+    .select()
+    .from(consultoriaReservas)
+    .where(
+      and(eq(consultoriaReservas.id, reservaId), eq(consultoriaReservas.clienteUsuarioId, clienteId)),
+    )
+    .limit(1)
+  return reserva ?? null
+}
+
+/** Reserva já confirmada → o mesmo "Concluído" de antes, sem cobrar de novo. */
+async function jaConfirmada(reserva: typeof consultoriaReservas.$inferSelect) {
+  const [feito] = await db
+    .select({
+      agendamentoId: consultoriaAgendamentos.id,
+      referencia: consultoriaPagamentos.referencia,
+      valorCentavos: consultoriaPagamentos.valorCentavos,
+    })
+    .from(consultoriaAgendamentos)
+    // `left`: a consultoria jurídica não tem linha de pagamento — e continua
+    // confirmada.
+    .leftJoin(consultoriaPagamentos, eq(consultoriaPagamentos.agendamentoId, consultoriaAgendamentos.id))
+    .where(eq(consultoriaAgendamentos.reservaId, reserva.id))
+    .limit(1)
+  if (!feito) return null
+  const atendimento = await garantirAtendimentoDaConsultoria(db, feito.agendamentoId)
+  return confirmadoDaReserva(reserva, {
+    novo: false,
+    agendamentoId: feito.agendamentoId,
+    atendimentoId: atendimento.id,
+    protocolo: atendimento.protocolo,
+    referencia: feito.referencia,
+    valorCentavos: feito.valorCentavos ?? 0,
+    honorariosDiretos: !feito.referencia,
+  })
+}
+
+/**
+ * Emite (ou reaproveita) o Pix da reserva — etapa "Pagamento".
  *
  * ## O que o navegador pode dizer
  *
- * Um id de reserva. Mais nada. Preço, duração, horário, fuso, descrição,
- * Profissional e Cliente são lidos do servidor — a reserva já fotografou tudo
- * isso quando prendeu o horário, e é essa fotografia que vale. Se o
- * Profissional reajustou o preço nos dez minutos seguintes, quem reservou paga
- * o que lhe foi mostrado: foi o compromisso que a plataforma assumiu.
+ * O id da reserva, e mais nada. Valor, horário, Profissional e Cliente são da
+ * reserva, que fotografou tudo isso ao prender o horário; o Cliente é o da
+ * sessão, e a reserva de outro Cliente simplesmente não é encontrada.
  *
- * ## A ordem dentro da transação, e por que é essa
+ * ## Reserva × validade do Pix
  *
- * 1. **agendamento** — `reserva_id` único; é aqui que a corrida é decidida;
- * 2. **pagamento** — precisa do agendamento existindo (FK);
- * 3. **reserva vira `confirmada`** — o rascunho fecha;
- * 4. **Atendimento + protocolo** — `consultoria_agendamento_id` único.
+ * A reserva de dez minutos é estendida para cobrir a validade do Pix
+ * (`EXPIRACAO_PIX_SEGUNDOS.consultoria`) mais uma folga — **a partir da
+ * validade gravada na cobrança**, então chamar de novo não estica nada: F5 não
+ * compra tempo. Pix vencido não é reemitido para a mesma reserva: o horário
+ * volta para a agenda e o Cliente escolhe de novo.
  *
- * Tudo numa transação só. Não existe estado intermediário publicável: ou há
- * consultoria, pagamento, Atendimento e protocolo, ou não há nada. Como o
- * pagamento é simulado e interno, atomicidade forte é possível — e sendo
- * possível, é o que se faz.
+ * ## O que esta ação não faz
  *
- * ## Idempotência
+ * Não agenda, não abre Atendimento e não gera protocolo. Isso só acontece
+ * quando a Efí confirma o Pix (`confirmarConsultoriaPaga`).
+ */
+export async function iniciarPagamentoDaConsultoria(
+  entrada: unknown,
+): Promise<ResultadoPixConsultoria> {
+  const validacao = ReservaSchema.safeParse(entrada)
+  if (!validacao.success) return { situacao: 'dados_invalidos', mensagem: 'Reserva inválida.' }
+
+  const { sessao, recusa } = await exigirSessao()
+  if (!sessao) return recusa
+
+  const reserva = await reservaDoCliente(validacao.data.reservaId, sessao.id)
+  if (!reserva) return EXPIRADA
+
+  if (reserva.status === 'confirmada') return (await jaConfirmada(reserva)) ?? EXPIRADA
+
+  // Pix desta reserva que venceu ou foi cancelado encerra a reserva: emitir
+  // outro seria segurar o horário indefinidamente.
+  const [anterior] = await db
+    .select({ id: cobrancasPix.id })
+    .from(cobrancasPix)
+    .where(
+      and(
+        eq(cobrancasPix.finalidade, 'consultoria'),
+        eq(cobrancasPix.referenciaId, reserva.id),
+        inArray(cobrancasPix.status, ['expirada', 'cancelada']),
+      ),
+    )
+    .limit(1)
+  if (anterior) return EXPIRADA
+
+  const agora = Date.now()
+  if (reserva.status !== 'ativa' || reserva.expiraEm.getTime() - agora < VIDA_MINIMA_RESERVA_MS) {
+    return EXPIRADA
+  }
+
+  const [configuracao] = await db
+    .select({ prestadorId: consultoriaConfiguracoes.prestadorId, titulo: consultoriaConfiguracoes.titulo })
+    .from(consultoriaConfiguracoes)
+    .where(eq(consultoriaConfiguracoes.id, reserva.configuracaoId))
+    .limit(1)
+  if (!configuracao) return EXPIRADA
+
+  // Consultoria avulsa paga pela Vincis: comissão configurada obrigatória,
+  // congelada na cobrança sobre o valor do snapshot da reserva.
+  // Advocacia não passa pela Vincis: a resposta é a de honorários, não a de comissão.
+  if (await prestadorCobraDiretamente(db, configuracao.prestadorId)) {
+    return { situacao: 'indisponivel', mensagem: MENSAGEM_HONORARIOS_DIRETOS }
+  }
+  const comissaoVincis = await retratoComissaoVigente(reserva.valorCentavos)
+  if (!comissaoVincis) {
+    console.warn('[CONSULTORIA_SEM_COMISSAO]', { reservaId: reserva.id })
+    return { situacao: 'indisponivel', mensagem: MENSAGEM_COMISSAO_PENDENTE }
+  }
+
+  const aberta = await abrirCobrancaPix({
+    finalidade: 'consultoria',
+    referenciaId: reserva.id,
+    clienteUsuarioId: sessao.id,
+    prestadorId: configuracao.prestadorId,
+    // O snapshot da reserva — nunca o preço atual da agenda.
+    valorCentavos: reserva.valorCentavos,
+    descricao: `Vincis · Consultoria ${rotularHorario(reserva.inicioEm, reserva.timezone)}`,
+    contexto: { comissaoVincis },
+    expiracaoSegundos: EXPIRACAO_PIX_SEGUNDOS.consultoria,
+  })
+
+  if (aberta.situacao === 'gerando') return { situacao: 'gerando', mensagem: aberta.mensagem }
+  if (aberta.situacao !== 'ok') {
+    return { situacao: 'indisponivel', mensagem: aberta.mensagem }
+  }
+
+  const { cobranca } = aberta
+  if (cobranca.status === 'paga') return acompanhar(reserva.id, sessao.id)
+
+  if (cobranca.expiraEm) {
+    // Nunca encurta, e a base é a validade da cobrança — fixa: repetir a
+    // chamada grava o mesmo instante.
+    const ate = new Date(cobranca.expiraEm.getTime() + FOLGA_RESERVA_APOS_PIX_SEGUNDOS * 1000)
+    if (ate.getTime() > reserva.expiraEm.getTime()) {
+      await db
+        .update(consultoriaReservas)
+        .set({ expiraEm: ate, updatedAt: new Date() })
+        .where(
+          and(
+            eq(consultoriaReservas.id, reserva.id),
+            eq(consultoriaReservas.status, 'ativa'),
+            lt(consultoriaReservas.expiraEm, ate),
+          ),
+        )
+    }
+  }
+
+  return { situacao: 'cobranca', cobranca, valorFormatado: formatarPreco(cobranca.valorCentavos) }
+}
+
+/**
+ * A situação do pagamento da reserva — o que a tela pergunta enquanto espera.
  *
- * Três índices únicos do banco, e não o botão desabilitado da tela:
- * `consultoria_agendamentos_reserva_unica`,
- * `consultoria_pagamentos_reserva_unica` e `atendimentos_consultoria_unico`.
- * Duplo clique, duas abas, F5 no meio e resposta perdida convergem para o mesmo
- * trio (consultoria, pagamento, protocolo). A segunda chamada **não falha**:
- * reencontra o que já existe e devolve o mesmo protocolo, porque do ponto de
- * vista de quem clicou o pedido foi atendido. O `onConflictDoNothing` seguido
- * de releitura é o mesmo padrão que `pagarAcordoSimulado` já usa.
+ * Confere na Efí (com freio) e devolve: ainda aguardando, Concluído com
+ * protocolo, expirado ou pago-sem-horário. A tela nunca decide sozinha.
+ */
+export async function acompanharPagamentoDaConsultoria(
+  entrada: unknown,
+): Promise<ResultadoPixConsultoria> {
+  const validacao = ReservaSchema.safeParse(entrada)
+  if (!validacao.success) return { situacao: 'dados_invalidos', mensagem: 'Reserva inválida.' }
+  const { sessao, recusa } = await exigirSessao()
+  if (!sessao) return recusa
+  return acompanhar(validacao.data.reservaId, sessao.id)
+}
+
+async function acompanhar(reservaId: string, clienteId: string): Promise<ResultadoPixConsultoria> {
+  const reserva = await reservaDoCliente(reservaId, clienteId)
+  if (!reserva) return EXPIRADA
+
+  const [ultima] = await db
+    .select()
+    .from(cobrancasPix)
+    .where(and(eq(cobrancasPix.finalidade, 'consultoria'), eq(cobrancasPix.referenciaId, reserva.id)))
+    .orderBy(desc(cobrancasPix.createdAt))
+    .limit(1)
+
+  if (!ultima) {
+    return reserva.status === 'confirmada' ? ((await jaConfirmada(reserva)) ?? EXPIRADA) : EXPIRADA
+  }
+
+  const atual = (await sincronizarCobranca(ultima.id)) ?? ultima
+
+  if (atual.status === 'paga') {
+    if (atual.efeito === 'conflito') {
+      return {
+        situacao: 'pago_sem_horario',
+        mensagem:
+          'Recebemos seu Pix, mas o horário já não estava disponível. A equipe Vincis fará o estorno integral.',
+      }
+    }
+    const atualizada = await reservaDoCliente(reserva.id, clienteId)
+    const confirmado = atualizada ? await jaConfirmada(atualizada) : null
+    return confirmado ?? { situacao: 'gerando', mensagem: 'Confirmando seu pagamento…' }
+  }
+  if (atual.status === 'expirada' || atual.status === 'cancelada') return EXPIRADA
+  if (atual.status === 'falhou') {
+    return { situacao: 'indisponivel', mensagem: 'Não foi possível gerar o Pix. Tente novamente.' }
+  }
+  if (atual.status === 'gerando') return { situacao: 'gerando', mensagem: 'Gerando o Pix…' }
+
+  return {
+    situacao: 'cobranca',
+    cobranca: paraDTO(atual),
+    valorFormatado: formatarPreco(atual.valorCentavos),
+  }
+}
+
+/**
+ * Paga **de mentira** e confirma a consultoria — exclusivo da suíte de testes.
  *
- * ## O limite da expiração
+ * Existia para fechar o fluxo antes do gateway. Com o Pix real no lugar, deixar
+ * esta ação acessível seria entregar consultoria sem cobrança a quem chamasse
+ * a Server Action à mão. Ela segue existindo porque a suíte a usa para montar
+ * consultorias confirmadas sem falar com a Efí — e recusa em qualquer outro
+ * ambiente (`simulacaoPermitida`).
  *
- * A reserva é relida **dentro** da transação, com `expira_em > agora` e a linha
- * travada. Quem entrou válido termina; quem chegou um segundo tarde não paga,
- * não confirma e não abre protocolo — e recebe a orientação de escolher outro
- * horário, nunca um erro técnico.
+ * As travas, a ordem e a idempotência são as de `efetivarConsultoria`, a mesma
+ * função que o Pix confirmado usa.
  */
 export async function pagarConsultoriaSimulado(
   entrada: unknown,
 ): Promise<ResultadoPagamentoConsultoria> {
+  if (!simulacaoPermitida()) {
+    return { situacao: 'falhou', mensagem: 'Pagamento simulado indisponível neste ambiente.' }
+  }
+
   const validacao = PagarConsultoriaSchema.safeParse(entrada)
   if (!validacao.success) {
     return { situacao: 'dados_invalidos', mensagem: 'Reserva inválida.' }
   }
   const { reservaId, desfecho } = validacao.data
 
-  const sessao = await obterSessaoServidor()
-  if (!sessao) {
-    const estado = await obterEstadoDaContaDaSessao()
-    if (estado === 'nao_confirmada') {
-      return {
-        situacao: 'conta_nao_confirmada',
-        mensagem: 'Confirme sua conta para concluir a contratação.',
-      }
-    }
-    return {
-      situacao: 'precisa_entrar',
-      mensagem: 'Entre na sua conta para continuar.',
-    }
-  }
+  const { sessao, recusa } = await exigirSessao()
+  if (!sessao) return recusa
 
   const agora = new Date()
 
   try {
     const resultado = await db.transaction(async (tx) => {
-      /**
-       * A reserva, travada e conferida.
-       *
-       * O `where` carrega a posse: `cliente_usuario_id = sessão`. Conhecer o id
-       * da reserva alheia não basta — a linha simplesmente não é encontrada, e
-       * a resposta é a mesma de uma reserva vencida. Quem tenta usar reserva de
-       * outro não descobre sequer que ela existe.
-       */
       const [reserva] = await tx
         .select()
         .from(consultoriaReservas)
@@ -134,13 +370,6 @@ export async function pagarConsultoriaSimulado(
 
       if (!reserva) return EXPIRADA
 
-      /**
-       * Já foi paga? Então a resposta é o que já existe.
-       *
-       * Este é o caminho do F5 depois do sucesso e do retry cuja resposta se
-       * perdeu: nada é cobrado de novo, nenhum protocolo novo é aberto, e a
-       * tela reencontra o estado Concluído.
-       */
       if (reserva.status === 'confirmada') {
         const [jaFeito] = await tx
           .select({
@@ -158,10 +387,7 @@ export async function pagarConsultoriaSimulado(
 
         if (!jaFeito) throw new Error('Reserva confirmada sem contratação.')
 
-        const atendimento = await garantirAtendimentoDaConsultoria(
-          tx,
-          jaFeito.agendamentoId,
-        )
+        const atendimento = await garantirAtendimentoDaConsultoria(tx, jaFeito.agendamentoId)
         return {
           situacao: 'confirmado' as const,
           novo: false,
@@ -175,35 +401,23 @@ export async function pagarConsultoriaSimulado(
         }
       }
 
-      // Vencida, liberada ou expirada não se paga. O servidor decide pelo
-      // relógio dele, e não pelo contador que o navegador estava desenhando.
       if (reserva.status !== 'ativa' || reserva.expiraEm.getTime() <= agora.getTime()) {
         return EXPIRADA
       }
 
       const [configuracao] = await tx
-        .select({
-          id: consultoriaConfiguracoes.id,
-          prestadorId: consultoriaConfiguracoes.prestadorId,
-        })
+        .select({ id: consultoriaConfiguracoes.id, prestadorId: consultoriaConfiguracoes.prestadorId })
         .from(consultoriaConfiguracoes)
         .where(eq(consultoriaConfiguracoes.id, reserva.configuracaoId))
         .limit(1)
 
       if (!configuracao) return EXPIRADA
 
-      // O valor é o do snapshot. Nada aqui relê o preço atual da configuração.
       const simulacao = processarPagamentoSimulado({
         valorCentavos: reserva.valorCentavos,
         desfecho,
       })
       if (!simulacao.aprovado) {
-        /**
-         * Recusa não grava nada — nem pagamento, nem consultoria, nem
-         * protocolo — e **não** mexe na reserva: os dez minutos originais
-         * continuam correndo, e o Cliente pode tentar de novo enquanto durarem.
-         * Repetir a tentativa não compra tempo extra.
-         */
         return {
           situacao: 'recusado' as const,
           mensagem: simulacao.motivo,
@@ -211,109 +425,21 @@ export async function pagarConsultoriaSimulado(
         }
       }
 
-      const [agendamentoCriado] = await tx
-        .insert(consultoriaAgendamentos)
-        .values({
-          reservaId: reserva.id,
-          configuracaoId: reserva.configuracaoId,
-          prestadorId: configuracao.prestadorId,
-          clienteUsuarioId: reserva.clienteUsuarioId,
-          inicioEm: reserva.inicioEm,
-          fimEm: reserva.fimEm,
-          timezone: reserva.timezone,
-          valorCentavos: reserva.valorCentavos,
-          duracaoMinutos: reserva.duracaoMinutos,
-          descricao: reserva.descricao,
-        })
-        // O índice único é a trava. A segunda chamada não grava e não quebra:
-        // cai na releitura e encontra a contratação do vencedor.
-        .onConflictDoNothing({ target: consultoriaAgendamentos.reservaId })
-        .returning({ id: consultoriaAgendamentos.id })
-
-      const agendamento =
-        agendamentoCriado ??
-        (
-          await tx
-            .select({ id: consultoriaAgendamentos.id })
-            .from(consultoriaAgendamentos)
-            .where(eq(consultoriaAgendamentos.reservaId, reserva.id))
-            .limit(1)
-        )[0]
-
-      if (!agendamento) {
-        throw new Error('Consultoria não encontrada após conflito de unicidade.')
-      }
-
-      const [pagamentoCriado] = await tx
-        .insert(consultoriaPagamentos)
-        .values({
-          reservaId: reserva.id,
-          agendamentoId: agendamento.id,
-          clienteUsuarioId: reserva.clienteUsuarioId,
-          prestadorId: configuracao.prestadorId,
-          valorCentavos: simulacao.valorCentavos,
+      const efetivada = await efetivarConsultoria(tx, {
+        reserva,
+        prestadorId: configuracao.prestadorId,
+        agora,
+        pagamento: {
           status: simulacao.status,
           origem: simulacao.origem,
           referencia: simulacao.referencia,
-        })
-        .onConflictDoNothing({ target: consultoriaPagamentos.reservaId })
-        .returning({
-          id: consultoriaPagamentos.id,
-          referencia: consultoriaPagamentos.referencia,
-          valorCentavos: consultoriaPagamentos.valorCentavos,
-        })
-
-      const pagamento =
-        pagamentoCriado ??
-        (
-          await tx
-            .select({
-              id: consultoriaPagamentos.id,
-              referencia: consultoriaPagamentos.referencia,
-              valorCentavos: consultoriaPagamentos.valorCentavos,
-            })
-            .from(consultoriaPagamentos)
-            .where(eq(consultoriaPagamentos.reservaId, reserva.id))
-            .limit(1)
-        )[0]
-
-      if (!pagamento) {
-        throw new Error('Pagamento não encontrado após conflito de unicidade.')
-      }
-
-      /**
-       * A reserva fecha.
-       *
-       * `where status = 'ativa'` para que duas transações não escrevam por cima
-       * uma da outra. O que passa a bloquear o horário daqui em diante é o
-       * agendamento, e não este status — fosse o status, o horário voltaria à
-       * venda no minuto em que o prazo da reserva vencesse.
-       */
-      await tx
-        .update(consultoriaReservas)
-        .set({ status: 'confirmada', updatedAt: agora })
-        .where(
-          and(
-            eq(consultoriaReservas.id, reserva.id),
-            eq(consultoriaReservas.status, 'ativa'),
-          ),
-        )
-
-      // Só aqui o Atendimento nasce. Idempotente por índice único, então
-      // repetir esta linha não abre um segundo protocolo.
-      const atendimento = await garantirAtendimentoDaConsultoria(
-        tx,
-        agendamento.id,
-      )
+          valorCentavos: simulacao.valorCentavos,
+        },
+      })
 
       return {
         situacao: 'confirmado' as const,
-        novo: Boolean(agendamentoCriado),
-        agendamentoId: agendamento.id,
-        referencia: pagamento.referencia,
-        valorCentavos: pagamento.valorCentavos,
-        atendimentoId: atendimento.id,
-        protocolo: atendimento.protocolo,
+        ...efetivada,
         reserva,
         prestadorId: configuracao.prestadorId,
       }
@@ -323,42 +449,39 @@ export async function pagarConsultoriaSimulado(
 
     const { reserva, prestadorId, ...confirmado } = resultado
 
-    // Avisos e auditoria só na primeira vez: um F5 não é um fato novo, e o
-    // sino do Profissional não pode contar a mesma consultoria duas vezes.
     if (confirmado.novo && prestadorId) {
-      await avisarConfirmacao({
+      await avisarConsultoriaAgendada({
         clienteId: sessao.id,
         clienteNome: sessao.nome,
         prestadorId,
         agendamentoId: confirmado.agendamentoId,
         atendimentoId: confirmado.atendimentoId,
         protocolo: confirmado.protocolo,
-        referencia: confirmado.referencia,
-        valorCentavos: confirmado.valorCentavos,
         quando: rotularHorario(reserva.inicioEm, reserva.timezone),
+      })
+      await registrarEventoAuditoria({
+        acao: ACOES_AUDITORIA.pagamentoSimuladoAprovado,
+        entidade: 'consultoria_pagamentos',
+        registroAfetado: confirmado.agendamentoId,
+        autorId: sessao.id,
+        usuarioId: prestadorId,
+        origem: 'sistema',
+        metadados: {
+          consultoriaAgendamentoId: confirmado.agendamentoId,
+          atendimentoId: confirmado.atendimentoId,
+          protocolo: confirmado.protocolo,
+          referencia: confirmado.referencia,
+          valorCentavos: confirmado.valorCentavos,
+          origem: ORIGEM_SIMULADA,
+        },
       })
     }
 
     revalidatePath('/cliente')
     revalidatePath('/admin')
 
-    return {
-      situacao: 'confirmado',
-      novo: confirmado.novo,
-      agendamentoId: confirmado.agendamentoId,
-      atendimentoId: confirmado.atendimentoId,
-      protocolo: confirmado.protocolo,
-      referencia: confirmado.referencia,
-      valorCentavos: confirmado.valorCentavos,
-      data: dataLocalDoInstante(reserva.inicioEm, reserva.timezone),
-      inicio: horaDeMinutos(minutosLocaisDoInstante(reserva.inicioEm, reserva.timezone)),
-      fim: horaDeMinutos(minutosLocaisDoInstante(reserva.fimEm, reserva.timezone)),
-      timezone: reserva.timezone,
-      duracaoMinutos: reserva.duracaoMinutos,
-    }
+    return confirmadoDaReserva(reserva, confirmado)
   } catch (erro) {
-    // Nome do erro, nunca a mensagem: stack e detalhe de banco não vazam para
-    // o Cliente nem para o log de produção.
     console.error('[PAGAR_CONSULTORIA_SIMULADO]', {
       nome: erro instanceof Error ? erro.name : 'Erro desconhecido',
     })
@@ -369,86 +492,96 @@ export async function pagarConsultoriaSimulado(
   }
 }
 
-/** `28/08/2026 14:00`, no fuso da agenda. Para o sino e para a auditoria. */
-function rotularHorario(instante: Date, timezone: string) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: timezone,
-  }).format(instante)
-}
-
 /**
- * O aviso essencial da confirmação — um só, e para o Profissional.
+ * Confirma o agendamento de uma consultoria **jurídica** — sem pagamento.
  *
- * ## Por que o Cliente não recebe notificação
+ * Regra de advocacia: honorário é combinado diretamente entre Cliente e
+ * advogado; a Vincis não cobra, não mostra QR Code, não chama a Efí e não
+ * registra pago/não pago. A agenda continua valendo: a reserva vira
+ * agendamento + Atendimento (conversa e acompanhamento), sem linha em
+ * `consultoria_pagamentos`.
  *
- * Porque a plataforma não avisa ninguém sobre a própria ação: `emitirNotificacoes`
- * descarta o autor dos destinatários, de propósito, e forçar a exceção aqui
- * significaria mandar um sino dizendo "você fez o que acabou de fazer". O
- * Cliente já vê a confirmação com o protocolo na tela, e o atendimento fica na
- * Área dele. Quem precisa ser puxado para a plataforma é o Profissional, que
- * não estava olhando.
+ * Só para advogado — lido do cadastro no servidor. Para qualquer outro
+ * profissional a resposta é recusa: a consultoria dele exige o Pix, e chamar
+ * esta action à mão não pula o pagamento.
  *
- * Lembretes de véspera, "começa em 15 minutos" e o resto da régua de
- * comunicação são etapa própria — não se antecipa régua aqui.
- *
- * `chaveDedupe` amarrada ao agendamento: retry e F5 não tocam o sino de novo.
- * A descrição do Cliente **não** viaja no aviso — ela é assunto privado e vive
- * dentro do Protocolo, atrás de autorização.
+ * Mesmas travas do caminho pago: agenda e reserva travadas, reserva viva e do
+ * próprio Cliente, idempotente pelos índices únicos de agendamento e Atendimento.
  */
-async function avisarConfirmacao({
-  clienteId,
-  clienteNome,
-  prestadorId,
-  agendamentoId,
-  atendimentoId,
-  protocolo,
-  referencia,
-  valorCentavos,
-  quando,
-}: {
-  clienteId: string
-  clienteNome: string
-  prestadorId: string
-  agendamentoId: string
-  atendimentoId: string
-  protocolo: string
-  referencia: string
-  valorCentavos: number
-  quando: string
-}) {
-  await emitirNotificacoes(db, {
-    destinatarios: [prestadorId],
-    autorId: clienteId,
-    tipo: TIPOS_NOTIFICACAO.consultoriaAgendada,
-    titulo: 'Nova consultoria agendada',
-    resumo: resumirTexto(`${quando} · ${protocolo} · ${clienteNome}`, 200),
-    recursoTipo: 'atendimento',
-    recursoId: atendimentoId,
-    atendimentoId,
-    protocolo,
-    destino: { pagina: 'atendimentos', atendimento: protocolo },
-    chaveDedupe: `${TIPOS_NOTIFICACAO.consultoriaAgendada}:${agendamentoId}`,
-  })
+export async function confirmarConsultoriaJuridica(
+  entrada: unknown,
+): Promise<ResultadoPagamentoConsultoria> {
+  const validacao = ReservaSchema.safeParse(entrada)
+  if (!validacao.success) return { situacao: 'dados_invalidos', mensagem: 'Reserva inválida.' }
+  const { sessao, recusa } = await exigirSessao()
+  if (!sessao) return recusa
 
-  await registrarEventoAuditoria({
-    acao: ACOES_AUDITORIA.pagamentoSimuladoAprovado,
-    entidade: 'consultoria_pagamentos',
-    registroAfetado: agendamentoId,
-    autorId: clienteId,
-    usuarioId: prestadorId,
-    origem: 'sistema',
-    metadados: {
-      consultoriaAgendamentoId: agendamentoId,
-      atendimentoId,
-      protocolo,
-      referencia,
-      valorCentavos,
-      origem: ORIGEM_SIMULADA,
-    },
-  })
+  const previa = await reservaDoCliente(validacao.data.reservaId, sessao.id)
+  if (!previa) return EXPIRADA
+  if (previa.status === 'confirmada') return (await jaConfirmada(previa)) ?? EXPIRADA
+
+  const [configuracao] = await db
+    .select({ prestadorId: consultoriaConfiguracoes.prestadorId })
+    .from(consultoriaConfiguracoes)
+    .where(eq(consultoriaConfiguracoes.id, previa.configuracaoId))
+    .limit(1)
+  if (!configuracao) return EXPIRADA
+  if (!(await prestadorCobraDiretamente(db, configuracao.prestadorId))) {
+    return { situacao: 'falhou', mensagem: 'Esta consultoria é confirmada após o pagamento por Pix.' }
+  }
+
+  const agora = new Date()
+  try {
+    const resultado = await db.transaction(async (tx) => {
+      // Mesma ordem de travas da aquisição de horário: agenda, depois reserva.
+      await tx
+        .select({ id: consultoriaConfiguracoes.id })
+        .from(consultoriaConfiguracoes)
+        .where(eq(consultoriaConfiguracoes.id, previa.configuracaoId))
+        .for('update')
+      const [reserva] = await tx
+        .select()
+        .from(consultoriaReservas)
+        .where(and(eq(consultoriaReservas.id, previa.id), eq(consultoriaReservas.clienteUsuarioId, sessao.id)))
+        .for('update')
+        .limit(1)
+      if (!reserva || reserva.status !== 'ativa' || reserva.expiraEm.getTime() <= agora.getTime()) {
+        return null
+      }
+      const efetivada = await efetivarConsultoria(tx, {
+        reserva,
+        prestadorId: configuracao.prestadorId,
+        agora,
+        pagamento: null,
+      })
+      return { reserva, efetivada }
+    })
+
+    if (!resultado) {
+      // Pode ter sido confirmada por outra aba no meio do caminho.
+      const atual = await reservaDoCliente(previa.id, sessao.id)
+      return atual?.status === 'confirmada' ? ((await jaConfirmada(atual)) ?? EXPIRADA) : EXPIRADA
+    }
+
+    const { reserva, efetivada } = resultado
+    if (efetivada.novo) {
+      await avisarConsultoriaAgendada({
+        clienteId: sessao.id,
+        clienteNome: sessao.nome,
+        prestadorId: configuracao.prestadorId,
+        agendamentoId: efetivada.agendamentoId,
+        atendimentoId: efetivada.atendimentoId,
+        protocolo: efetivada.protocolo,
+        quando: rotularHorario(reserva.inicioEm, reserva.timezone),
+      })
+    }
+    revalidatePath('/cliente')
+    revalidatePath('/admin')
+    return confirmadoDaReserva(reserva, { ...efetivada, valorCentavos: 0, honorariosDiretos: true })
+  } catch (erro) {
+    console.error('[CONFIRMAR_CONSULTORIA_JURIDICA]', {
+      nome: erro instanceof Error ? erro.name : 'Erro desconhecido',
+    })
+    return { situacao: 'falhou', mensagem: 'Não foi possível confirmar o agendamento. Tente novamente.' }
+  }
 }

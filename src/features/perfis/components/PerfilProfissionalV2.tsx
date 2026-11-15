@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -12,8 +12,21 @@ import {
   Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { contratarServico } from '@/features/servicos/actions/contratar';
-import { anexarArquivoAoAtendimento } from '@/features/atendimentos/actions/anexar-arquivo';
+import {
+  ModalContratacaoServico,
+  type ServicoSelecionado,
+} from '@/features/servicos/components/publico/ModalContratacaoServico';
+import {
+  intencaoDoPrestador,
+  lerIntencao,
+  limparIntencao,
+  obterStorageDaSessao,
+  salvarIntencao,
+} from '@/features/servicos/lib/contexto-contratacao';
+import type { ModeloPreco } from '@/features/servicos/schemas/servico';
+import { useAuth } from '@/features/usuarios/hooks/useAuth';
+import { ROTULO_PERFIL } from '@/features/perfil-pro/constants/perfil-pro';
+import { SeloModeloContratacao } from '@/features/profissionais/components/SeloModeloContratacao';
 import { salvarVitrineProfissional } from '@/features/usuarios/actions/salvar-vitrine-profissional';
 import { BotaoCompartilhar } from '@/features/parceiros/components/cliente/BotaoCompartilhar';
 import { REGIMES_TRIBUTARIOS } from '@/features/usuarios/schemas/perfil-profissional';
@@ -251,6 +264,8 @@ type ServicoPublico = {
   note: string;
   action: string;
   outline?: boolean;
+  /** Decide o caminho do botão: Pix, orçamento ou agenda. Ausente na demo. */
+  modeloPreco?: ModeloPreco;
 };
 
 /** Identidade pública real do prestador. Ausente = vitrine de demonstração. */
@@ -261,6 +276,12 @@ export type IdentidadePublica = {
   apresentacao: string
   experienciaAnos: number | null
   avaliacaoMedia: number | null
+  /** Advocacia: Perfil Essencial ou Pro (como os documentos circulam). */
+  perfilAdvocacia?: 'essencial' | 'pro' | null
+  /** Contabilidade: modelo comercial definido pelo gestor (nulo = não exibir). */
+  modeloContratacao?: 'vincis' | 'autonomo' | null
+  /** Advocacia: registro da OAB já salvo ("OAB/MG 123456"), exibido em Formação. */
+  registroProfissional?: string | null
   totalAvaliacoes: number
   /**
    * Campos já persistidos no cadastro. Cada um é exibido só quando tem valor —
@@ -379,6 +400,8 @@ type PerfilProfissionalV2Props = {
    * aparece, em vez de levar a uma página que diria "sem preços".
    */
   planosEPrecos?: string;
+  /** O Profissional deste perfil (`?prestador=`). Escopo da intenção guardada no login. */
+  prestadorId?: string;
 };
 
 export default function PerfilProfissionalV2({
@@ -393,6 +416,7 @@ export default function PerfilProfissionalV2({
   experiencias,
   faq,
   planosEPrecos,
+  prestadorId,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
@@ -410,6 +434,7 @@ export default function PerfilProfissionalV2({
    */
   const itensFormacao: string[] = identidade
     ? [
+        identidade.registroProfissional ?? null,
         identidade.formacao
           ? `${identidade.formacao}${identidade.instituicaoEnsino ? ` — ${identidade.instituicaoEnsino}` : ''}${identidade.anoFormacao ? ` (${identidade.anoFormacao})` : ''}`
           : null,
@@ -638,7 +663,6 @@ export default function PerfilProfissionalV2({
     }
   }
 
-  const [contratando, setContratando] = useState(false);
   const listaServicos: ServicoPublico[] = servicos ?? (services as ServicoPublico[]);
   // Mesma regra dos serviços: dado real quando existe prestador, conteúdo de
   // demonstração quando a página é a vitrine sem `?prestador=`.
@@ -646,59 +670,143 @@ export default function PerfilProfissionalV2({
     avaliacoes ??
     reviews.map((review, indice) => ({ id: `demo-${indice}`, ...review }));
 
-  /**
-   * Contratação direta. O Cliente vem da sessão no servidor; aqui só
-   * encaminhamos o visitante sem conta para o fluxo de login já existente,
-   * preservando a intenção para retomar o mesmo serviço depois.
-   */
   /** Recado e anexos que o Cliente prepara antes de confirmar, por serviço. */
   const [mensagens, setMensagens] = useState<Record<string, string>>({});
   const [anexos, setAnexos] = useState<Record<string, File[]>>({});
 
-  async function contratar(servicoId: string) {
-    if (contratando) return;
-    setContratando(true);
-    try {
-      const resultado = await contratarServico({
-        servicoId,
-        mensagem: mensagens[servicoId] ?? '',
-      });
-      if (!resultado.sucesso && resultado.precisaEntrar) {
-        const retorno = `${window.location.pathname}${window.location.search}`;
-        window.location.href = `/?entrar=1&retorno=${encodeURIComponent(retorno)}`;
+  /**
+   * Contratação de serviço — o caminho depende do modelo de preço.
+   *
+   * - `fixo`: abre o modal `Detalhes → Pagamento (Pix) → Concluído`. Nada é
+   *   contratado antes de a Efí confirmar o Pix.
+   * - `sob_orcamento` e `a_partir_de`: não há preço final para cobrar; abre a
+   *   Solicitação de orçamento privada deste perfil, que já tem proposta com
+   *   valor, aceite e pagamento.
+   * - `por_hora`: leva à agenda da Consultoria, onde o horário é escolhido.
+   *
+   * Visitante sem conta não sai daqui: o modal avisa que precisa entrar, o
+   * login abre por cima desta página (`?entrar=1`) e, com a sessão de volta, o
+   * mesmo serviço reabre com o recado que já tinha sido escrito.
+   */
+  const { usuario } = useAuth();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [servicoEmContratacao, setServicoEmContratacao] = useState<ServicoSelecionado | null>(null);
+  const [modalServicoAberto, setModalServicoAberto] = useState(false);
+  /** `key` do modal: cada abertura é uma conversa nova com o servidor. */
+  const [aberturaServico, setAberturaServico] = useState(0);
+  const [descricaoOrcamento, setDescricaoOrcamento] = useState('');
+
+  function selecionarServico(servico: ServicoPublico): ServicoSelecionado {
+    return { id: servico.id, nome: servico.name, descricao: servico.desc, precoRotulo: servico.price };
+  }
+
+  function abrirModalDoServico(servico: ServicoSelecionado) {
+    setServicoEmContratacao(servico);
+    setAberturaServico((valor) => valor + 1);
+    setModalServicoAberto(true);
+  }
+
+  function rolarPara(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function contratar(servico: ServicoPublico) {
+    if (!servico.id) return;
+    const modelo = servico.modeloPreco ?? 'fixo';
+
+    if (modelo === 'sob_orcamento' || modelo === 'a_partir_de') {
+      if (!solicitacaoDireta) {
+        toast.info('Este profissional não está recebendo solicitações de orçamento no momento.');
         return;
       }
-      if (!resultado.sucesso) {
-        toast.error(resultado.mensagem);
-        return;
-      }
-
-      // Os anexos vão para o Atendimento recém-criado pelo mesmo caminho
-      // autorizado usado durante o atendimento — não existe segundo sistema de
-      // arquivos só para a contratação.
-      // Só quando a contratação nasce agora. Se ela já existia, clicar de novo
-      // não pode duplicar os anexos — dali em diante o lugar de enviar arquivo
-      // é o próprio Atendimento. É a mesma regra da mensagem inicial.
-      const atendimentoId = resultado.dados?.jaExistia
-        ? undefined
-        : resultado.dados?.atendimentoId;
-      const arquivos = anexos[servicoId] ?? [];
-      if (atendimentoId && arquivos.length) {
-        for (const arquivo of arquivos) {
-          const dados = new FormData();
-          dados.set('atendimentoId', atendimentoId);
-          dados.set('arquivo', arquivo);
-          const envio = await anexarArquivoAoAtendimento(dados);
-          if (!envio.sucesso) toast.error(`${arquivo.name}: ${envio.mensagem}`);
-        }
-      }
-
-      setMensagens((atual) => ({ ...atual, [servicoId]: '' }));
-      setAnexos((atual) => ({ ...atual, [servicoId]: [] }));
-      toast.success(resultado.mensagem);
-    } finally {
-      setContratando(false);
+      const recado = (mensagens[servico.id] ?? '').trim();
+      setDescricaoOrcamento(
+        `Serviço: ${servico.name}${modelo === 'a_partir_de' ? ` (${servico.price})` : ''}.${recado ? `\n\n${recado}` : ''}`,
+      );
+      setSolicitando(true);
+      toast.info('O valor deste serviço depende do seu caso. Envie sua solicitação e o profissional responderá com o valor.');
+      setTimeout(() => rolarPara('solicitar-orcamento'), 50);
+      return;
     }
+
+    if (modelo === 'por_hora') {
+      if (!agendaConsultoria?.consultoria) {
+        toast.info('A agenda deste profissional ainda não está aberta para consultorias.');
+        return;
+      }
+      toast.info('Escolha um dia e horário na agenda para contratar por hora.');
+      rolarPara('agenda-consultoria');
+      return;
+    }
+
+    abrirModalDoServico(selecionarServico(servico));
+  }
+
+  /** Guarda a intenção e abre o login por cima desta mesma página. */
+  function irParaLoginDoServico(mensagem: string) {
+    if (!servicoEmContratacao) return;
+    if (prestadorId) {
+      const storage = obterStorageDaSessao();
+      if (storage) {
+        salvarIntencao(storage, { prestadorId, servicoId: servicoEmContratacao.id, mensagem });
+      }
+    }
+    setMensagens((atual) => ({ ...atual, [servicoEmContratacao.id]: mensagem }));
+    setModalServicoAberto(false);
+    toast.info('Entre ou crie sua conta para continuar a contratação. Você não sairá desta página.');
+    // Os demais parâmetros — `?prestador=` inclusive — seguem intactos, e o
+    // recado não entra em nenhum deles.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('entrar', '1');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function fecharModalDoServico() {
+    setModalServicoAberto(false);
+    // Fechar por vontade própria descarta a intenção guardada.
+    const storage = obterStorageDaSessao();
+    if (storage) limparIntencao(storage);
+  }
+
+  /**
+   * A retomada depois do login.
+   *
+   * Mesmo padrão de `ConsultoriaPublica`: compara a sessão desta renderização
+   * com a anterior e, na **chegada** de uma sessão, reabre o serviço guardado
+   * — com o recado que tinha sido escrito. Serve tanto ao login sem recarregar
+   * quanto à página que remontou no caminho.
+   */
+  const [sessaoVista, setSessaoVista] = useState<string | null>(usuario?.id ?? null);
+  const sessaoAtual = usuario?.id ?? null;
+  if (sessaoAtual !== sessaoVista) {
+    setSessaoVista(sessaoAtual);
+    if (sessaoAtual && prestadorId && !modalServicoAberto) {
+      const storage = obterStorageDaSessao();
+      const intencao = storage ? intencaoDoPrestador(lerIntencao(storage), prestadorId) : null;
+      const servico = intencao ? listaServicos.find((item) => item.id === intencao.servicoId) : undefined;
+      if (storage && intencao && servico) {
+        // Consumida na leitura: retomar uma vez é continuidade.
+        limparIntencao(storage);
+        setMensagens((atual) => ({ ...atual, [servico.id]: intencao.mensagem }));
+        abrirModalDoServico(selecionarServico(servico));
+      }
+    }
+  }
+
+  /** Concluída: o recado e os anexos já seguiram para o Atendimento. */
+  function aposContratacaoConcluida() {
+    if (!servicoEmContratacao) return;
+    const id = servicoEmContratacao.id;
+    setMensagens((atual) => ({ ...atual, [id]: '' }));
+    setAnexos((atual) => ({ ...atual, [id]: [] }));
+  }
+
+  /** Login pedido pelo formulário de orçamento: também por cima desta página. */
+  function irParaLoginDoOrcamento() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('entrar', '1');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   /** O formulário privado abre no lugar, sem tirar ninguém da página. */
@@ -874,6 +982,16 @@ export default function PerfilProfissionalV2({
                         {identidade.codigoPublico}
                       </span>
                     </p>
+                  ) : null}
+                  {/* Identifica os recursos da plataforma, não é selo de qualidade. */}
+                  {identidade?.perfilAdvocacia ? (
+                    <p className="text-sm text-muted-foreground">
+                      {ROTULO_PERFIL[identidade.perfilAdvocacia].perfil}
+                    </p>
+                  ) : null}
+                  {/* Contabilidade: mesmo selo do card — como contratar e pagar. */}
+                  {identidade?.modeloContratacao ? (
+                    <SeloModeloContratacao modelo={identidade.modeloContratacao} className="text-sm" />
                   ) : null}
                   {linkCompartilhavel ? (
                     <BotaoCompartilhar
@@ -1174,6 +1292,8 @@ export default function PerfilProfissionalV2({
 
           {/* Consult Section */}
           <motion.div
+            id="solicitar-orcamento"
+            className="scroll-mt-24"
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -1232,8 +1352,14 @@ export default function PerfilProfissionalV2({
 
                 {solicitando ? (
                   <FormularioSolicitarOrcamento
+                    key={descricaoOrcamento}
                     destinatario={solicitacaoDireta}
-                    onCancelar={() => setSolicitando(false)}
+                    descricaoInicial={descricaoOrcamento}
+                    onPrecisaEntrar={irParaLoginDoOrcamento}
+                    onCancelar={() => {
+                      setSolicitando(false);
+                      setDescricaoOrcamento('');
+                    }}
                   />
                 ) : null}
               </div>
@@ -1325,6 +1451,9 @@ export default function PerfilProfissionalV2({
                           placeholder="Explique sua necessidade. Ex.: preciso abrir um MEI para prestação de serviços e já tenho meus documentos."
                           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                         />
+                        {/* Anexos por serviço só servem à contratação com Pix;
+                            advogado segue por orçamento (com seu próprio campo). */}
+                        {identidade?.tipoProfissional === 'advocacia' ? null : (
                         <div className="flex flex-wrap items-center gap-2">
                           <input
                             id={`anexos-${service.id}`}
@@ -1343,6 +1472,7 @@ export default function PerfilProfissionalV2({
                             Arquivos ficam privados, visíveis só para você e o profissional. TXT, PDF, JPG ou PNG até 10 MB.
                           </p>
                         </div>
+                        )}
                       </div>
                     )}
 
@@ -1350,8 +1480,8 @@ export default function PerfilProfissionalV2({
                       <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{service.note}</p>
                       <button
                         type="button"
-                        disabled={contratando || !service.id}
-                        onClick={() => service.id && void contratar(service.id)}
+                        disabled={!service.id}
+                        onClick={() => contratar(service)}
                         className={
                           service.outline
                             ? 'border-2 border-primary text-primary px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap hover:bg-primary/5 active:scale-95 transition-all shrink-0'
@@ -1782,7 +1912,7 @@ export default function PerfilProfissionalV2({
               contratação, o rascunho e o retorno do login moram junto dela, no
               domínio, e não aqui.
             */}
-            <div className="relative">
+            <div id="agenda-consultoria" className="relative scroll-mt-24">
               <ConsultoriaPublica
                 nomeExibido={nomeExibido}
                 agendaInicial={agendaConsultoria ?? null}
@@ -2032,6 +2162,20 @@ export default function PerfilProfissionalV2({
         </motion.div>
       </main>
 
+      {servicoEmContratacao ? (
+        <ModalContratacaoServico
+          key={aberturaServico}
+          aberto={modalServicoAberto}
+          onFechar={fecharModalDoServico}
+          nomeExibido={nomeExibido}
+          servico={servicoEmContratacao}
+          autenticado={Boolean(usuario)}
+          mensagemInicial={mensagens[servicoEmContratacao.id] ?? ''}
+          anexos={anexos[servicoEmContratacao.id] ?? []}
+          onPrecisaEntrar={irParaLoginDoServico}
+          onConcluida={aposContratacaoConcluida}
+        />
+      ) : null}
     </div>
   );
 }

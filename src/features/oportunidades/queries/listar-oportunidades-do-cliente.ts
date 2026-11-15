@@ -88,6 +88,7 @@ export async function listarOportunidadesDoCliente(
       validaAte: oportunidadePropostas.validaAte,
       aceitaEm: oportunidadePropostas.aceitaEm,
       valorAcordadoCentavos: oportunidadePropostas.valorAcordadoCentavos,
+      natureza: oportunidadePropostas.natureza,
       criadoEm: oportunidadePropostas.createdAt,
     })
     .from(oportunidadePropostas)
@@ -286,6 +287,7 @@ export async function listarOportunidadesDoCliente(
       prestadorCidade: proposta.prestadorCidade,
       prestadorEstado: proposta.prestadorEstado,
       prestadorTipoProfissional: proposta.prestadorTipoProfissional,
+      natureza: proposta.natureza === 'recorrente' ? 'recorrente' : 'avulsa',
       perfilPublico: {
         nome: proposta.prestadorNome,
         avatarUrl: proposta.prestadorAvatar,

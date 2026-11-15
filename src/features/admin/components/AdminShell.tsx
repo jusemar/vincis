@@ -67,6 +67,10 @@ export function AdminShell({
     ? usuario.elegivelCentralFiscal && perfilVeDocumentosFiscais(usuario.perfilTipo)
     : false;
 
+  // Contador parceiro Vincis (sessão): oferece "Meus clientes Vincis". A rota
+  // confere de novo no servidor — Autônomo não recebe a área.
+  const contadorParceiroVincis = Boolean(usuario?.contadorParceiroVincis);
+
   useEffect(() => {
     // Sem sessão e sem erro de conferência: a pessoa realmente não está
     // logada. Com erro, ficar é o certo — deslogar alguém por causa de uma
@@ -131,6 +135,7 @@ export function AdminShell({
           ehGestor={ehGestor}
           ehPrestador={ehPrestador}
           podeVerDocumentosFiscais={podeVerDocumentosFiscais}
+          contadorParceiroVincis={contadorParceiroVincis}
         />
       </div>
 
@@ -145,6 +150,7 @@ export function AdminShell({
         ehGestor={ehGestor}
         ehPrestador={ehPrestador}
         podeVerDocumentosFiscais={podeVerDocumentosFiscais}
+        contadorParceiroVincis={contadorParceiroVincis}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconeConcluido } from '@/components/ui/icone-concluido'
 import { cn } from '@/lib/utils'
 
 /**
@@ -15,7 +16,7 @@ import { cn } from '@/lib/utils'
  * partes interativas ficam nos componentes que os usam.
  */
 
-export type Tom = 'neutro' | 'info' | 'sucesso' | 'atencao' | 'destaque'
+export type Tom = 'neutro' | 'info' | 'sucesso' | 'atencao' | 'destaque' | 'perigo'
 
 /**
  * Fundo suave + borda da mesma família.
@@ -30,6 +31,8 @@ const FUNDO_DO_TOM: Record<Tom, string> = {
   sucesso: 'badge-success',
   atencao: 'badge-warning',
   destaque: 'bg-primary/10 text-primary border-primary/25',
+  // Vermelho legível nos dois temas: o `--destructive` do escuro é escuro demais para texto.
+  perigo: 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-300',
 }
 
 const PONTO_DO_TOM: Record<Tom, string> = {
@@ -38,6 +41,7 @@ const PONTO_DO_TOM: Record<Tom, string> = {
   sucesso: 'bg-success',
   atencao: 'bg-warning',
   destaque: 'bg-primary',
+  perigo: 'bg-red-500',
 }
 
 /**
@@ -317,28 +321,18 @@ export function Trilha({
             className="flex flex-1 items-center gap-2.5"
             aria-current={ehAtual ? 'step' : undefined}
           >
-            <span
-              aria-hidden
-              className={cn(
-                'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
-                concluido && 'border-success bg-success',
-                ehAtual && 'border-primary ring-4 ring-primary/15',
-                !concluido && !ehAtual && 'border-muted-foreground/30',
-              )}
-            >
-              {concluido ? (
-                <svg viewBox="0 0 12 12" className="size-3 text-success-foreground">
-                  <path
-                    d="M2.5 6.2 4.8 8.5 9.5 3.8"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              ) : null}
-            </span>
+            {concluido ? (
+              <IconeConcluido />
+            ) : (
+              <span
+                aria-hidden
+                className={cn(
+                  'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                  ehAtual && 'border-primary ring-4 ring-primary/15',
+                  !ehAtual && 'border-muted-foreground/30',
+                )}
+              />
+            )}
             <span
               className={cn(
                 'text-sm',

@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Circle, Briefcase, GraduationCap, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ROTULO_PERFIL } from "@/features/perfil-pro/constants/perfil-pro";
+import { SeloModeloContratacao } from "./SeloModeloContratacao";
 import type { Professional } from "../types/profissionais";
 
 /** Iniciais para o avatar de quem ainda não enviou foto. */
@@ -32,6 +35,8 @@ const ProfessionalCard = ({
   adminControls,
 }: ProfessionalCardProps) => {
   const router = useRouter();
+  // Preço no azul-marinho do botão, só no dark e só na vitrine pública.
+  const precoDark = variant === "adminEquipe" ? undefined : "dark:!text-secondary";
   const [fotoFalhou, setFotoFalhou] = useState(false);
 
   const {
@@ -174,23 +179,56 @@ const ProfessionalCard = ({
               </span>
             )}
           </div>
+
+          {/* Advocacia: Perfil Essencial/Pro. Diz como os documentos circulam,
+              não é selo de qualidade nem muda a posição na busca. */}
+          {variant !== "adminEquipe" && professional.perfilAdvocacia ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {ROTULO_PERFIL[professional.perfilAdvocacia].nome}
+              </span>{" "}
+              · {ROTULO_PERFIL[professional.perfilAdvocacia].card}
+            </p>
+          ) : null}
+
+          {/* Contabilidade: como se contrata este profissional. Fala do modo
+              de contratar e pagar — não de vínculo com a Vincis. */}
+          {variant !== "adminEquipe" && professional.modeloContratacao ? (
+            <SeloModeloContratacao modelo={professional.modeloContratacao} className="mt-2" />
+          ) : null}
         </div>
       </div>
 
-      {/* Footer CTA */}
+      {/*
+        Footer CTA
+
+        No dark, e só aqui, o dourado vivo do gradiente cansava ao lado das
+        superfícies escuras: o rodapé vira dourado fosco liso (#D3A122, cor
+        aprovada) com `dark:bg-none` desligando o gradiente de
+        `.bg-gradient-gold`. O preço passa ao mesmo azul-marinho do fundo do
+        botão (`secondary` no dark) — com `!` pelo mesmo motivo do botão
+        abaixo: a regra global `.bg-gradient-gold *` força a cor com
+        `!important`. Só a vitrine pública: o card do admin (`adminEquipe`)
+        fica como está. Nada global muda; o tema claro segue idêntico.
+      */}
       <footer
         className={
           variant === "adminEquipe"
             ? "flex flex-col gap-3 bg-gradient-gold px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
-            : "flex items-center justify-between gap-3 bg-gradient-gold px-5 py-3"
+            : "flex items-center justify-between gap-3 bg-gradient-gold px-5 py-3 dark:bg-[#D3A122] dark:bg-none"
         }
       >
-        <div>
-          <span className="text-base font-bold">
-            R$ {hourlyRate.toFixed(0)}
-          </span>
-          <span className="ml-1 text-[11px] opacity-90">/ hora</span>
-        </div>
+        {/* Advogado não tem preço exposto na vitrine: o caminho é pedir orçamento. */}
+        {variant !== "adminEquipe" && professional.profession === "advogado" ? (
+          <span className={cn("text-sm font-bold", precoDark)}>Consultar honorários</span>
+        ) : (
+          <div>
+            <span className={cn("text-base font-bold", precoDark)}>
+              R$ {hourlyRate.toFixed(0)}
+            </span>
+            <span className={cn("ml-1 text-[11px] opacity-90", precoDark)}>/ hora</span>
+          </div>
+        )}
         {variant === "adminEquipe" ? (
           adminControls
         ) : (
@@ -202,12 +240,12 @@ const ProfessionalCard = ({
             do card (branca no dark), vencendo qualquer classe sem `!`. O mesmo
             vale para `.text-navy-900`, também sobrescrita lá. No dark o botão
             segue as superfícies escuras da Vincis (Pausar/Reiniciar): fundo
-            `secondary` (um tom acima do card), texto `foreground`, borda sutil.
+            `secondary` (um tom acima do card), texto branco, borda sutil.
           */
           <button
             type="button"
             disabled={!professional.isAvailable}
-            className="alvo-toque-h inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-2 text-xs font-bold tracking-wide !text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm dark:border-white/15 dark:bg-secondary dark:!text-foreground dark:hover:border-white/35 dark:focus-visible:ring-foreground dark:active:bg-card"
+            className="alvo-toque-h inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-2 text-xs font-bold tracking-wide !text-navy-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm dark:border-white/15 dark:bg-secondary dark:!text-white dark:hover:border-white/35 dark:focus-visible:ring-foreground dark:active:bg-card"
             onClick={(e) => {
               e.stopPropagation();
               if (!professional.isAvailable) return;

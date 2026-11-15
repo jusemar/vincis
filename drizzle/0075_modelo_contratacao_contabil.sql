@@ -1,0 +1,2 @@
+ALTER TABLE "perfis_profissionais" ADD COLUMN "modelo_contratacao" varchar(20);--> statement-breakpoint
+ALTER TABLE "perfis_profissionais" ADD CONSTRAINT "perfis_profissionais_modelo_contratacao_valido" CHECK ("perfis_profissionais"."modelo_contratacao" is null or ("perfis_profissionais"."tipo_profissional" = 'contabilidade' and "perfis_profissionais"."modelo_contratacao" in ('vincis', 'autonomo')));

@@ -16,6 +16,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { enviarProposta } from '../../actions/propostas'
 import {
+  NATUREZAS_PROPOSTA,
+  ROTULO_NATUREZA_PROPOSTA,
+  type NaturezaProposta,
+} from '../../constants/natureza-proposta'
+import {
   LIMITE_MENSAGEM_PROPOSTA,
   ehDeSimulacao,
   rotuloDaCategoria,
@@ -50,8 +55,11 @@ export function ModalEnviarProposta({
   aberto,
   onFechar,
   onEnviada,
+  podeProporRecorrente = false,
 }: {
   oportunidade: OportunidadeParaPrestadorDTO
+  /** Contador Autônomo: escolhe entre serviço avulso e relação recorrente direta. */
+  podeProporRecorrente?: boolean
   aberto: boolean
   onFechar: () => void
   onEnviada: () => void
@@ -79,6 +87,7 @@ export function ModalEnviarProposta({
   const [validadeHoras, setValidadeHoras] = useState<number>(
     VALIDADE_PADRAO_HORAS,
   )
+  const [natureza, setNatureza] = useState<NaturezaProposta>(jaEnviada?.natureza ?? 'avulsa')
   const [enviando, iniciarTransicao] = useTransition()
 
   function salvar(evento: React.FormEvent<HTMLFormElement>) {
@@ -90,6 +99,7 @@ export function ModalEnviarProposta({
         valor,
         prazoEstimadoDias: prazo ? Number(prazo) : undefined,
         validadeHoras,
+        natureza: podeProporRecorrente ? natureza : 'avulsa',
       })
 
       if (!resultado.sucesso) {
@@ -185,6 +195,41 @@ export function ModalEnviarProposta({
                 : 'Explique como pretende atender a esta necessidade e o que está incluído. O Cliente compara as propostas por esta mensagem.'}
             </p>
           </div>
+
+          {podeProporRecorrente && !daSimulacao && (
+            <fieldset className="space-y-2">
+              {/* Escolha explícita: é ela, e não o texto, que decide se há Pix
+                  da Vincis (avulso, com comissão) ou pagamento direto. */}
+              <legend className="text-sm font-medium">Tipo de proposta</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {NATUREZAS_PROPOSTA.map((opcao) => (
+                  <label
+                    key={opcao}
+                    className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm transition-colors ${
+                      natureza === opcao ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="proposta-natureza"
+                      value={opcao}
+                      checked={natureza === opcao}
+                      onChange={() => setNatureza(opcao)}
+                      className="mt-1 accent-primary"
+                    />
+                    <span>
+                      <span className="block font-semibold text-foreground">
+                        {ROTULO_NATUREZA_PROPOSTA[opcao].titulo}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {ROTULO_NATUREZA_PROPOSTA[opcao].descricao}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

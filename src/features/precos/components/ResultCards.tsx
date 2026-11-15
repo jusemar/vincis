@@ -14,6 +14,7 @@ import type {
 } from "@/features/precificacao/types/precificacao";
 import type { ServicoTab } from "../types";
 import { AnimatedPrice } from "./AnimatedPrice";
+import type { ContadorParceiroPublico } from "@/features/profissionais/queries/contadores-parceiros";
 import { ContratarPlano } from "./ContratarPlano";
 
 /** O que cada card precisa para contratar — igual em todos, por isso num tipo só. */
@@ -21,6 +22,7 @@ type PropsDeContratacao = {
   tab: ServicoTab;
   respostas: RespostasPrecificacao;
   autenticado: boolean;
+  contadores: ContadorParceiroPublico[];
   retomada: { planoCodigo: string; periodoCodigo: string } | null;
   onRetomada: () => void;
 };
@@ -52,7 +54,6 @@ function prazoInicial(resultado: ResultadoPrecificacao, retomado?: string) {
 /** Selo do card. É desenho da vitrine, e por isso continua na tela. */
 const SELO_DO_SERVICO: Record<string, string> = {
   consultiva: "Acompanhamento mais próximo",
-  combo: "Economia no combo",
 };
 
 /**
@@ -182,6 +183,7 @@ function OfferCard({
         respostas={contratacao.respostas}
         tab={contratacao.tab}
         autenticado={contratacao.autenticado}
+        contadores={contratacao.contadores}
         retomar={retomar}
         onRetomada={contratacao.onRetomada}
         rotulo="Contratar"
@@ -191,73 +193,9 @@ function OfferCard({
   );
 }
 
-function ComboCard({
-  servico,
-  resultado,
-  contratacao,
-}: {
-  servico: ServicoPrecificacao;
-  resultado: ResultadoPrecificacao;
-  contratacao: PropsDeContratacao;
-}) {
-  const retomar = contratacao.retomada?.planoCodigo === servico.codigo;
-  const [prazo, setPrazo] = useState(() =>
-    prazoInicial(resultado, retomar ? contratacao.retomada?.periodoCodigo : undefined),
-  );
-  const combo = resultado.combo;
-  if (!combo) return null;
-  const periodo =
-    resultado.periodos.find((p) => p.periodo === prazo) ?? resultado.periodos[0];
-
-  return (
-    <article className="flex flex-col rounded-2xl border border-primary bg-card p-5 shadow-md">
-      <span className="mb-2 inline-block w-fit rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-        {SELO_DO_SERVICO[servico.codigo]}
-      </span>
-      <h3 className="text-lg font-bold text-foreground">{servico.nome}</h3>
-      <p className="mt-1 text-xs leading-snug text-muted-foreground">{servico.chamada}</p>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-lg bg-muted/50 px-3 py-2">
-          <p className="text-muted-foreground">Separados</p>
-          <p className="font-semibold text-foreground line-through decoration-muted-foreground/60">
-            {formatarCentavos(combo.separadoCentavos)}/mês
-          </p>
-        </div>
-        <div className="rounded-lg bg-primary/10 px-3 py-2">
-          <p className="text-primary">No combo</p>
-          <p className="font-semibold text-foreground">
-            {formatarCentavos(resultado.mensalCentavos)}/mês
-          </p>
-        </div>
-      </div>
-      <p className="mt-2 text-xs font-medium text-primary">
-        Economia de {formatarCentavos(combo.economiaMensalCentavos)}/mês ·{" "}
-        {formatarCentavos(combo.economiaAnualCentavos)}/ano
-      </p>
-
-      <PrecosPorPeriodo resultado={resultado} selecionado={periodo.periodo} onSelecionar={setPrazo} />
-
-      <ContratarPlano
-        planoCodigo={servico.codigo}
-        planoNome={servico.nome}
-        periodo={periodo}
-        respostas={contratacao.respostas}
-        tab={contratacao.tab}
-        autenticado={contratacao.autenticado}
-        retomar={retomar}
-        onRetomada={contratacao.onRetomada}
-        rotulo="Contratar pacote completo"
-      />
-    </article>
-  );
-}
-
 /** Serviços exibidos em cada aba. A aba de contabilidade mostra os dois planos. */
 const SERVICOS_DA_ABA: Record<ServicoTab, string[]> = {
   consultiva: ["padrao", "consultiva"],
-  juridico: ["juridico"],
-  combo: ["combo"],
 };
 
 export function ResultCards({
@@ -265,6 +203,7 @@ export function ResultCards({
   tab,
   respostas,
   autenticado,
+  contadores,
   retomada,
   onRetomada,
 }: {
@@ -272,10 +211,11 @@ export function ResultCards({
   tab: ServicoTab;
   respostas: RespostasPrecificacao;
   autenticado: boolean;
+  contadores: ContadorParceiroPublico[];
   retomada: { planoCodigo: string; periodoCodigo: string } | null;
   onRetomada: () => void;
 }) {
-  const contratacao: PropsDeContratacao = { tab, respostas, autenticado, retomada, onRetomada };
+  const contratacao: PropsDeContratacao = { tab, respostas, autenticado, contadores, retomada, onRetomada };
   // A chave muda quando chega a retomada deste plano: o card remonta já no
   // prazo que a pessoa tinha escolhido antes de entrar na conta.
   const chave = (codigo: string) =>
@@ -284,21 +224,6 @@ export function ResultCards({
     servico: tabela.servicos.find((s) => s.codigo === codigo)!,
     resultado: calcularPreco(tabela, codigo, respostas),
   }));
-
-  if (tab === "combo") {
-    return (
-      <div className="grid gap-4">
-        {cartoes.map(({ servico, resultado }) => (
-          <ComboCard
-            key={chave(servico.codigo)}
-            servico={servico}
-            resultado={resultado}
-            contratacao={contratacao}
-          />
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className={`grid gap-4 ${cartoes.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>

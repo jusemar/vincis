@@ -36,7 +36,7 @@ export type ContaAutenticada = {
 
 export function montarUsuarioAutenticado(
   conta: ContaAutenticada,
-  acesso: Pick<AcessoUsuario, 'perfil' | 'ehGestor' | 'elegivelCentralFiscal'>,
+  acesso: Pick<AcessoUsuario, 'perfil' | 'ehGestor' | 'elegivelCentralFiscal' | 'contadorParceiroVincis'>,
 ): DadosUsuarioAutenticado {
   return {
     id: conta.id,
@@ -50,5 +50,7 @@ export function montarUsuarioAutenticado(
     ehGestor: acesso.ehGestor,
     /** A área que ela exerce abre a Central Fiscal? Decide menu, não acesso. */
     elegivelCentralFiscal: acesso.elegivelCentralFiscal,
+    /** Contador parceiro Vincis? Decide o item "Meus clientes Vincis". */
+    contadorParceiroVincis: acesso.contadorParceiroVincis,
   }
 }

@@ -8,10 +8,10 @@ import type {
 } from "@/features/precificacao/types/precificacao";
 import type { ServicoTab } from "../types";
 import { ComparisonTable } from "./ComparisonTable";
+import type { ContadorParceiroPublico } from "@/features/profissionais/queries/contadores-parceiros";
 import { lerIntencaoGuardada, type IntencaoDeContratacao } from "./ContratarPlano";
 import { Configurador } from "./Configurador";
 import { ResultCards } from "./ResultCards";
-import { ServiceTypeSelector } from "./ServiceTypeSelector";
 
 /**
  * A vitrine de preços.
@@ -47,12 +47,17 @@ function RetomadaDaContratacao({
 export default function PricingPage({
   tabela,
   autenticado,
+  contadores,
 }: {
   tabela: TabelaPrecificacao;
   /** Sessão lida no servidor. Decide entre abrir o login e a confirmação. */
   autenticado: boolean;
+  /** Contadores parceiros aptos — as opções de responsável na contratação. */
+  contadores: ContadorParceiroPublico[];
 }) {
-  const [tab, setTab] = useState<ServicoTab>("consultiva");
+  // Uma vitrine só: Contabilidade (Padrão e Consultiva). Jurídico e o Pacote
+  // Empresarial saíram de `/precos`.
+  const tab: ServicoTab = "consultiva";
   const [respostas, setRespostas] = useState<RespostasPrecificacao>(() =>
     respostasIniciais(tabela),
   );
@@ -70,7 +75,6 @@ export default function PricingPage({
   } | null>(null);
 
   function retomar(intencao: IntencaoDeContratacao) {
-    setTab(intencao.tab);
     setRespostas(intencao.respostas);
     setRetomada({
       planoCodigo: intencao.planoCodigo,
@@ -92,14 +96,6 @@ export default function PricingPage({
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 pt-8">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Escolha o tipo de serviço
-        </h2>
-        <div className="mt-3">
-          <ServiceTypeSelector value={tab} onChange={setTab} />
-        </div>
-      </section>
 
       <section className="mx-auto max-w-6xl px-5 py-10">
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] lg:items-start">
@@ -117,6 +113,7 @@ export default function PricingPage({
               tab={tab}
               respostas={respostas}
               autenticado={autenticado}
+              contadores={contadores}
               retomada={retomada}
               onRetomada={() => setRetomada(null)}
             />

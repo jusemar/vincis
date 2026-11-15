@@ -1,3 +1,5 @@
+import { modeloContratacaoPublico } from "@/features/profissionais/constants/modelo-contratacao";
+import { situacoesDocumentos } from "@/features/perfil-pro/lib/perfil-pro";
 import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { perfisProfissionais, usuarios } from "@/db/schema";
@@ -71,6 +73,7 @@ export async function pesquisarProfissionaisReais(
         // Tipo da pessoa (Profissional/Colaborador), distinto da categoria.
         tipoPrestador: perfisProfissionais.tipoPrestador,
         profissao: perfisProfissionais.tipoProfissional,
+        modeloContratacao: perfisProfissionais.modeloContratacao,
         areasAtuacao: perfisProfissionais.areasAtuacao,
         especialidades: perfisProfissionais.especialidades,
         certificacoes: perfisProfissionais.certificacoes,
@@ -110,13 +113,26 @@ export async function pesquisarProfissionaisReais(
   const reputacoes = await obterReputacaoDosPrestadores(
     registros.map(({ id }) => id),
   );
+  // Perfil Essencial/Pro (só advocacia). Rótulo informativo: não entra na
+  // ordenação, que segue `created_at` como sempre — Pro não compra exposição.
+  const situacoes = await situacoesDocumentos(
+    db,
+    registros.map(({ id }) => id),
+  );
 
   return {
     profissionais: registros.map((registro) => {
       const reputacao = reputacoes.get(registro.id);
       return {
         ...registro,
+        // Honorário de advogado não é exibido publicamente: o valor fica no
+        // banco, mas não sai daqui — o card mostra "Consultar honorários".
+        valorHoraCentavos:
+          registro.profissao === "advocacia" ? null : registro.valorHoraCentavos,
         avaliacaoMedia: reputacao?.mediaEmDecimos ?? null,
+        perfilAdvocacia: situacoes.get(registro.id)?.nivel ?? null,
+        // Contábil: selo só com modelo definido; nunca inventado.
+        modeloContratacao: modeloContratacaoPublico(registro.profissao, registro.modeloContratacao),
         totalAvaliacoes: reputacao?.total ?? 0,
       };
     }),

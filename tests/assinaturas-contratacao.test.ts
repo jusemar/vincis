@@ -51,7 +51,8 @@ async function contratarComo(
 ) {
   if (chave) entrarComo(contas[chave].token)
   else sairDaSessao()
-  const resultado = await contratarPlanoVincis(entrada)
+  // A escolha do contador é obrigatória; aqui a Vincis escolhe (sem responsável).
+  const resultado = await contratarPlanoVincis({ contador: { escolha: 'vincis' }, ...entrada })
   sairDaSessao()
   return resultado
 }
@@ -183,10 +184,22 @@ describe('contratação de um plano da Vincis', () => {
     expect(linha.valorTotalCentavos).toBe(linha.valorMensalCentavos * 12)
   })
 
+  it('jurídico e o Pacote Empresarial não são contratáveis em /precos', async () => {
+    for (const planoCodigo of ['juridico', 'combo']) {
+      const resultado = await contratarComo('cliente', {
+        planoCodigo,
+        periodoCodigo: prazosDe(planoCodigo).mensal.periodo,
+        respostas,
+      })
+      expect(resultado.sucesso).toBe(false)
+    }
+    expect((await doCliente(contas.cliente.id)).some((a) => ['juridico', 'combo'].includes(a.planoCodigo))).toBe(false)
+  })
+
   it('preço mandado pelo navegador é ignorado', async () => {
-    const juridico = prazosDe('juridico')
+    const juridico = prazosDe('consultiva')
     const resultado = await contratarComo('cliente', {
-      planoCodigo: 'juridico',
+      planoCodigo: 'consultiva',
       periodoCodigo: juridico.mensal.periodo,
       respostas,
       // Campos que não existem no contrato da action: não viram dinheiro.
@@ -196,7 +209,7 @@ describe('contratação de um plano da Vincis', () => {
     expect(resultado.sucesso).toBe(true)
 
     const linha = (await doCliente(contas.cliente.id)).find(
-      (a) => a.planoCodigo === 'juridico',
+      (a) => a.planoCodigo === 'consultiva',
     )!
     expect(linha.valorMensalCentavos).toBe(juridico.mensal.mensalCentavos)
     expect(linha.valorTotalCentavos).toBe(juridico.mensal.totalPeriodoCentavos)
@@ -222,6 +235,7 @@ describe('contratação de um plano da Vincis', () => {
       planoCodigo: 'consultiva',
       periodoCodigo: consultiva.mensal.periodo,
       respostas,
+      contador: { escolha: 'vincis' },
     }
     const [a, b] = await Promise.all([
       contratarPlanoVincis(entrada),

@@ -26,6 +26,7 @@ import {
   ReenvioConfirmacaoSchema,
   type ReenvioConfirmacaoDTO,
 } from '../schemas/confirmacao-email'
+import { CascaAutenticacao } from './CascaAutenticacao'
 
 type EstadoConfirmacao = 'formulario' | 'confirmando' | 'confirmado' | 'invalido'
 
@@ -75,12 +76,7 @@ export function ConfirmarEmailPage({ token }: ConfirmarEmailPageProps) {
   }
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-background px-4 pb-16 pt-28 sm:px-6 sm:pt-32">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-28 top-24 size-80 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -right-24 bottom-0 size-96 rounded-full bg-amber-300/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,hsl(var(--border)/0.4)_1px,transparent_0)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent_88%)]" />
-      </div>
+    <CascaAutenticacao>
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -199,6 +195,6 @@ export function ConfirmarEmailPage({ token }: ConfirmarEmailPageProps) {
           </CardContent>
         </Card>
       </motion.div>
-    </div>
+    </CascaAutenticacao>
   )
 }

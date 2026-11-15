@@ -2,6 +2,8 @@ import { GestaoInicio } from '@/features/admin/components/GestaoInicio'
 import { exigirGestorDaPlataforma } from '@/features/admin/lib/exigir-gestor'
 import { PrazoOportunidadeCard } from '@/features/configuracoes/components/PrazoOportunidadeCard'
 import { obterPrazoOportunidadeHoras } from '@/features/configuracoes/queries/obter-configuracao'
+import { ComissaoServicosAvulsosCard } from '@/features/servicos/components/admin/ComissaoServicosAvulsosCard'
+import { lerComissaoServicosAvulsos } from '@/features/servicos/queries/comissao-vincis'
 import { contarCadastrosProfissionaisPendentes } from '@/features/usuarios/queries/contar-cadastros-profissionais-pendentes'
 
 /**
@@ -21,7 +23,10 @@ export default async function CentralVincisRoute() {
       nome={gestor.nome}
       cadastrosPendentes={await contarCadastrosProfissionaisPendentes()}
       configuracoes={
-        <PrazoOportunidadeCard horas={await obterPrazoOportunidadeHoras()} />
+        <>
+          <PrazoOportunidadeCard horas={await obterPrazoOportunidadeHoras()} />
+          <ComissaoServicosAvulsosCard milesimos={await lerComissaoServicosAvulsos()} />
+        </>
       }
     />
   )

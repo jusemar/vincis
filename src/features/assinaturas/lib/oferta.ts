@@ -140,3 +140,12 @@ export function chaveDaOferta(oferta: OfertaContratada): string {
   })
   return createHash('sha256').update(canonico).digest('hex')
 }
+
+/**
+ * A chave de intenção do plano: a oferta **e** a escolha do contador. Confirmar
+ * de novo com outra escolha é outra intenção; trocar o contador de um plano
+ * pendente recalcula a chave para a mesma regra continuar valendo.
+ */
+export function chaveDeIntencao(oferta: OfertaContratada, contador: string | 'vincis'): string {
+  return createHash('sha256').update(`${chaveDaOferta(oferta)}:${contador}`).digest('hex')
+}

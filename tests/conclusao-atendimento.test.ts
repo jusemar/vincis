@@ -97,7 +97,7 @@ const { canalDoAtendimento, canalDoUsuario } = await import(
   '@/integracoes/realtime/canais'
 )
 const { criarServico } = await import('@/features/servicos/actions/catalogo')
-const { contratarServico } = await import('@/features/servicos/actions/contratar')
+const { contratarServico } = await import('./setup/contratar-servico')
 const { criarContas } = await import('./setup/contas-de-teste')
 const { limparAtendimentosDosPrestadores } = await import(
   './setup/limpeza-atendimentos'
@@ -1104,12 +1104,18 @@ describe('quadro, lista e contadores', () => {
 describe('modelos de preço', () => {
   it('conclui igual sob orçamento, por hora e a partir de', async () => {
     for (const modelo of ['sob_orcamento', 'por_hora', 'a_partir_de'] as const) {
+      /*
+        Com o Pix, só serviço de preço fixo vira contratação direta; os demais
+        modelos seguem por orçamento ou agenda. Contratações antigas desses
+        modelos continuam existindo, e é delas que este cenário trata: nasce
+        pelo caminho pago e o snapshot é reescrito como a linha legada era.
+      */
       entrarComo(contas.ana.token)
       const servico = await criarServico({
         ...SERVICO_BASE,
         nome: `Serviço ${modelo}`,
-        modeloPreco: modelo,
-        valor: modelo === 'sob_orcamento' ? '' : '250,00',
+        modeloPreco: 'fixo',
+        valor: '250,00',
       })
       if (!servico.sucesso) throw new Error(servico.mensagem)
 
@@ -1118,6 +1124,13 @@ describe('modelos de preço', () => {
         servicoId: (servico as { dados: { id: string } }).dados.id,
       })
       if (!contratacao.sucesso) throw new Error(contratacao.mensagem)
+      await db
+        .update(contratacoesServico)
+        .set({
+          modeloPrecoSnapshot: modelo,
+          valorSnapshotCentavos: modelo === 'sob_orcamento' ? null : 25_000,
+        })
+        .where(eq(contratacoesServico.id, contratacao.dados!.contratacaoId))
       const { atendimentoId } = contratacao.dados as { atendimentoId: string }
 
       await alterarStatusDoAtendimento({

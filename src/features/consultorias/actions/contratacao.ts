@@ -156,6 +156,7 @@ export async function prepararContratacaoConsultoria(
       // existir, e o Atendimento é de outra etapa.
       descricao,
       clienteNome: sessao.nome,
+      honorariosDiretos: Boolean(consultoria.honorariosDiretos),
     },
   }
 }

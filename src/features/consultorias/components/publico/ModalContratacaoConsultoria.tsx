@@ -7,13 +7,21 @@ import { ModalResponsivo } from '@/components/shared/ModalResponsivo'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Trilha } from '@/features/portal-cliente/components/ui/primitivos'
-import { pagarConsultoriaSimulado } from '../../actions/pagamento'
+import { PainelPix } from '@/features/pagamentos/components/PainelPix'
+import { useAcompanharCobranca } from '@/features/pagamentos/hooks/useAcompanharCobranca'
+import type { CobrancaPixDTO } from '@/features/pagamentos/types/cobranca'
+import {
+  acompanharPagamentoDaConsultoria,
+  confirmarConsultoriaJuridica,
+  iniciarPagamentoDaConsultoria,
+} from '../../actions/pagamento'
 import { reservarHorarioDaConsultoria } from '../../actions/reserva'
 import { ROTULO_MODALIDADE } from '../../constants/consultoria'
 import {
   ACAO_CONTINUAR,
   ACAO_VER_ATENDIMENTO,
   LIMITE_DESCRICAO_CONSULTORIA,
+  PASSOS_CONSULTORIA_JURIDICA,
   PASSOS_CONTRATACAO,
   PASSO_CONCLUIDO,
   PASSO_DETALHES,
@@ -40,10 +48,10 @@ import { restanteEmSegundos } from '../../lib/reserva'
 import type { SelecaoDeConsultoria } from '../../types/consultoria'
 import type {
   ResultadoPagamentoConsultoria,
+  ResultadoPixConsultoria,
   ResultadoReserva,
 } from '../../types/contratacao'
 import { PainelConsultoriaConfirmada } from './PainelConsultoriaConfirmada'
-import { PainelPagamentoSimulado } from './PainelPagamentoSimulado'
 
 /**
  * O modal de contratação da Consultoria Agendada — etapa "Detalhes".
@@ -156,6 +164,9 @@ export function ModalContratacaoConsultoria({
   const [pagamento, setPagamento] = useState<ResultadoPagamentoConsultoria | null>(
     null,
   )
+  /** O Pix emitido para esta reserva. Emitir não é pagar. */
+  const [cobranca, setCobranca] = useState<CobrancaPixDTO | null>(null)
+  const [erroPix, setErroPix] = useState<string | null>(null)
 
   /*
    * Não existe efeito de limpeza aqui de propósito: quem abre o modal o remonta
@@ -177,8 +188,11 @@ export function ModalContratacaoConsultoria({
     return () => clearInterval(timer)
   }, [reserva, confirmado])
 
-  const segundosRestantes = reserva
-    ? restanteEmSegundos(reserva.expiraEm, new Date(instante))
+  // Com o Pix emitido, quem manda no prazo é a validade dele: o servidor
+  // estendeu a reserva para cobri-la. Antes, os dez minutos da reserva.
+  const prazoVigente = cobranca?.expiraEm ?? reserva?.expiraEm ?? null
+  const segundosRestantes = prazoVigente
+    ? restanteEmSegundos(new Date(prazoVigente), new Date(instante))
     : 0
   const reservaExpirou =
     reserva !== null && !confirmado && segundosRestantes === 0
@@ -216,34 +230,89 @@ export function ModalContratacaoConsultoria({
     })
   }
 
-  function pagar(desfecho?: 'recusado') {
+  /**
+   * Aplica a resposta do servidor sobre o Pix.
+   *
+   * `confirmado` e `reserva_expirada` reaproveitam o estado de sempre — o
+   * Concluído com protocolo e o aviso de reserva vencida. O resto é espera do
+   * Pix ou recusa legível.
+   */
+  function aplicarPix(resposta: ResultadoPixConsultoria) {
+    switch (resposta.situacao) {
+      case 'cobranca':
+        setCobranca(resposta.cobranca)
+        setErroPix(null)
+        return
+      case 'gerando':
+        setTimeout(() => pagar(), 2000)
+        return
+      case 'confirmado':
+      case 'reserva_expirada':
+        setPagamento(resposta)
+        return
+      case 'precisa_entrar':
+        onPrecisaEntrar(descricao)
+        return
+      default:
+        setErroPix(resposta.mensagem)
+    }
+  }
+
+  /** Advogado: confirma o agendamento sem Pix. O servidor reconfere o tipo. */
+  function confirmarJuridica() {
     if (!reserva) return
     iniciarEnvio(async () => {
-      // O navegador manda o id da reserva e nada mais: preço, horário, duração,
-      // descrição e as partes são lidos do servidor.
-      const resposta = await pagarConsultoriaSimulado({
-        reservaId: reserva.id,
-        desfecho,
-      })
-      setPagamento(resposta)
+      const resposta = await confirmarConsultoriaJuridica({ reservaId: reserva.id })
+      if (resposta.situacao === 'confirmado' || resposta.situacao === 'reserva_expirada') {
+        setPagamento(resposta)
+      } else if (resposta.situacao === 'precisa_entrar') {
+        onPrecisaEntrar(descricao)
+      } else {
+        setErroPix(resposta.mensagem)
+      }
       setInstante(Date.now())
     })
   }
+
+  function pagar() {
+    if (!reserva) return
+    iniciarEnvio(async () => {
+      // O navegador manda o id da reserva e nada mais: preço, horário,
+      // duração, descrição e as partes são lidos do servidor.
+      aplicarPix(await iniciarPagamentoDaConsultoria({ reservaId: reserva.id }))
+      setInstante(Date.now())
+    })
+  }
+
+  useAcompanharCobranca({
+    ativo: aberto && Boolean(reserva) && cobranca?.status === 'aguardando_pagamento' && !pagamento,
+    consultar: () => acompanharPagamentoDaConsultoria({ reservaId: reserva!.id }),
+    aoResponder: aplicarPix,
+  })
 
   const erroDoPagamento =
     pagamento &&
     pagamento.situacao !== 'confirmado' &&
     pagamento.situacao !== 'reserva_expirada'
       ? pagamento.mensagem
-      : null
+      : erroPix
 
   // A reserva pode ter vencido no servidor mesmo com o contador ainda andando
   // na tela — quem manda é a resposta dele.
   const expirouParaOServidor = pagamento?.situacao === 'reserva_expirada'
-  const mostrarExpirada = (reservaExpirou || expirouParaOServidor) && !confirmado
+  const mostrarExpirada =
+    ((reservaExpirou && !cobranca) || expirouParaOServidor) && !confirmado
 
   /** Horário preso, nada pago ainda: é a etapa 2. */
   const emPagamento = Boolean(reserva) && !mostrarExpirada && !confirmado
+
+  /*
+    Advogado: sem etapa de pagamento. A trilha é `Detalhes → Confirmação →
+    Concluído`; com o horário preso, o botão confirma o agendamento direto
+    (honorário combinado entre Cliente e advogado, fora do Pix da Vincis).
+  */
+  const juridico = Boolean(reservado?.resumo.honorariosDiretos ?? selecao.honorariosDiretos)
+  const passos = juridico ? PASSOS_CONSULTORIA_JURIDICA : PASSOS_CONTRATACAO
 
   const passoAtual = confirmado
     ? PASSO_CONCLUIDO
@@ -291,9 +360,10 @@ export function ModalContratacaoConsultoria({
           </div>
         ) : (
           <div className="space-y-2">
+            {emPagamento && cobranca ? null : (
             <button
               type="button"
-              onClick={emPagamento ? () => pagar() : continuar}
+              onClick={emPagamento ? (juridico ? confirmarJuridica : () => pagar()) : continuar}
               disabled={emPagamento ? enviando : !podeContinuar}
               className="w-full rounded-xl bg-primary py-3.5 font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary disabled:active:scale-100"
             >
@@ -302,12 +372,19 @@ export function ModalContratacaoConsultoria({
                   ? 'Processando…'
                   : 'Verificando…'
                 : emPagamento
-                  ? 'Simular pagamento aprovado'
+                  ? juridico
+                    ? 'Confirmar agendamento'
+                    : 'Pagar com Pix'
                   : ACAO_CONTINUAR}
             </button>
+            )}
             <p className="text-center text-xs text-muted-foreground">
-              {emPagamento
-                ? 'Pagamento simulado — nenhuma cobrança real será feita.'
+              {juridico
+                ? 'Os honorários são combinados diretamente com o profissional. A Vincis não cobra esta consultoria.'
+                : emPagamento
+                ? cobranca
+                  ? 'Seu horário fica reservado enquanto o Pix for válido. A confirmação aparece aqui automaticamente.'
+                  : 'O Pix é gerado agora; o agendamento só é confirmado depois do pagamento.'
                 : 'Você ainda não será cobrado.'}
             </p>
           </div>
@@ -320,7 +397,7 @@ export function ModalContratacaoConsultoria({
           pagar. Reserva vencida volta para Detalhes: não há mais nada reservado
           para pagar, e a pessoa precisa escolher outro horário.
         */}
-        <Trilha passos={PASSOS_CONTRATACAO} atual={passoAtual} />
+        <Trilha passos={passos} atual={passoAtual} />
 
         {/*
           O resumo acompanha Detalhes e Pagamento. Na etapa Concluído ele sai:
@@ -350,10 +427,10 @@ export function ModalContratacaoConsultoria({
           </LinhaResumo>
           <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 sm:col-span-2">
             <span className="text-sm font-medium text-muted-foreground">
-              Valor da consultoria
+              {juridico ? 'Honorários' : 'Valor da consultoria'}
             </span>
-            <span className="text-xl font-bold text-foreground">
-              {formatarPreco(valorCentavos)}
+            <span className={juridico ? 'text-sm font-semibold text-foreground' : 'text-xl font-bold text-foreground'}>
+              {juridico ? 'Combinados diretamente com o profissional' : formatarPreco(valorCentavos)}
             </span>
           </div>
         </dl>
@@ -450,13 +527,11 @@ export function ModalContratacaoConsultoria({
                 <p className="text-xs text-muted-foreground">{DETALHE_RESERVA_ATIVA}</p>
               </div>
             </div>
-            <PainelPagamentoSimulado
-              valorFormatado={formatarPreco(valorCentavos)}
-              segundosRestantes={segundosRestantes}
-              processando={enviando}
-              erro={erroDoPagamento}
-              onRecusar={() => pagar('recusado')}
-            />
+            {!juridico && (cobranca || enviando) ? (
+              <PainelPix cobranca={cobranca} gerando={enviando && !cobranca} erro={erroDoPagamento} />
+            ) : erroDoPagamento ? (
+              <p role="alert" className="text-sm font-medium text-destructive">{erroDoPagamento}</p>
+            ) : null}
           </>
         ) : null}
 
@@ -487,6 +562,7 @@ export function ModalContratacaoConsultoria({
             duracaoMinutos={confirmado.duracaoMinutos}
             valorCentavos={confirmado.valorCentavos}
             protocolo={confirmado.protocolo}
+            honorariosDiretos={juridico || confirmado.honorariosDiretos}
           />
         ) : null}
       </div>

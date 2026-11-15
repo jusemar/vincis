@@ -1,5 +1,7 @@
 'use server'
 
+import { garantirAtendimentoDaOportunidade } from '@/features/atendimentos/lib/criar-atendimento-da-oportunidade'
+import { prestadorCobraDiretamente } from '@/features/profissionais/lib/honorarios'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/connection'
@@ -48,6 +50,7 @@ async function contextoDaProposta(propostaId: string) {
       propostaStatus: oportunidadePropostas.status,
       validaAte: oportunidadePropostas.validaAte,
       valorCentavos: oportunidadePropostas.valorCentavos,
+      natureza: oportunidadePropostas.natureza,
       oportunidadeId: oportunidades.id,
       origem: oportunidades.origem,
       oportunidadeStatus: oportunidades.status,
@@ -188,6 +191,29 @@ async function fecharAcordoComercial(
         ),
       ),
     )
+
+  /*
+    Advogado: o acordo é só "Cliente e advogado concordaram com a proposta".
+    Não existe etapa de pagamento na Vincis — honorário é combinado entre eles,
+    pela conversa ou fora dela —, então o Atendimento (conversa e
+    acompanhamento) abre já no aceite, sem `oportunidade_pagamentos`, sem Pix e
+    sem status de pago/não pago. Contador segue como sempre: paga, depois abre.
+
+    Proposta `recorrente` do contador Autônomo segue o mesmo desenho direto:
+    relação contábil recorrente negociada e paga entre eles, sem Pix, cobrança,
+    comissão ou plano da Vincis — o Atendimento abre no aceite.
+  */
+  const [proposta] = await tx
+    .select({ prestadorId: oportunidadePropostas.prestadorId, natureza: oportunidadePropostas.natureza })
+    .from(oportunidadePropostas)
+    .where(eq(oportunidadePropostas.id, propostaId))
+    .limit(1)
+  if (
+    proposta?.natureza === 'recorrente' ||
+    (await prestadorCobraDiretamente(tx, proposta?.prestadorId))
+  ) {
+    await garantirAtendimentoDaOportunidade(tx, oportunidadeId)
+  }
 
   return propostaId
 }
@@ -456,9 +482,13 @@ export async function responderContraproposta(entrada: unknown) {
     revalidatePath('/admin')
     return {
       sucesso: true as const,
-      mensagem: aceitar
-        ? 'Contraproposta aceita. O acordo está fechado e aguarda o pagamento do cliente.'
-        : 'Contraproposta recusada. Sua proposta original continua valendo.',
+      mensagem: !aceitar
+        ? 'Contraproposta recusada. Sua proposta original continua valendo.'
+        : // Recorrente do Autônomo e honorários de advogado: o atendimento abriu
+          // no aceite e não há pagamento pela Vincis a esperar.
+          contexto.natureza === 'recorrente' || (await prestadorCobraDiretamente(db, contexto.prestadorId))
+          ? 'Contraproposta aceita. O acordo está fechado e o atendimento foi aberto — o pagamento é combinado diretamente com o cliente.'
+          : 'Contraproposta aceita. O acordo está fechado e aguarda o pagamento do cliente.',
     }
   } catch (erro) {
     console.error('[RESPONDER_CONTRAPROPOSTA]', {
@@ -577,7 +607,11 @@ export async function aceitarProposta(entrada: unknown) {
     revalidatePath('/admin')
     return {
       sucesso: true as const,
-      mensagem: 'Proposta aceita. Conclua o pagamento para abrir o atendimento.',
+      mensagem: (await prestadorCobraDiretamente(db, contexto.prestadorId))
+        ? 'Proposta aceita. O atendimento foi aberto — combine os honorários diretamente com o profissional.'
+        : contexto.natureza === 'recorrente'
+          ? 'Proposta aceita. O atendimento foi aberto — o pagamento é combinado diretamente com o contador.'
+          : 'Proposta aceita. Conclua o pagamento para abrir o atendimento.',
     }
   } catch (erro) {
     console.error('[ACEITAR_PROPOSTA]', {

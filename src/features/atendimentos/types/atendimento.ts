@@ -1,3 +1,9 @@
+import type {
+  AlertaDoAtendimento,
+  ApresentacaoDoAndamento,
+  FaseDoAtendimento,
+  SituacaoAtual,
+} from '../lib/andamento'
 import type { MinhaAvaliacaoDTO } from '@/features/avaliacoes/types/avaliacao'
 import type {
   AcessoAtendimento,
@@ -185,6 +191,12 @@ export type AtendimentoOperacionalDTO = {
   /** Checklist completo: etapas públicas e internas. */
   checklist: AtendimentoChecklistItemDTO[]
   arquivos: AtendimentoArquivoDTO[]
+  /**
+   * Documentos novos podem passar pela Vincis neste Atendimento? `false` é o
+   * advogado no Perfil Essencial: o servidor recusa o upload e a tela mostra
+   * "Disponível no Perfil Pro". Os arquivos já gravados seguem acessíveis.
+   */
+  documentosPelaVincis: boolean
   /** Transições disponíveis a partir do status atual. */
   acoes: { rotulo: string; destino: StatusAtendimento; encerra: boolean }[]
   /** Nulo enquanto o serviço está em execução. */
@@ -265,6 +277,18 @@ export type AtendimentoDoClienteDTO = {
   categoria: string
   status: StatusAtendimento
   /**
+   * A leitura de UX do andamento — jornada, quem precisa agir, alerta e o
+   * texto de "O que acontece agora?". Calculada no servidor por
+   * `lib/andamento.ts`; a tela só exibe.
+   */
+  andamento: AndamentoDoClienteDTO
+  /**
+   * Como os documentos circulam neste Atendimento. `pelaVincis = false` é o
+   * advogado no Perfil Essencial: o envio pela Vincis é recusado no servidor e
+   * a tela mostra o e-mail profissional de contato (nunca o de login).
+   */
+  documentos: { pelaVincis: boolean; emailContato: string | null }
+  /**
    * Prioridade decidida pela equipe.
    *
    * Chega ao Cliente como informação, nunca como controle: ele acompanha em que
@@ -311,4 +335,15 @@ export type AtendimentoDoClienteDTO = {
    * Cliente nunca pediu ajuste.
    */
   ajuste: SolicitacaoDeAjusteDTO | null
+}
+
+/** O andamento serializado para o portal do Cliente. Ver `lib/andamento.ts`. */
+export type AndamentoDoClienteDTO = {
+  fase: FaseDoAtendimento
+  jornada: { passos: [string, string, string]; atual: number }
+  situacao: SituacaoAtual | null
+  alerta: AlertaDoAtendimento | null
+  prazoVencido: boolean
+  diasSemInteracao: number
+  apresentacao: ApresentacaoDoAndamento
 }

@@ -16,6 +16,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { contratarPlanoVincis } from '@/features/assinaturas/actions/contratar-plano'
+import { PagamentoPixDoPlano } from '@/features/assinaturas/components/cliente/PagamentoPixDoPlano'
+import { OPCAO_VINCIS_ESCOLHE } from '@/features/assinaturas/constants/contador-responsavel'
+import type { ContadorParceiroPublico } from '@/features/profissionais/queries/contadores-parceiros'
 import { formatarCentavos } from '@/features/precificacao/lib/formato'
 import type {
   PrecoPeriodo,
@@ -32,7 +35,8 @@ import type { ServicoTab } from '../types'
  * recalculado no servidor na hora de confirmar.
  */
 const CHAVE_INTENCAO = 'vincis:contratacao-plano'
-const ABAS: ServicoTab[] = ['consultiva', 'juridico', 'combo']
+// Intenção antiga de aba que saiu da vitrine (jurídico, combo) é descartada.
+const ABAS: ServicoTab[] = ['consultiva']
 
 export type IntencaoDeContratacao = {
   tab: ServicoTab
@@ -102,8 +106,8 @@ function guardarIntencao(intencao: IntencaoDeContratacao) {
  *
  * ## O que a tela diz depois
  *
- * "Contratação registrada. O pagamento ainda não está disponível neste
- * ambiente." Nada sugere pagamento feito, porque não houve.
+ * "Contratação registrada" e, logo abaixo, o Pix do que está em aberto. Nada
+ * sugere pagamento feito antes de o servidor confirmar com a Efí.
  */
 export function ContratarPlano({
   planoCodigo,
@@ -112,6 +116,7 @@ export function ContratarPlano({
   respostas,
   tab,
   autenticado,
+  contadores,
   retomar,
   onRetomada,
   rotulo,
@@ -125,6 +130,8 @@ export function ContratarPlano({
   tab: ServicoTab
   /** Sessão lida no servidor, não palpite do navegador. */
   autenticado: boolean
+  /** Contadores parceiros aptos. A escolha é conferida de novo no servidor. */
+  contadores: ContadorParceiroPublico[]
   /** Este é o plano que a pessoa ia contratar antes de entrar na conta. */
   retomar: boolean
   /** Avisa a vitrine que a retomada foi atendida ou dispensada. */
@@ -146,7 +153,18 @@ export function ContratarPlano({
   */
   const [aguardandoLogin, setAguardandoLogin] = useState(false)
   const [registrada, setRegistrada] = useState(false)
+  /** A assinatura que espera o Pix — devolvida pelo servidor ao registrar. */
+  const [assinaturaId, setAssinaturaId] = useState<string | null>(null)
+  /** Só vira verdade quando o servidor confirma o Pix com a Efí. */
+  const [planoAtivo, setPlanoAtivo] = useState(false)
   const [enviando, iniciarEnvio] = useTransition()
+  /*
+    Quem vai cuidar da contabilidade: um contador parceiro escolhido, ou a
+    Vincis escolhe depois. Nada pré-selecionado — confirmar exige uma das duas.
+  */
+  const [modoContador, setModoContador] = useState<'cliente' | 'vincis' | null>(null)
+  const [contadorId, setContadorId] = useState('')
+  const escolhaCompleta = modoContador === 'vincis' || (modoContador === 'cliente' && contadorId !== '')
 
   // Derivado, não efeito: voltou autenticado com a intenção, a confirmação abre.
   const aberto =
@@ -180,11 +198,13 @@ export function ContratarPlano({
   }
 
   function confirmar() {
+    if (!escolhaCompleta) return
     iniciarEnvio(async () => {
       const resultado = await contratarPlanoVincis({
         planoCodigo,
         periodoCodigo: periodo.periodo,
         respostas,
+        contador: modoContador === 'cliente' ? { escolha: 'cliente', contadorId } : { escolha: 'vincis' },
       })
 
       if (resultado.sucesso) {
@@ -192,6 +212,7 @@ export function ContratarPlano({
         setAbertoManual(false)
         setAguardandoLogin(false)
         setRegistrada(true)
+        setAssinaturaId(resultado.dados?.assinaturaId ?? null)
         if (retomar) onRetomada()
         toast.success(resultado.mensagem)
         router.refresh()
@@ -211,16 +232,27 @@ export function ContratarPlano({
   }
 
   if (registrada) {
+    // Antes do Pix confirmado a contratação está só iniciada: nada aqui pode
+    // dar a entender que o plano já está ativo. "Ativo" só depois da Efí.
     return (
       <div className="mt-4 rounded-xl border border-primary/40 bg-primary/5 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Check className="size-4 text-primary" aria-hidden />
-          Contratação registrada
+          {planoAtivo ? 'Plano ativo' : 'Contratação iniciada'}
         </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {planoNome} · {periodo.rotulo}. O pagamento ainda não está disponível
-          neste ambiente — sua contratação fica registrada aguardando pagamento.
+          {planoNome} · {periodo.rotulo}.{' '}
+          {planoAtivo
+            ? 'Pagamento confirmado.'
+            : 'Conclua o pagamento por Pix para ativar o plano.'}
         </p>
+        {assinaturaId ? (
+          <PagamentoPixDoPlano
+            assinaturaId={assinaturaId}
+            iniciarAutomaticamente
+            onPago={() => setPlanoAtivo(true)}
+          />
+        ) : null}
       </div>
     )
   }
@@ -278,10 +310,59 @@ export function ContratarPlano({
             </div>
           </dl>
 
+          <fieldset className="space-y-2 text-sm">
+            <legend className="mb-1 font-medium">Contador responsável</legend>
+            {contadores.length ? (
+              <label className="flex items-start gap-2 rounded-xl border p-3">
+                <input
+                  type="radio"
+                  name="modo-contador"
+                  checked={modoContador === 'cliente'}
+                  onChange={() => setModoContador('cliente')}
+                  className="mt-0.5 size-4 accent-primary"
+                />
+                <span className="min-w-0 flex-1 space-y-2">
+                  <span className="block">Escolher meu contador parceiro</span>
+                  {modoContador === 'cliente' ? (
+                    <select
+                      aria-label="Contador parceiro"
+                      value={contadorId}
+                      onChange={(evento) => setContadorId(evento.target.value)}
+                      className="w-full rounded-lg border bg-background px-2 py-2 text-sm"
+                    >
+                      <option value="">Selecione um contador</option>
+                      {contadores.map((contador) => (
+                        <option key={contador.id} value={contador.id}>
+                          {contador.nome}
+                          {contador.cidade ? ` · ${contador.cidade}${contador.estado ? `/${contador.estado}` : ''}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                </span>
+              </label>
+            ) : null}
+            <label className="flex items-start gap-2 rounded-xl border p-3">
+              <input
+                type="radio"
+                name="modo-contador"
+                checked={modoContador === 'vincis'}
+                onChange={() => setModoContador('vincis')}
+                className="mt-0.5 size-4 accent-primary"
+              />
+              <span>
+                <span className="block">{OPCAO_VINCIS_ESCOLHE}</span>
+                <span className="block text-xs text-muted-foreground">
+                  A Vincis define o contador parceiro responsável e avisa você.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            O pagamento ainda não está disponível neste ambiente. Ao confirmar,
-            a contratação fica registrada aguardando pagamento.
+            Ao confirmar, geramos o Pix para pagamento. O plano só é ativado
+            depois da confirmação do pagamento.
           </p>
 
           <AlertDialogFooter>
@@ -292,7 +373,7 @@ export function ContratarPlano({
                 evento.preventDefault()
                 confirmar()
               }}
-              disabled={enviando}
+              disabled={enviando || !escolhaCompleta}
             >
               {enviando ? 'Registrando…' : 'Confirmar contratação'}
             </AlertDialogAction>

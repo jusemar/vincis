@@ -58,6 +58,11 @@ export { colaboracoesClienteRelations } from './tables/colaboracoes_cliente/rela
 export { servicos } from './tables/servicos/tabela'
 export { servicosRelations } from './tables/servicos/relacoes'
 
+export { cobrancasPix } from './tables/cobrancas_pix/tabela'
+export { cobrancasPixRelations } from './tables/cobrancas_pix/relacoes'
+export { efiWebhookEventos } from './tables/efi_webhook_eventos/tabela'
+export { efiWebhookEventosRelations } from './tables/efi_webhook_eventos/relacoes'
+
 export { contratacoesServico } from './tables/contratacoes_servico/tabela'
 export { contratacoesServicoRelations } from './tables/contratacoes_servico/relacoes'
 
@@ -92,6 +97,8 @@ export { atendimentoChecklistItens } from './tables/atendimento_checklist_itens/
 export { atendimentoChecklistItensRelations } from './tables/atendimento_checklist_itens/relacoes'
 
 export { atendimentoArquivos } from './tables/atendimento_arquivos/tabela'
+export { atendimentoEncerramentos } from './tables/atendimento_encerramentos/tabela'
+export { atendimentoEncerramentosRelations } from './tables/atendimento_encerramentos/relacoes'
 export { atendimentoArquivosRelations } from './tables/atendimento_arquivos/relacoes'
 
 export { eventosAuditoria } from './tables/eventos_auditoria/tabela'
@@ -186,6 +193,7 @@ export { assinaturas } from './tables/assinaturas/tabela'
 export { assinaturaCompetencias } from './tables/assinatura_competencias/tabela'
 export { assinaturaPagamentos } from './tables/assinatura_pagamentos/tabela'
 export { assinaturaPagamentoAlocacoes } from './tables/assinatura_pagamento_alocacoes/tabela'
+export { assinaturaContadorAlocacoes } from './tables/assinatura_contador_alocacoes/tabela'
 export { parceiroNiveis } from './tables/parceiro_niveis/tabela'
 export { parceiroNivelConfiguracoes } from './tables/parceiro_nivel_configuracoes/tabela'
 export { parceiroNivelRegras } from './tables/parceiro_nivel_regras/tabela'

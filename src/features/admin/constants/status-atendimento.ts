@@ -58,6 +58,13 @@ export const IDENTIDADE_STATUS: Record<
     badge: 'bg-muted text-muted-foreground',
     tom: 'neutral',
   },
+  // Encerrado pela Gestão por falta de retorno: neutro como o cancelado.
+  'encerrado-sem-conclusao': {
+    rotulo: 'Encerrado sem conclusão',
+    ponto: 'bg-muted-foreground',
+    badge: 'bg-muted text-muted-foreground',
+    tom: 'neutral',
+  },
 }
 
 /** Rótulo do status, do mesmo lugar de onde vem a cor. */

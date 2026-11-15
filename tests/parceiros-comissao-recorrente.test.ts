@@ -169,6 +169,7 @@ async function contratar(conta: Conta, meses: 1 | 6 | 12, navegador?: string) {
         planoCodigo: 'padrao',
         periodoCodigo: prazo(meses).periodo,
         respostas,
+        contador: { escolha: 'vincis' },
       }),
     )
     if (!resultado.sucesso) throw new Error(resultado.mensagem)
@@ -641,17 +642,16 @@ describe('semestral pago adiantado: uma comissão por mês cumprido', () => {
 })
 
 describe('as duas ordens', () => {
-  it('cumprido antes do pagamento: a comissão nasce quando o dinheiro chega', async () => {
+  it('antes do primeiro pagamento a prestação não começa; depois, a comissão nasce normalmente', async () => {
     const helena = await cadastrar('Helena Ordem', await visitar(joao.codigo))
     const id = await contratar(helena, 6)
-    // Antes do pagamento não há ativação, nem parceiro, nem dinheiro.
-    expect(await cumprir(id, 1)).toMatchObject({
-      ok: true,
-      comissao: { criada: false },
-    })
+    // Regra aprovada: o contador só começa a prestar com pagamento confirmado.
+    expect(await cumprir(id, 1)).toEqual({ ok: false, motivo: 'pagamento_nao_confirmado' })
+    expect((await mes(id, 1)).status).not.toBe('cumprida')
     expect(await comissoesDe(id)).toHaveLength(0)
 
     await pagar(id)
+    expect(await cumprir(id, 1)).toMatchObject({ ok: true })
     const comissoes = await comissoesDe(id)
     expect(comissoes.map((c) => c.numero)).toEqual([1])
     expect((await mes(id, 1)).status).toBe('cumprida')
@@ -675,6 +675,9 @@ describe('concorrência', () => {
     const id = await contratar(julia, 6)
     const primeiro = await mes(id, 1)
     await Promise.all([cumprirCompetencia({ competenciaId: primeiro.id }), pagar(id)])
+    // Se o cumprimento chegou antes do pagamento, foi recusado: cumprir de novo
+    // (já pago) não pode duplicar a comissão em nenhuma das ordens.
+    await cumprirCompetencia({ competenciaId: primeiro.id })
     const comissoes = await comissoesDe(id)
     expect(comissoes.map((c) => c.numero)).toEqual([1])
   })
@@ -750,9 +753,8 @@ describe('o que não gera comissão', () => {
       assinaturaId: id,
       valorCentavos: segundo.valorBaseCentavos,
     })
-    expect(await cumprir(id, 2)).toMatchObject({
-      comissao: { criada: false, motivo: 'sem_cobertura_confirmada' },
-    })
+    // Renovação mensal: mês sem pagamento confirmado nem chega a ser cumprido.
+    expect(await cumprir(id, 2)).toEqual({ ok: false, motivo: 'pagamento_nao_confirmado' })
     expect(await comissoesDe(id)).toHaveLength(0)
   })
 

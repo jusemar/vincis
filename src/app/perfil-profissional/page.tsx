@@ -171,8 +171,12 @@ export default async function PerfilProfissionalRoute({
    * de demonstração não oferece a chamada, do mesmo jeito que não oferece
    * agenda nem pedido de orçamento.
    */
+  // Advogado não tem esse bloco: o caminho dele é "Solicitar orçamento".
   const planosEPrecos =
-    prestadorId && identidade && (await temPrecosPublicados(prestadorId))
+    prestadorId &&
+    identidade &&
+    identidade.tipoProfissional !== "advocacia" &&
+    (await temPrecosPublicados(prestadorId))
       ? rotaDosPrecosDoProfissional(prestadorId)
       : undefined;
 
@@ -186,6 +190,7 @@ export default async function PerfilProfissionalRoute({
         note: servico.priceNote,
         action: servico.cta,
         outline: servico.isOrcamento,
+        modeloPreco: servico.modeloPreco,
       }))
     : undefined;
 
@@ -201,12 +206,14 @@ export default async function PerfilProfissionalRoute({
       experiencias={experiencias}
       faq={faq}
       planosEPrecos={planosEPrecos}
+      prestadorId={identidade ? prestadorId : undefined}
       solicitacaoDireta={
         destinatario
           ? {
               id: destinatario.id,
               nome: destinatario.nome,
               categorias: destinatario.categorias,
+              documentosPorEmail: identidade?.perfilAdvocacia === "essencial",
             }
           : undefined
       }

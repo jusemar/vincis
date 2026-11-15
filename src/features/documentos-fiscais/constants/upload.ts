@@ -117,6 +117,8 @@ export const CODIGOS_RESULTADO_ARQUIVO = [
   'XML_INVALIDO',
   'XML_INSEGURO',
   'XML_NAO_SUPORTADO',
+  /** Franquia do contador Autônomo proprietário do escritório esgotada. */
+  'ARMAZENAMENTO_ESGOTADO',
   'FALHA_ARMAZENAMENTO',
   'FALHA_REGISTRO',
 ] as const
@@ -156,6 +158,8 @@ export const MENSAGENS_UPLOAD_FISCAL: Record<CodigoRecusaLote | CodigoResultadoA
   XML_INVALIDO: 'O conteúdo não é um XML válido.',
   XML_INSEGURO: 'O XML contém declarações não permitidas (DTD, entidades ou instruções).',
   XML_NAO_SUPORTADO: 'O XML não é uma NF-e. Nesta etapa só NF-e e NFC-e são aceitas.',
+  ARMAZENAMENTO_ESGOTADO:
+    'O espaço de armazenamento do escritório acabou. Arquivos já enviados continuam disponíveis; novos envios dependem de mais espaço.',
   FALHA_ARMAZENAMENTO: 'Não foi possível guardar o arquivo. Tente enviá-lo novamente.',
   FALHA_REGISTRO: 'Não foi possível registrar o documento. Tente enviá-lo novamente.',
 }

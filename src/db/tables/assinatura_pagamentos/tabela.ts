@@ -94,7 +94,7 @@ export const assinaturaPagamentos = pgTable(
     moedaValida: check('assinatura_pagamentos_moeda_valida', sql`${t.moeda} = 'BRL'`),
     provedorValido: check(
       'assinatura_pagamentos_provedor_valido',
-      sql`${t.provedor} in ('homologacao_manual')`,
+      sql`${t.provedor} in ('homologacao_manual', 'efi')`,
     ),
     identificado: check(
       'assinatura_pagamentos_identificado',

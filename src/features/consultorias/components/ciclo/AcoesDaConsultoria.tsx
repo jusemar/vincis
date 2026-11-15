@@ -218,7 +218,10 @@ function ModalCancelar({
         <Linha rotulo="Data" valor={dataPorExtensoComDiaDaSemana(consultoria.data)} />
         <Linha rotulo="Horário" valor={`${consultoria.inicio} às ${consultoria.fim}`} />
         <Linha rotulo="Duração" valor={duracaoPorExtenso(consultoria.duracaoMinutos)} />
-        <Linha rotulo="Valor" valor={formatarPreco(consultoria.valorCentavos)} />
+        {/* 0 = consultoria jurídica (honorário combinado direto): sem linha de valor. */}
+        {consultoria.valorCentavos > 0 ? (
+          <Linha rotulo="Valor" valor={formatarPreco(consultoria.valorCentavos)} />
+        ) : null}
         {consultoria.protocolo ? (
           <Linha rotulo="Protocolo" valor={consultoria.protocolo} mono />
         ) : null}

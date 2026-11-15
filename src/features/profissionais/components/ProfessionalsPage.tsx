@@ -107,6 +107,8 @@ export default function ProfessionalsPage() {
               specialties: item.especialidades,
               about: item.apresentacao,
               certifications: item.certificacoes,
+              perfilAdvocacia: item.perfilAdvocacia,
+              modeloContratacao: item.modeloContratacao,
             }))
             .filter(
               (item) =>

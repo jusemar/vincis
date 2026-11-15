@@ -132,6 +132,7 @@ async function contratar(plano: string, periodo: PrecoPeriodo, chave: Chave = 'c
     planoCodigo: plano,
     periodoCodigo: periodo.periodo,
     respostas,
+    contador: { escolha: 'vincis' },
   })
   sairDaSessao()
   if (!resultado.sucesso) throw new Error(resultado.mensagem)

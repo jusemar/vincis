@@ -25,6 +25,14 @@ export const ACOES_AUDITORIA = {
   interesseOportunidadeConfirmado: 'interesse_oportunidade_confirmado',
   /** Pagamento **simulado** aprovado. O nome diz o que é, no próprio registro. */
   pagamentoSimuladoAprovado: 'pagamento_simulado_aprovado',
+  /** Cobrança Pix real emitida na Efí. Ainda não é dinheiro. */
+  cobrancaPixCriada: 'cobranca_pix_criada',
+  /** A Efí confirmou o Pix, conferido por consulta autenticada. */
+  pagamentoPixConfirmado: 'pagamento_pix_confirmado',
+  /** Dinheiro recebido sem efeito possível — exige estorno manual. */
+  pagamentoPixEmConflito: 'pagamento_pix_conflito',
+  /** A Gestão encerrou um Atendimento parado. Sem efeito financeiro. */
+  atendimentoEncerradoSemConclusao: 'atendimento_encerrado_sem_conclusao',
   /** Ciclo pós-agendamento da Consultoria: desfeita, ou movida de horário. */
   consultoriaCancelada: 'consultoria_cancelada',
   consultoriaRemarcada: 'consultoria_remarcada',
@@ -37,6 +45,10 @@ export const ACOES_AUDITORIA = {
   precificacaoProfissionalSalva: 'precificacao_profissional_salva',
   /** O Profissional publicou (ou tirou do ar) a própria tabela de preços. */
   precificacaoProfissionalPublicada: 'precificacao_profissional_publicada',
+  modeloContratacaoAlterado: 'modelo_contratacao_alterado',
+  contadorResponsavelAlterado: 'contador_responsavel_alterado',
+  comissaoServicosAvulsosAlterada: 'comissao_servicos_avulsos_alterada',
+  capacidadeContadorAlterada: 'capacidade_contador_alterada',
   /**
    * O Gestor alterou um prazo do Programa de Parceiros.
    *
@@ -96,10 +108,14 @@ export const ACOES_AUDITORIA = {
   assinaturaAtivada: 'assinatura_ativada',
   /** O dinheiro confirmado de uma assinatura voltou. */
   assinaturaPagamentoEstornado: 'assinatura_pagamento_estornado',
+  /** O plano recorrente foi cancelado (pelo cliente ou pela Gestão). */
+  assinaturaCancelada: 'assinatura_cancelada',
   /** A primeira assinatura da conta nasceu sob o parceiro que a originou. */
   assinaturaAtribuidaParceiro: 'assinatura_atribuida_parceiro',
   /** Um mês de assinatura foi prestado. */
   competenciaAssinaturaCumprida: 'competencia_assinatura_cumprida',
+  /** O mês seguinte do plano mensal foi disponibilizado para pagamento (renovação). */
+  mensalidadeDisponibilizada: 'mensalidade_disponibilizada',
   /** Mês cumprido e pago: a comissão recorrente nasceu, disponível. */
   comissaoRecorrenteCriada: 'comissao_recorrente_criada',
   /** O pagamento do mês foi estornado antes de a comissão ser paga. */

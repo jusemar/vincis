@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  ROTULO_MODELO_CONTRATACAO,
+  type ModeloContratacao,
+} from '@/features/profissionais/constants/modelo-contratacao'
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -32,6 +36,7 @@ export function PlanosDoProfissional({
   autenticado = false,
   voltarPara,
   demonstracao = false,
+  modeloContratacao = null,
 }: {
   tabela: TabelaPrecificacao
   nome: string
@@ -49,6 +54,8 @@ export function PlanosDoProfissional({
   voltarPara?: string
   /** Prévia do painel: sem ação de contratar e com aviso de demonstração. */
   demonstracao?: boolean
+  /** Contábil: modelo comercial publicado (nulo = não definido). */
+  modeloContratacao?: ModeloContratacao | null
 }) {
   const [respostas, setRespostas] = useState<RespostasPrecificacao>(() =>
     respostasIniciais(tabela),
@@ -143,6 +150,14 @@ export function PlanosDoProfissional({
                 ? `A proposta final é confirmada por ${primeiroNome} após a análise dos documentos da empresa.`
                 : 'Demonstrar interesse não é contratação: o contato e a negociação são realizados diretamente com o profissional.'}
             </p>
+            {/* Autônomo: a contabilidade recorrente é paga a ele, nunca à Vincis. */}
+            {modeloContratacao === 'autonomo' ? (
+              <p className="mt-2 rounded-lg border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+                <span className="font-semibold text-foreground">{ROTULO_MODELO_CONTRATACAO.autonomo.selo}:</span>{' '}
+                {ROTULO_MODELO_CONTRATACAO.autonomo.descricao} A contabilidade mensal não é contratada nem paga pela
+                Vincis — converse com {primeiroNome} para combinar.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
