@@ -28,6 +28,33 @@ function caminhoDoWebhook(): string {
   return `/v2/webhook/${encodeURIComponent(obterConfiguracaoEfi().pixKey)}`
 }
 
+const MENSAGEM_SEM_WEBHOOK = 'nenhum webhook encontrado para a chave informada'
+
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[.!\s]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * A Efí disse "esta chave não tem webhook"?
+ *
+ * Na produção ela responde **HTTP 400** com "Nenhum webhook encontrado para a
+ * chave informada", e não 404. Só o 400 com essa mensagem conta como ausência: qualquer outro 400 (chave inválida, requisição mal
+ * formada) continua sendo erro — tratá-lo como "não cadastrado" ofereceria um
+ * cadastro às cegas. O 404 segue aceito por segurança.
+ */
+export function webhookNaoEncontrado(erro: unknown): boolean {
+  if (!(erro instanceof ErroEfi)) return false
+  if (erro.status === 404) return true
+  if (erro.status !== 400) return false
+  return normalizar(erro.message) === MENSAGEM_SEM_WEBHOOK
+}
+
 /** O webhook cadastrado para a chave da Vincis, ou `null` se não houver. */
 export async function consultarWebhookPix(): Promise<WebhookPixCadastrado | null> {
   try {
@@ -35,8 +62,7 @@ export async function consultarWebhookPix(): Promise<WebhookPixCadastrado | null
     if (!resposta?.webhookUrl) return null
     return { webhookUrl: resposta.webhookUrl, criacao: resposta.criacao ?? null }
   } catch (erro) {
-    // A Efí responde 404 quando a chave não tem webhook.
-    if (erro instanceof ErroEfi && erro.status === 404) return null
+    if (webhookNaoEncontrado(erro)) return null
     throw erro
   }
 }

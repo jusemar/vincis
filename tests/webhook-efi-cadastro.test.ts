@@ -12,6 +12,8 @@ const efi = vi.hoisted(() => ({
   chamadas: [] as Chamada[],
   cadastrado: null as { webhookUrl: string; criacao: string } | null,
   falharPut: null as number | null,
+  /** Como a Efí responde o GET sem webhook: 404, ou o HTTP 400 real da produção. */
+  semWebhook: { status: 404, mensagem: 'Webhook não encontrado' },
 }))
 
 vi.mock('@/integracoes/efi/cliente', async (importOriginal) => {
@@ -21,7 +23,7 @@ vi.mock('@/integracoes/efi/cliente', async (importOriginal) => {
     chamarApiPixEfi: async (metodo: string, caminho: string, corpo?: unknown, cabecalhos?: Record<string, string>) => {
       efi.chamadas.push({ metodo, caminho, corpo, cabecalhos })
       if (metodo === 'GET') {
-        if (!efi.cadastrado) throw new real.ErroEfi('Webhook não encontrado', 404)
+        if (!efi.cadastrado) throw new real.ErroEfi(efi.semWebhook.mensagem, efi.semWebhook.status)
         return { ...efi.cadastrado, chave: 'chave' }
       }
       if (efi.falharPut) throw new real.ErroEfi('Recusado', efi.falharPut)
@@ -34,7 +36,8 @@ vi.mock('@/integracoes/efi/cliente', async (importOriginal) => {
 const { inArray, or } = await import('drizzle-orm')
 const { db } = await import('@/db/connection')
 const { eventosAuditoria } = await import('@/db/schema')
-const { rotuloDoCaminho } = await import('@/integracoes/efi/cliente')
+const { ErroEfi, rotuloDoCaminho } = await import('@/integracoes/efi/cliente')
+const { webhookNaoEncontrado } = await import('@/integracoes/efi/webhook-cadastro')
 const { cadastrarWebhookEfiAction } = await import('@/features/pagamentos/actions/webhook-efi')
 const { compararWebhook, consultarSituacaoWebhookEfi, montarUrlWebhookEfi } = await import(
   '@/features/pagamentos/lib/webhook-efi-cadastro'
@@ -90,6 +93,7 @@ beforeEach(() => {
   efi.chamadas = []
   efi.cadastrado = null
   efi.falharPut = null
+  efi.semWebhook = { status: 404, mensagem: 'Webhook não encontrado' }
   vi.unstubAllEnvs()
   emProducao()
 })
@@ -117,6 +121,16 @@ describe('URL do webhook', () => {
       tipo: 'outro_endereco',
       dominio: 'nooo.exemplo',
     })
+  })
+
+  it('ausência de webhook: 404, ou só o 400 com a mensagem específica da Efí', () => {
+    expect(webhookNaoEncontrado(new ErroEfi('qualquer', 404))).toBe(true)
+    expect(webhookNaoEncontrado(new ErroEfi('Nenhum webhook encontrado para a chave informada', 400))).toBe(true)
+    expect(webhookNaoEncontrado(new ErroEfi('Nenhum webhook encontrado para a chave informada.', 400))).toBe(true)
+    expect(webhookNaoEncontrado(new ErroEfi('Nenhum webhook encontrado para a chave informada', 500))).toBe(false)
+    expect(webhookNaoEncontrado(new ErroEfi('Requisição inválida', 400))).toBe(false)
+    expect(webhookNaoEncontrado(new ErroEfi('Não foi possível comunicar com a Efí.', 400))).toBe(false)
+    expect(webhookNaoEncontrado(new Error('Nenhum webhook encontrado para a chave informada'))).toBe(false)
   })
 
   it('o log do transporte nunca leva a chave Pix', () => {
@@ -170,6 +184,27 @@ describe('cadastro pela Gestão', () => {
     expect(texto).not.toContain(TOKEN)
     expect(texto).not.toContain(CHAVE)
     expect(JSON.stringify(r)).not.toContain(TOKEN)
+  })
+
+  it('HTTP 400 "Nenhum webhook encontrado para a chave informada" é "não cadastrado" e permite cadastrar', async () => {
+    efi.semWebhook = { status: 400, mensagem: 'Nenhum webhook encontrado para a chave informada' }
+    expect(await consultarSituacaoWebhookEfi()).toEqual({ estado: 'nao_cadastrado' })
+    efi.chamadas = []
+
+    const r = await comSessao(contas.gestor.token, () => cadastrarWebhookEfiAction())
+    expect(r).toEqual({ sucesso: true, mensagem: 'Webhook cadastrado e confirmado na Efí.' })
+    expect(efi.chamadas.map((c) => c.metodo)).toEqual(['GET', 'PUT', 'GET'])
+  })
+
+  it('outro HTTP 400 não é ausência: mostra erro e não cadastra', async () => {
+    efi.semWebhook = { status: 400, mensagem: 'Chave Pix inválida' }
+    const situacao = await consultarSituacaoWebhookEfi()
+    expect(situacao).toEqual({ estado: 'erro', mensagem: 'A Efí respondeu HTTP 400: Chave Pix inválida' })
+    efi.chamadas = []
+
+    const r = await comSessao(contas.gestor.token, () => cadastrarWebhookEfiAction())
+    expect(r.sucesso).toBe(false)
+    expect(efi.chamadas.map((c) => c.metodo)).toEqual(['GET'])
   })
 
   it('já cadastrado para a Vincis: não repete o PUT', async () => {
