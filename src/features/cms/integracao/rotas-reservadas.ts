@@ -22,6 +22,7 @@ export const ROTAS_RESERVADAS_VINCIS = [
   'como-funciona',
   'confirmar-email',
   'contato',
+  'llms.txt',
   'p',
   'parceiros',
   'perfil-colaborador',

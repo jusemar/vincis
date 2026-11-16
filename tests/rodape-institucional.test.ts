@@ -15,6 +15,7 @@ import {
   montarWhatsappVincisExibicao,
 } from '@/features/institucional/constants/contatos'
 import { GRUPOS_RODAPE } from '@/features/institucional/constants/rotas'
+import { montarLlmsTxt, PAGINAS_PUBLICAS_LLMS } from '@/features/institucional/lib/llms'
 import { lerAbrirOrcamento, lerAreaBusca, profissaoDaArea } from '@/features/profissionais/constants/busca-url'
 
 /**
@@ -97,8 +98,26 @@ describe('rodapé', () => {
     expect(html).toContain('href="/contato"')
   })
 
+  it('faixa inferior: copyright à esquerda e crédito do desenvolvedor à direita, sem links', () => {
+    const html = htmlDoServidor(Footer)
+    const faixa = html.slice(html.lastIndexOf('border-t border-border/50'))
+    expect(faixa).toContain('Todos os direitos reservados.')
+    expect(faixa).toContain('Desenvolvido por: Junior Rocha')
+    expect(faixa).not.toContain('<a ')
+    // Termos e Privacidade continuam no bloco de navegação, uma vez cada.
+    expect(html.match(/href="\/termos-de-uso"/g)).toHaveLength(1)
+    expect(html.match(/href="\/politica-de-privacidade"/g)).toHaveLength(1)
+  })
+
+  it('mostra CNPJ e cidade, sem endereço completo', () => {
+    const html = htmlDoServidor(Footer)
+    expect(html).toContain('48.732.308/0001-58')
+    expect(html).toContain('Belo Horizonte - MG')
+    expect(html).not.toMatch(/Rua |Avenida |Av\. |CEP/)
+  })
+
   it('as rotas novas estão reservadas contra páginas do CMS; "sobre-nos" continua livre para o CMS', () => {
-    for (const rota of ['contato', 'termos-de-uso', 'politica-de-privacidade']) {
+    for (const rota of ['contato', 'termos-de-uso', 'politica-de-privacidade', 'llms.txt']) {
       expect(ROTAS_RESERVADAS_VINCIS).toContain(rota)
     }
     expect(ROTAS_RESERVADAS_VINCIS).not.toContain('sobre-nos')
@@ -135,5 +154,36 @@ describe('textos institucionais', () => {
     expect(html).toContain(
       'Precisa de ajuda com seu cadastro, contratação, pagamento ou atendimento? Entre em contato com a Vincis pelos canais abaixo.',
     )
+  })
+})
+
+describe('/llms.txt', () => {
+  const texto = montarLlmsTxt()
+
+  it('começa com o título e o resumo pedidos e traz os dados institucionais', () => {
+    expect(texto.startsWith('# Vincis\n\n> Plataforma digital que conecta clientes a profissionais das áreas contábil e jurídica.')).toBe(true)
+    expect(texto).toContain('- CNPJ: 48.732.308/0001-58')
+    expect(texto).toContain('- Localização: Belo Horizonte - MG, Brasil')
+    expect(texto).toContain('- Site oficial: https://vincis.com.br')
+    expect(texto).toContain('não substituem orientação profissional individualizada')
+  })
+
+  it('só aponta para páginas reais, com URL absoluta', () => {
+    const urls = [...texto.matchAll(/https?:\/\/[^\s)]+/g)].map((m) => m[0])
+    expect(urls.length).toBeGreaterThan(5)
+    for (const endereco of urls) {
+      expect(endereco.startsWith('https://vincis.com.br')).toBe(true)
+      const segmento = new URL(endereco).pathname.slice(1).split('/')[0]
+      const existe = segmento === '' || segmento === 'sobre-nos' || existsSync(path.join(raiz, 'src/app', segmento, 'page.tsx'))
+      expect(existe, endereco).toBe(true)
+    }
+    for (const { paginas } of PAGINAS_PUBLICAS_LLMS) for (const p of paginas) expect(texto).toContain(p.titulo)
+  })
+
+  it('não traz contato por extenso, afirmação proibida, infraestrutura nem conteúdo de terceiros', () => {
+    for (const proibido of ['@vincis.com.br', '99252', 'mailto:', 'wa.me', 'escritório de contabilidade.', 'process.env', 'DATABASE', 'Neon', 'Vercel', '/api/', '/admin', 'Contabilizei', 'clientes atendidos', 'anos de mercado', 'todo o Brasil']) {
+      expect(texto, proibido).not.toContain(proibido)
+    }
+    expect(texto).toContain('não é escritório de contabilidade nem escritório de advocacia')
   })
 })

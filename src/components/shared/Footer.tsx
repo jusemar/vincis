@@ -2,7 +2,8 @@
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { ContatoProtegido } from '@/features/institucional/components/ContatoProtegido';
-import { GRUPOS_RODAPE, ROTAS_INSTITUCIONAIS, type GrupoRodape } from '@/features/institucional/constants/rotas';
+import { DADOS_INSTITUCIONAIS } from '@/features/institucional/constants/dados';
+import { GRUPOS_RODAPE, type GrupoRodape } from '@/features/institucional/constants/rotas';
 
 /**
  * Rodapé público da Vincis.
@@ -64,6 +65,18 @@ export default function Footer() {
               <ContatoProtegido canal="email" />
               <ContatoProtegido canal="whatsapp" />
             </div>
+
+            {/* Dados institucionais: discretos, abaixo dos contatos. Sem endereço completo. */}
+            <dl className="mt-6 space-y-1 text-xs text-muted-foreground">
+              <div>
+                <dt className="inline">CNPJ: </dt>
+                <dd className="inline">{DADOS_INSTITUCIONAIS.cnpj}</dd>
+              </div>
+              <div>
+                <dt className="sr-only">Localização: </dt>
+                <dd>{DADOS_INSTITUCIONAIS.cidadeUf}</dd>
+              </div>
+            </dl>
           </div>
 
           {GRUPOS_RODAPE.map((grupo) => (
@@ -78,20 +91,9 @@ export default function Footer() {
             <p className="text-center text-sm text-muted-foreground md:text-left">
               © {new Date().getFullYear()} Vincis. Todos os direitos reservados.
             </p>
-            <div className="flex items-center gap-6 text-sm">
-              <Link
-                href={ROTAS_INSTITUCIONAIS.termosDeUso}
-                className="alvo-toque-h inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Termos de Uso
-              </Link>
-              <Link
-                href={ROTAS_INSTITUCIONAIS.politicaDePrivacidade}
-                className="alvo-toque-h inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Privacidade
-              </Link>
-            </div>
+            <p className="text-center text-sm text-muted-foreground md:text-right">
+              Desenvolvido por: {DADOS_INSTITUCIONAIS.desenvolvidoPor}
+            </p>
           </div>
         </div>
       </div>
