@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { formatarCentavos } from '@/features/precificacao/lib/formato'
+import { formatarValorRepasse } from '../../lib/formato'
 import { formatarPercentualMilesimos } from '@/features/servicos/constants/comissao'
 import { cn } from '@/lib/utils'
 import { registrarRepasseProfissional } from '../../actions/repasses'
@@ -89,7 +89,7 @@ export function RepassesGestao({
             )}
           >
             <p className="text-xs text-muted-foreground">{ROTULO_SITUACAO_REPASSE[situacao]}</p>
-            <p className="text-lg font-semibold">{formatarCentavos(resumo[situacao].profissionalCentavos)}</p>
+            <p className="text-lg font-semibold">{formatarValorRepasse(resumo[situacao].profissionalCentavos)}</p>
             <p className="text-xs text-muted-foreground">
               {resumo[situacao].quantidade} {resumo[situacao].quantidade === 1 ? 'item' : 'itens'}
             </p>
@@ -134,12 +134,12 @@ export function RepassesGestao({
               <dl className="mt-3 grid grid-cols-2 gap-2 rounded-lg border bg-muted/30 p-3 text-sm sm:grid-cols-4">
                 <div>
                   <dt className="text-xs text-muted-foreground">Recebido</dt>
-                  <dd className="font-semibold">{formatarCentavos(r.valorBrutoCentavos)}</dd>
+                  <dd className="font-semibold">{formatarValorRepasse(r.valorBrutoCentavos)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Devido ao profissional</dt>
                   <dd className="font-semibold">
-                    {r.valorProfissionalCentavos === null ? '—' : formatarCentavos(r.valorProfissionalCentavos)}
+                    {r.valorProfissionalCentavos === null ? '—' : formatarValorRepasse(r.valorProfissionalCentavos)}
                   </dd>
                 </div>
                 <div>
@@ -147,15 +147,15 @@ export function RepassesGestao({
                     Vincis{r.comissaoVincisMilesimos ? ` (${formatarPercentualMilesimos(r.comissaoVincisMilesimos)})` : ''}
                   </dt>
                   <dd className="font-semibold">
-                    {r.comissaoVincisCentavos === null ? '—' : formatarCentavos(r.comissaoVincisCentavos)}
+                    {r.comissaoVincisCentavos === null ? '—' : formatarValorRepasse(r.comissaoVincisCentavos)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Indicador · Vincis líquido</dt>
                   <dd className="font-semibold">
-                    {formatarCentavos(r.comissaoIndicadorCentavos)} ·{' '}
+                    {formatarValorRepasse(r.comissaoIndicadorCentavos)} ·{' '}
                     <span className={cn(r.liquidoVincisCentavos !== null && r.liquidoVincisCentavos < 0 && 'text-destructive')}>
-                      {r.liquidoVincisCentavos === null ? '—' : formatarCentavos(r.liquidoVincisCentavos)}
+                      {r.liquidoVincisCentavos === null ? '—' : formatarValorRepasse(r.liquidoVincisCentavos)}
                     </span>
                   </dd>
                 </div>
@@ -259,7 +259,7 @@ function ModalRegistro({ repasse, onFechar }: { repasse: RepasseGestao; onFechar
       onFechar={onFechar}
       largura="md"
       titulo="Registrar repasse"
-      descricao={`${repasse.profissional?.nome ?? ''} · ${formatarCentavos(repasse.valorProfissionalCentavos ?? 0)}`}
+      descricao={`${repasse.profissional?.nome ?? ''} · ${formatarValorRepasse(repasse.valorProfissionalCentavos ?? 0)}`}
       rodape={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" onClick={onFechar} disabled={enviando}>
@@ -274,7 +274,7 @@ function ModalRegistro({ repasse, onFechar }: { repasse: RepasseGestao; onFechar
       <form id="form-repasse" onSubmit={enviar} className="space-y-4">
         <input type="hidden" {...register('repasseId')} />
         <p className="text-sm text-muted-foreground">
-          Registre somente depois de transferir {formatarCentavos(repasse.valorProfissionalCentavos ?? 0)} para{' '}
+          Registre somente depois de transferir {formatarValorRepasse(repasse.valorProfissionalCentavos ?? 0)} para{' '}
           {repasse.profissional?.nome}. O registro é definitivo e fica na auditoria.
         </p>
         <div className="space-y-1.5">

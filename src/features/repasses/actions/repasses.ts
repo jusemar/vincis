@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { formatarCentavos } from '@/features/precificacao/lib/formato'
+import { formatarValorRepasse } from '../lib/formato'
 import { validarGestorVincis } from '@/features/usuarios/lib/validar-gestor-vincis'
 import { ROTULO_SITUACAO_REPASSE } from '../constants/repasse'
 import { registrarRepasse } from '../lib/registrar-repasse'
@@ -58,6 +58,6 @@ export async function registrarRepasseProfissional(entrada: unknown) {
   revalidatePath('/admin/repasses')
   return {
     sucesso: true as const,
-    mensagem: `Repasse de ${formatarCentavos(resultado.valorProfissionalCentavos)} registrado.`,
+    mensagem: `Repasse de ${formatarValorRepasse(resultado.valorProfissionalCentavos)} registrado.`,
   }
 }
