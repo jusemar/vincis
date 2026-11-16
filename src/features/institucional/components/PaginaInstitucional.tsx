@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
 /**
- * Moldura das páginas institucionais escritas no código (Contato, Termos,
- * Privacidade).
+ * Moldura das páginas institucionais escritas no código (hoje, Contato — Termos
+ * e Privacidade passaram para o CMS).
  *
  * Mesmo espaçamento e tipografia da página do CMS (`PaginaPublicaCms`): abaixo
  * da navegação fixa (`pt-32`), largura de leitura, título com borda inferior.
@@ -32,20 +32,6 @@ export function PaginaInstitucional({
       <div className="space-y-5 text-base leading-7 text-foreground/90 sm:text-lg">{children}</div>
     </article>
   )
-}
-
-/** Seção numerada de um documento (Termos, Privacidade). */
-export function SecaoDocumento({ id, titulo, children }: { id?: string; titulo: string; children: React.ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-28 space-y-4">
-      <h2 className="mt-8 text-2xl font-semibold tracking-tight text-foreground">{titulo}</h2>
-      {children}
-    </section>
-  )
-}
-
-export function Lista({ children }: { children: React.ReactNode }) {
-  return <ul className="list-disc space-y-2 pl-6">{children}</ul>
 }
 
 /** Link interno no estilo do conteúdo do CMS. */

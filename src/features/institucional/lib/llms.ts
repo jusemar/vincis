@@ -9,7 +9,9 @@ import { ROTAS_INSTITUCIONAIS, ROTA_BUSCA_CONTABILIDADE, ROTA_BUSCA_JURIDICA, RO
  *
  * - Só afirmações confirmadas no código e no site (conferidas em 16/11/2026) e
  *   os dados institucionais informados pelo proprietário.
- * - Só páginas públicas reais, com URL absoluta. Ficaram de fora, por ora,
+ * - Só páginas públicas reais, com URL absoluta. Sobre Nós, Termos e
+ *   Privacidade são páginas do CMS (`PAGINAS_CMS_INSTITUCIONAIS`): se uma delas
+ *   mudar de slug no painel, atualize aqui. Ficaram de fora, por ora,
  *   `/como-funciona` e `/parceiros`: as duas existem, mas trazem textos
  *   promocionais ainda não confirmados (ex.: "garantia de serviço",
  *   "pagamento semanal"). Entram aqui quando forem revisadas.

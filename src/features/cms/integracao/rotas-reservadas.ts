@@ -28,13 +28,11 @@ export const ROTAS_RESERVADAS_VINCIS = [
   'perfil-colaborador',
   'perfil-profissional',
   'perfil-profissionalv3',
-  'politica-de-privacidade',
   'precos',
   'profissionais',
   'profissional',
   'redefinir-senha',
   'suporte',
-  'termos-de-uso',
   // public/
   'images',
   'temp',

@@ -5,13 +5,18 @@
  * desenhava colunas do CMS e o localhost as colunas fixas, e os dois divergiam.
  * Todo link aqui leva a uma página real:
  *
- * - `/sobre-nos` é a página publicada pelo proprietário no CMS;
- * - Contato, Termos e Privacidade são rotas do código (`src/app/...`);
+ * - Sobre Nós, Termos de Uso e Política de Privacidade são páginas do CMS
+ *   (editáveis no painel, iguais no localhost e na produção);
+ * - Contato é rota do código (`src/app/contato`): é uma página funcional, com os
+ *   botões de contato protegidos contra robôs, que o CMS não renderiza;
  * - Contabilidade e Assistência Jurídica abrem a busca já filtrada;
  * - Serviços Avulsos abre a busca com o pedido de orçamento expandido — o fluxo
  *   real de contratação avulsa (descrever a necessidade → propostas → aceite →
  *   pagamento).
  */
+/** Slugs institucionais administrados pelo CMS (não reservar em `rotas-reservadas`). */
+export const PAGINAS_CMS_INSTITUCIONAIS = ['sobre-nos', 'termos-de-uso', 'politica-de-privacidade'] as const
+
 export const ROTAS_INSTITUCIONAIS = {
   sobreNos: '/sobre-nos',
   contato: '/contato',
