@@ -390,7 +390,7 @@ describe('montagem do rodapé público', () => {
   it('ordena grupos e links, usa o título da página sem texto próprio e pula slug reservado', () => {
     const grupos = montarGruposPublicos(
       [
-        linha('b', 1, 'b1', 0, 'contato'),
+        linha('b', 1, 'b1', 0, 'quem-somos'),
         linha('a', 0, 'a2', 1, 'termos', '  '),
         linha('a', 0, 'a1', 0, 'sobre', 'Quem somos'),
         linha('c', 2, 'c1', 0, 'admin'),
@@ -406,7 +406,7 @@ describe('montagem do rodapé público', () => {
           { id: 'a2', href: '/termos', texto: 'Página termos' },
         ],
       },
-      { id: 'b', titulo: 'Grupo b', links: [{ id: 'b1', href: '/contato', texto: 'Página contato' }] },
+      { id: 'b', titulo: 'Grupo b', links: [{ id: 'b1', href: '/quem-somos', texto: 'Página quem-somos' }] },
     ])
   })
 })

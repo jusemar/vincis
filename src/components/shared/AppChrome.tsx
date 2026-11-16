@@ -4,20 +4,16 @@ import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import Footer from './Footer'
 import NavigationNext from './NavigationNext'
-import type { GrupoNavegacaoPublico } from '@/features/cms/nucleo/lib/navegacao'
 import type { GrupoMenuPublico } from '@/features/cms/nucleo/lib/arvore-navegacao'
 
 type AppChromeProps = {
   children: React.ReactNode
-  /** Colunas do rodapé vindas do CMS, lidas no servidor pelo layout raiz. */
-  navegacaoRodape?: GrupoNavegacaoPublico[]
   /** Menu do cabeçalho vindo do CMS (grupos em sequência, já em árvore). */
   navegacaoCabecalho?: GrupoMenuPublico[]
 }
 
 export function AppChrome({
   children,
-  navegacaoRodape = [],
   navegacaoCabecalho = [],
 }: AppChromeProps) {
   const pathname = usePathname()
@@ -52,7 +48,7 @@ export function AppChrome({
         </Suspense>
       )}
       <main className="min-h-dvh bg-background">{children}</main>
-      {!estaNaAreaAdministrativa && <Footer gruposCms={navegacaoRodape} />}
+      {!estaNaAreaAdministrativa && <Footer />}
     </>
   )
 }

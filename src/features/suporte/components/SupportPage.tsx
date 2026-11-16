@@ -17,25 +17,34 @@ interface Category {
   faqs: FAQ[]
 }
 
+/**
+ * Perguntas frequentes.
+ *
+ * As respostas descrevem o que a plataforma faz hoje — pagamento por Pix pela
+ * Efí nos serviços elegíveis, mensalidade paga mês a mês, nenhum estorno
+ * automático. Antes havia promessas que o sistema não cumpria (cartão, boleto,
+ * cobrança recorrente automática, reembolso em 7 dias, "criptografia de ponta a
+ * ponta", conformidade com a LGPD declarada sem verificação); saíram.
+ */
 const categories: Category[] = [
   {
     name: 'Plataforma',
     faqs: [
       {
         question: 'O que é a Vincis?',
-        answer: 'A Vincis é uma plataforma que conecta clientes a profissionais jurídicos e contábeis qualificados, oferecendo diversos modelos de contratação para atender às necessidades de cada empresa.',
+        answer: 'A Vincis é uma plataforma digital que conecta clientes a profissionais independentes das áreas contábil e jurídica. Você encontra profissionais, conhece os serviços disponíveis, solicita orçamentos, contrata e acompanha seus atendimentos. A execução e a responsabilidade técnica pelo serviço cabem ao profissional contratado.',
       },
       {
         question: 'Como funciona a plataforma?',
-        answer: 'Você escolhe o modelo de serviço ideal (consultoria mensal, avulsa, solicitação aberta ou plano completo), é conectado a profissionais especializados e acompanha tudo de forma transparente pela plataforma.',
+        answer: 'Você pode buscar um profissional e contratar um serviço do perfil dele, agendar uma consulta, contratar um plano contábil ou descrever sua necessidade em "Solicitar orçamento" para receber propostas. Depois da contratação, o atendimento é acompanhado pela própria plataforma, com mensagens e envio de documentos.',
       },
       {
         question: 'A plataforma é segura?',
-        answer: 'Sim! Utilizamos criptografia de ponta a ponta, servidores seguros e seguimos as melhores práticas de segurança da informação e conformidade com a LGPD.',
+        answer: 'O acesso à Vincis é feito por conexão segura (HTTPS), cada usuário vê apenas o que lhe diz respeito e as senhas não são guardadas em texto. Os pagamentos por Pix são processados pela Efí e confirmados junto a ela antes de qualquer liberação. Veja os detalhes na Política de Privacidade.',
       },
       {
         question: 'Posso usar a plataforma pelo celular?',
-        answer: 'Sim, nossa plataforma é totalmente responsiva e pode ser acessada de qualquer dispositivo — computador, tablet ou smartphone.',
+        answer: 'Sim. A Vincis funciona no navegador do computador, do tablet e do celular.',
       },
     ],
   },
@@ -43,20 +52,20 @@ const categories: Category[] = [
     name: 'Planos',
     faqs: [
       {
-        question: 'Quais são os modelos de serviço disponíveis?',
-        answer: 'Oferecemos quatro modelos: Consultoria Mensal (acompanhamento contínuo), Consultoria Avulsa (por demanda), Solicitação Aberta (receba propostas de profissionais) e Plano Completo (jurídico + contábil integrado).',
+        question: 'Quais são as formas de contratação?',
+        answer: 'Serviços avulsos do perfil do profissional, consultas agendadas, orçamentos sob medida (você descreve a necessidade e recebe propostas) e planos contábeis com acompanhamento mensal. Os planos disponíveis e seus valores estão em Planos e Preços.',
       },
       {
-        question: 'Posso trocar de plano a qualquer momento?',
-        answer: 'Sim, você pode fazer upgrade ou downgrade do seu plano a qualquer momento. As mudanças são aplicadas no próximo ciclo de faturamento.',
+        question: 'Posso cancelar um plano?',
+        answer: 'Sim. O cliente pode cancelar o próprio plano pela plataforma. Valores já pagos e eventuais devoluções são tratados conforme as condições da contratação e a legislação aplicável; fale com a Vincis se precisar.',
       },
       {
-        question: 'Existe fidelidade ou contrato mínimo?',
-        answer: 'Não exigimos fidelidade. Nos planos mensais, você pode cancelar a qualquer momento sem multas ou taxas adicionais.',
+        question: 'Posso trocar de plano?',
+        answer: 'Para mudar de plano, fale com a Vincis pelos canais de contato e informe o que precisa.',
       },
       {
-        question: 'Como funciona a consultoria avulsa?',
-        answer: 'Na consultoria avulsa, você contrata um profissional para uma demanda específica, pagando apenas pelo serviço realizado, sem compromisso mensal.',
+        question: 'Como funciona um serviço avulso?',
+        answer: 'Você contrata um profissional para uma demanda específica, sem compromisso mensal. As condições — valor, escopo e forma de pagamento — aparecem antes da contratação.',
       },
     ],
   },
@@ -64,16 +73,16 @@ const categories: Category[] = [
     name: 'Profissionais',
     faqs: [
       {
-        question: 'Como os profissionais são selecionados?',
-        answer: 'Todos os profissionais passam por um rigoroso processo de verificação que inclui análise de credenciais, experiência, registro nos órgãos competentes (OAB/CRC) e avaliações de clientes anteriores.',
+        question: 'Como os profissionais entram na Vincis?',
+        answer: 'O profissional cria a conta, preenche o perfil — com área de atuação, formação e registro profissional, como CRC ou OAB — e o cadastro passa por análise da Vincis antes de ser publicado. Cada profissional é responsável pela veracidade das informações e pela regularidade da sua habilitação.',
       },
       {
         question: 'Posso escolher o profissional que vai me atender?',
-        answer: 'Sim! Você pode navegar pelos perfis dos profissionais, ver suas especializações, avaliações e escolher o que melhor atende às suas necessidades.',
+        answer: 'Sim. Você pode navegar pelos perfis, ver áreas de atuação, serviços e avaliações e escolher quem melhor atende à sua necessidade.',
       },
       {
-        question: 'E se eu não gostar do profissional?',
-        answer: 'Você pode solicitar a troca de profissional a qualquer momento, sem custos adicionais. Nosso objetivo é garantir sua total satisfação.',
+        question: 'E se eu tiver um problema com o atendimento?',
+        answer: 'Converse primeiro com o profissional pela plataforma. Se não resolver, fale com a Vincis pelos canais de contato para que a situação seja analisada.',
       },
     ],
   },
@@ -82,15 +91,15 @@ const categories: Category[] = [
     faqs: [
       {
         question: 'Quais formas de pagamento são aceitas?',
-        answer: 'Aceitamos cartão de crédito, débito, PIX e boleto bancário. Para planos mensais, o pagamento é recorrente e automático.',
+        answer: 'Nos serviços pagos pela Vincis, o pagamento é feito por Pix, processado pela Efí. Alguns serviços — como honorários advocatícios e contratos firmados diretamente com o profissional — são pagos diretamente ao profissional, conforme a modalidade apresentada antes da contratação.',
       },
       {
-        question: 'Como funciona o faturamento?',
-        answer: 'Nos planos mensais, a cobrança é feita no mesmo dia de cada mês. Para serviços avulsos, o pagamento é realizado após a conclusão do serviço.',
+        question: 'Como funciona a cobrança dos planos?',
+        answer: 'Planos mensais são pagos mês a mês, por um novo Pix a cada mensalidade; não há débito automático. Planos semestrais e anuais são pagos de uma vez, também por Pix.',
       },
       {
         question: 'Posso solicitar reembolso?',
-        answer: 'Sim, em caso de insatisfação com o serviço, você pode solicitar reembolso em até 7 dias após a prestação, sujeito à análise da nossa equipe.',
+        answer: 'Pedidos de reembolso são analisados conforme as condições da contratação e a legislação aplicável — não há estorno automático. Nos serviços pagos pela Vincis, faça a solicitação pelos canais de contato.',
       },
     ],
   },
@@ -99,22 +108,22 @@ const categories: Category[] = [
     faqs: [
       {
         question: 'Como crio minha conta?',
-        answer: 'Basta clicar em "Criar Conta", preencher seus dados e escolher o modelo de serviço. Em poucos minutos você já estará conectado a profissionais qualificados.',
+        answer: 'Clique em "Criar Conta", preencha seus dados e confirme a conta pelo link enviado ao seu e-mail.',
       },
       {
         question: 'Esqueci minha senha, o que faço?',
-        answer: 'Na tela de login, clique em "Esqueci minha senha". Enviaremos um e-mail com instruções para redefinir sua senha de forma segura.',
+        answer: 'Na tela de login, clique em "Esqueci minha senha". Enviaremos um e-mail com um link para redefinir sua senha.',
       },
       {
         question: 'Como excluo minha conta?',
-        answer: 'Você pode solicitar a exclusão da sua conta nas configurações do perfil ou entrando em contato com nosso suporte. Seus dados serão removidos conforme a LGPD.',
+        answer: 'Solicite a exclusão pelos canais de contato da Vincis. Alguns dados podem ser mantidos pelo tempo exigido por lei, conforme a Política de Privacidade.',
       },
     ],
   },
 ]
 
 const SupportPage = () => {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
   const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null)
 
   const filteredCategories = useMemo(() => {

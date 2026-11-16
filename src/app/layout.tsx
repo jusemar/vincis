@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { AppChrome } from "@/components/shared/AppChrome";
-import {
-  listarMenuCabecalhoPublico,
-  listarNavegacaoRodapePublica,
-} from "@/features/cms/queries/publico";
+import { listarMenuCabecalhoPublico } from "@/features/cms/queries/publico";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,14 +35,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Rodapé e menu do cabeçalho vêm do CMS. `AppChrome`, `Footer` e
-  // `NavigationNext` são componentes de cliente e não consultam banco: a leitura
-  // acontece aqui, no servidor, em cache etiquetado (`cms-navegacao`). Nenhuma
-  // das duas lança — na falha, ficam os links fixos.
-  const [navegacaoRodape, navegacaoCabecalho] = await Promise.all([
-    listarNavegacaoRodapePublica(),
-    listarMenuCabecalhoPublico(),
-  ]);
+  // O menu do cabeçalho vem do CMS. `AppChrome` e `NavigationNext` são
+  // componentes de cliente e não consultam banco: a leitura acontece aqui, no
+  // servidor, em cache etiquetado (`cms-navegacao`), e não lança — na falha,
+  // ficam os links fixos. O rodapé é fixo no código (`features/institucional`),
+  // igual em todos os ambientes.
+  const navegacaoCabecalho = await listarMenuCabecalhoPublico();
 
   // `data-scroll-behavior="smooth"` declara ao Next que a rolagem suave do
   // `globals.css` é intencional. Sem o atributo o roteador avisa a cada
@@ -59,7 +54,7 @@ export default async function RootLayout({
     >
       <body className="antialiased">
         <Providers>
-          <AppChrome navegacaoRodape={navegacaoRodape} navegacaoCabecalho={navegacaoCabecalho}>
+          <AppChrome navegacaoCabecalho={navegacaoCabecalho}>
             {children}
           </AppChrome>
         </Providers>

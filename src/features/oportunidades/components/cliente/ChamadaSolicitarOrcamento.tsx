@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import {
@@ -24,8 +24,15 @@ import { FormularioSolicitarOrcamento } from './FormularioSolicitarOrcamento'
  * system (`accordion-down`/`accordion-up`), sem cor, componente ou espaçamento
  * novo.
  */
-export function ChamadaSolicitarOrcamento() {
-  const [aberto, setAberto] = useState(false)
+export function ChamadaSolicitarOrcamento({ abertoInicial = false }: { abertoInicial?: boolean } = {}) {
+  const [aberto, setAberto] = useState(abertoInicial)
+  const bloco = useRef<HTMLDivElement>(null)
+
+  // Quem chega por "Serviços Avulsos" (`/profissionais?orcamento=1`) cai direto
+  // no formulário: abre expandido e a página rola até ele.
+  useEffect(() => {
+    if (abertoInicial) bloco.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [abertoInicial])
 
   return (
     <Collapsible
@@ -33,7 +40,9 @@ export function ChamadaSolicitarOrcamento() {
       onOpenChange={setAberto}
       // `asChild` não cabe aqui: o bloco inteiro é o cartão, e o gatilho é só o
       // botão dentro dele.
-      className="mb-6"
+      className="mb-6 scroll-mt-28"
+      id="solicitar-orcamento"
+      ref={bloco}
     >
       <motion.section
         initial={{ opacity: 0, y: 20 }}

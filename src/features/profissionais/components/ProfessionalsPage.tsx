@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Users } from "lucide-react";
 import { ChamadaSolicitarOrcamento } from "@/features/oportunidades/components/cliente/ChamadaSolicitarOrcamento";
 import { pesquisarProfissionaisPublicos } from "../actions/pesquisar-profissionais";
+import { profissaoDaArea, type AreaBusca } from "../constants/busca-url";
 import type { FilterState, Professional } from "../types/profissionais";
 import FilterBar from "./FilterBar";
 import ProfessionalCard from "./ProfessionalCard";
@@ -24,8 +25,19 @@ const FILTROS_INICIAIS: FilterState = {
   maxPrice: 1000,
 };
 
-export default function ProfessionalsPage() {
-  const [filters, setFilters] = useState(FILTROS_INICIAIS);
+export default function ProfessionalsPage({
+  areaInicial,
+  abrirOrcamento = false,
+}: {
+  /** Filtro de profissão vindo da URL (`?area=`). */
+  areaInicial?: AreaBusca;
+  /** Abre o pedido de orçamento já expandido (`?orcamento=1`). */
+  abrirOrcamento?: boolean;
+} = {}) {
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const profissao = profissaoDaArea(areaInicial);
+    return profissao ? { ...FILTROS_INICIAIS, profession: profissao } : FILTROS_INICIAIS;
+  });
   const filtrosAdiados = useDeferredValue(filters);
   const [profissionais, setProfissionais] = useState<Professional[]>([]);
   const [pagina, setPagina] = useState(1);
@@ -158,7 +170,7 @@ export default function ProfessionalsPage() {
         {/* Etapa anterior à escolha: quem ainda não sabe a quem recorrer
             descreve a necessidade e recebe propostas. A vitrine abaixo
             permanece exatamente como estava. */}
-        <ChamadaSolicitarOrcamento />
+        <ChamadaSolicitarOrcamento abertoInicial={abrirOrcamento} />
         <FilterBar
           filters={filters}
           onFilterChange={(valor) => {
