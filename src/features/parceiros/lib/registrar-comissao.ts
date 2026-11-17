@@ -2,44 +2,13 @@ import { and, eq } from 'drizzle-orm'
 import type { db as Banco } from '@/db/connection'
 import { contratacoesServico, parceiroComissoes } from '@/db/schema'
 import { PERCENTUAL_AVULSO } from '../constants/programa'
+import { calcularComissaoCentavos } from './calculo'
 import { sincronizarCampanhasSemDerrubar } from './campanhas'
 
 type Transacao = Parameters<Parameters<typeof Banco.transaction>[0]>[0]
 
-/**
- * O valor da comissão, em centavos.
- *
- * Arredondamento no servidor e uma vez só: o resultado é copiado para a linha e
- * nunca recalculado na leitura. Duas telas que multiplicassem por conta própria
- * acabariam divergindo em um centavo, e um centavo de diferença num número
- * financeiro é um chamado de suporte.
- */
-export function calcularComissaoCentavos(
-  valorBaseCentavos: number,
-  percentual: number,
-): number {
-  return Math.round((valorBaseCentavos * percentual) / 100)
-}
-
-/**
- * O valor da comissão a partir de um percentual em centésimos (500 = 5%).
- *
- * Só inteiros: `base × centésimos` cabe folgado num inteiro seguro, e o
- * arredondamento é meio-para-cima, feito uma vez. É o cálculo da recorrente,
- * cujo percentual vem da configuração da Gestão e pode ter duas casas.
- */
-export function calcularComissaoPorCentesimos(
-  valorBaseCentavos: number,
-  percentualCentesimos: number,
-): number {
-  if (!Number.isInteger(valorBaseCentavos) || valorBaseCentavos < 0) {
-    throw new Error('A base precisa ser um inteiro não negativo de centavos.')
-  }
-  if (!Number.isInteger(percentualCentesimos) || percentualCentesimos < 0) {
-    throw new Error('O percentual precisa ser um inteiro não negativo de centésimos.')
-  }
-  return Math.floor((valorBaseCentavos * percentualCentesimos + 5_000) / 10_000)
-}
+// A aritmética mora em `calculo.ts`, compartilhada com o simulador público.
+export { calcularComissaoCentavos, calcularComissaoPorCentesimos } from './calculo'
 
 /**
  * Registra a comissão que uma contratação efetiva gerou.

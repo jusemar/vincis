@@ -1,837 +1,484 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "framer-motion";
 import {
-  AreaChart, Area, ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis, Tooltip,
-} from "recharts";
-import {
-  ArrowRight, Sparkles, Crown, Gem, Award, Users, Wallet, Repeat, TrendingUp,
-  Trophy, ShieldCheck, CheckCircle2, Play, Star, Infinity as InfinityIcon,
-  Rocket, Target, BadgeDollarSign, ChevronRight, Quote, Globe2, MousePointerClick,
-  Flame,
+  ArrowRight, Award, BadgeCheck, Briefcase, ChevronDown, CircleDollarSign, Crown, FileText, Gem,
+  Handshake, Link2, Repeat, Scale, ShieldCheck, Sparkles, UserCheck, Users, Wallet, XCircle,
 } from "lucide-react";
-import { formatarPercentualCentesimos } from "../constants/programa";
+import Link from "next/link";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { DIAS_COOKIE_INDICACAO } from "../constants/indicacao";
+import { formatarPercentualCentesimos, PERCENTUAL_AVULSO } from "../constants/programa";
 import type { NiveisPublicos } from "../lib/niveis";
+import type { SituacaoNaPaginaPublica } from "../queries/situacao-publica";
+import { ChamadaParticipar } from "./publico/ChamadaParticipar";
+import { JornadaDoParceiro } from "./publico/JornadaDoParceiro";
+import { SimuladorDeComissoes } from "./publico/SimuladorDeComissoes";
 
-/** Ícone de cada nível. Estrutura, não regra: os números vêm da configuração. */
-const ICONE_DO_NIVEL: Record<string, typeof Award> = {
-  bronze: Award,
-  prata: Gem,
-  ouro: Crown,
-};
+/*
+  Página pública do Programa de Parceiros Indicadores.
 
-/** O topo e o nível do meio, pelos nomes configurados. */
-function nomesDosNiveis(niveis: NiveisPublicos | null) {
+  Regra da página: só afirma o que o sistema faz. Percentuais, mínimos e
+  proteção vêm da configuração publicada pela Gestão (`obterNiveisPublicos`);
+  a comissão avulsa vem de `PERCENTUAL_AVULSO`, a mesma constante do motor. O
+  que é exemplo (valores no simulador, saldo no painel ilustrativo) diz que é.
+
+  Saíram da versão anterior: ranking com nomes e ganhos, depoimentos, "comissões
+  pagas agora — ao vivo", "Top 3 nacional", "aprovação em 24h", "pagamento
+  semanal", "mentoria", "centenas de parceiros", "renda vitalícia", "vagas
+  limitadas", estatísticas sem fonte e botões de cadastro que rolavam até o
+  simulador.
+*/
+
+const ICONE_DO_NIVEL: Record<string, typeof Award> = { bronze: Award, prata: Gem, ouro: Crown };
+
+function faixaDosPercentuais(niveis: NiveisPublicos | null): string {
   const lista = niveis?.niveis ?? [];
-  const topo = lista.at(-1)?.nome ?? "Parceiro";
-  return { topo, meio: lista[1]?.nome ?? topo };
+  if (!lista.length) return "um percentual definido pela Vincis";
+  const primeiro = formatarPercentualCentesimos(lista[0].percentualCentesimos);
+  const ultimo = formatarPercentualCentesimos(lista.at(-1)!.percentualCentesimos);
+  return primeiro === ultimo ? primeiro : `${primeiro} a ${ultimo}`;
 }
 
-function quantosClientes(quantidade: number) {
-  return `${quantidade} ${quantidade === 1 ? "cliente recorrente ativo" : "clientes recorrentes ativos"}`;
-}
-
-function AnimatedNumber({ value, prefix = "", suffix = "", decimals = 0, duration = 1200 }: {
-  value: number; prefix?: string; suffix?: string; decimals?: number; duration?: number;
-}) {
-  const [n, setN] = useState(0);
-  const startedRef = useRef(false);
-
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    const start = performance.now();
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setN(value * eased);
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [value, duration]);
-
-  const formatted = n.toLocaleString("pt-BR", {
-    minimumFractionDigits: decimals, maximumFractionDigits: decimals,
-  });
-  return <span>{prefix}{formatted}{suffix}</span>;
-}
-
-function SectionHeader({ eyebrow, title }: { eyebrow: string; title: React.ReactNode }) {
+function Cabecalho({ id, sobretitulo, titulo, descricao }: { id?: string; sobretitulo: string; titulo: React.ReactNode; descricao?: React.ReactNode }) {
   return (
-    <div className="text-center max-w-2xl mx-auto">
-      <div className="glass inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-widest text-muted-foreground">
-        <Sparkles className="size-3 text-primary" /> {eyebrow}
-      </div>
-      <h2 className="mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1]">
-        {title}
-      </h2>
+    <div className="mx-auto max-w-2xl text-center">
+      <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <Sparkles className="size-3 text-primary" aria-hidden="true" /> {sobretitulo}
+      </p>
+      <h2 id={id} className="mt-4 font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">{titulo}</h2>
+      {descricao && <p className="mt-4 text-base text-muted-foreground sm:text-lg">{descricao}</p>}
     </div>
   );
 }
 
-function Hero() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const opacity = useTransform(scrollYProgress, [0, 1], [1, 0.2]);
-
-  const mx = useMotionValue(0); const my = useMotionValue(0);
-  const rx = useSpring(useTransform(my, [-200, 200], [10, -10]), { stiffness: 80, damping: 15 });
-  const ry = useSpring(useTransform(mx, [-200, 200], [-10, 10]), { stiffness: 80, damping: 15 });
-
+function Revelar({ children, atraso = 0, className }: { children: React.ReactNode; atraso?: number; className?: string }) {
   return (
-    <section ref={ref} className="relative overflow-hidden pt-32 pb-32 md:pb-44">
-      <motion.div style={{ y: yBg }} className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-grid opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
-        <div className="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full blur-3xl"
-             style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.35), transparent 60%)" }} />
-        <div className="absolute -bottom-40 -right-32 h-[600px] w-[600px] rounded-full blur-3xl"
-             style={{ background: "radial-gradient(circle, hsl(var(--amber-400) / 0.3), transparent 60%)" }} />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[300px] w-[1200px] blur-3xl opacity-40"
-             style={{ background: "radial-gradient(ellipse, hsl(var(--primary) / 0.2), transparent 70%)" }} />
-      </motion.div>
-
-      {[...Array(6)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full blur-2xl opacity-50"
-          style={{
-            width: 60 + i * 14, height: 60 + i * 14,
-            left: `${10 + i * 14}%`, top: `${15 + (i * 9) % 60}%`,
-            background: i % 2 ? "hsl(var(--primary) / 0.4)" : "hsl(var(--amber-400) / 0.4)",
-          }}
-          animate={{ y: [0, -30, 0], x: [0, 12, 0] }}
-          transition={{ duration: 8 + i, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
-        />
-      ))}
-
-      <div className="container mx-auto px-6 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-center"
-        >
-          <div className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            <span className="text-muted-foreground">Programa de Parceiros 2026 · Vagas limitadas</span>
-          </div>
-        </motion.div>
-
-        <div className="mt-8 grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-7">
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="font-display text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05]"
-            >
-              Construa <span className="text-gradient-amber">renda recorrente</span><br />
-              indicando clientes <span className="text-gradient-gold">de alto valor</span>.
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="mt-6 max-w-xl text-lg text-muted-foreground"
-            >
-              Seja um parceiro Vincis e ganhe <strong className="text-foreground">comissões vitalícias</strong> a cada cliente que indicar.
-              Painel completo, materiais prontos e mentoria dedicada para você escalar de forma profissional.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="mt-8 flex flex-wrap items-center gap-3"
-            >
-              <a href="#simulador" className="group inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-on-primary glow-amber transition-all hover:scale-[1.02] bg-gradient-gold">
-                Quero ser parceiro
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-              </a>
-              <a href="#painel" className="glass inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-medium hover:bg-white/5 transition">
-                <Play className="size-4" /> Ver o painel
-              </a>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-              className="mt-10 grid grid-cols-3 gap-4 max-w-lg"
-            >
-              {[
-                { v: 12480, p: "R$ ", s: "", l: "Pago em comissões/mês" },
-                { v: 1240, l: "Parceiros ativos" },
-                { v: 98, s: "%", l: "Pagamento em dia" },
-              ].map((k) => (
-                <div key={k.l} className="glass rounded-2xl p-3">
-                  <div className="text-xl font-display font-semibold">
-                    <AnimatedNumber value={k.v} prefix={k.p ?? ""} suffix={k.s ?? ""} />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">{k.l}</div>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          <motion.div
-            style={{ opacity }}
-            onMouseMove={(e) => {
-              const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-              mx.set(e.clientX - r.left - r.width / 2);
-              my.set(e.clientY - r.top - r.height / 2);
-            }}
-            onMouseLeave={() => { mx.set(0); my.set(0); }}
-            className="lg:col-span-5 relative"
-          >
-            <motion.div
-              style={{ rotateX: rx, rotateY: ry, transformPerspective: 1200 }}
-              className="relative"
-            >
-              <div className="glass-strong rounded-3xl p-6 shadow-elevated relative overflow-hidden">
-                <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full blur-3xl"
-                     style={{ background: "hsl(var(--primary) / 0.4)" }} />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-9 w-9 rounded-xl grid place-items-center bg-gradient-gold">
-                      <Sparkles className="size-4 text-on-primary" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Saldo disponível</div>
-                      <div className="font-display text-2xl font-semibold">
-                        R$ <AnimatedNumber value={18920.5} decimals={2} />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-amber-400">
-                    <TrendingUp className="size-3" /> +31%
-                  </div>
-                </div>
-
-                <div className="mt-6 h-32">
-                  <ResponsiveContainer>
-                    <AreaChart data={Array.from({ length: 14 }).map((_, i) => ({ x: i, y: 200 + i * 90 + Math.sin(i) * 80 }))}>
-                      <defs>
-                        <linearGradient id="grHero" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="y" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#grHero)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                  {[
-                    { l: "Indicações", v: 184 },
-                    { l: "Recorrentes", v: 97 },
-                    { l: "Conversão", v: 34, s: "%" },
-                  ].map((s) => (
-                    <div key={s.l} className="rounded-xl bg-white/[0.04] p-2.5">
-                      <div className="text-base font-semibold"><AnimatedNumber value={s.v} suffix={s.s ?? ""} /></div>
-                      <div className="text-[10px] text-muted-foreground">{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <motion.div
-                animate={{ y: [0, -12, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -left-6 -bottom-4 glass rounded-2xl p-3 flex items-center gap-2 shadow-xl"
-              >
-                <div className="h-8 w-8 rounded-lg grid place-items-center bg-gradient-gold">
-                  <Trophy className="size-4 text-on-primary" />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Top 3 nacional</div>
-                  <div className="text-sm font-semibold">Belo Horizonte</div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                animate={{ y: [0, 10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -right-4 -top-4 glass rounded-2xl px-3 py-2 flex items-center gap-2 shadow-xl"
-              >
-                <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                <div className="text-xs">+R$ 480 agora</div>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      <div className="mt-20 border-y border-white/5 py-5 overflow-hidden">
-        <motion.div className="flex gap-12 whitespace-nowrap"
-          animate={{ x: ["0%", "-50%"] }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}>
-          {[...Array(2)].flatMap((_, k) =>
-            ["Renda recorrente vitalícia", "Pagamento semanal", "Materiais prontos", "Mentoria dedicada", "Painel completo", "Sem mensalidade"].map((t, i) => (
-              <div key={`${k}-${i}`} className="flex items-center gap-3 text-sm text-muted-foreground">
-                <Sparkles className="size-4 text-primary" />
-                {t}
-              </div>
-            ))
-          )}
-        </motion.div>
-      </div>
-    </section>
+    <motion.div className={className} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.5, delay: atraso }}>
+      {children}
+    </motion.div>
   );
 }
 
-function ComoFunciona() {
-  const steps = [
-    { n: "01", icon: MousePointerClick, t: "Cadastre-se", d: "Aplicação rápida. Aprovação em até 24h." },
-    { n: "02", icon: Rocket, t: "Acesse seu painel", d: "Link único, materiais prontos e treinamentos exclusivos." },
-    { n: "03", icon: Target, t: "Indique clientes", d: "Compartilhe nas redes, no WhatsApp ou em eventos." },
-    { n: "04", icon: Wallet, t: "Receba vitalício", d: "Comissão recorrente todo mês enquanto o cliente permanecer." },
+/* ---------------------------------- Hero ---------------------------------- */
+
+function FluxoDoHero() {
+  const reduzir = useReducedMotion();
+  const passos = [
+    { Icone: Link2, texto: "Seu link" },
+    { Icone: Users, texto: "Novo cliente" },
+    { Icone: BadgeCheck, texto: "Contratação paga" },
+    { Icone: CircleDollarSign, texto: "Sua comissão" },
   ];
   return (
-    <section id="como" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Como funciona" title={<>Quatro passos para a sua <span className="text-gradient-amber">primeira comissão</span></>} />
-      <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {steps.map((s, i) => (
-          <motion.div key={s.n}
-            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: i * 0.08 }}
-            whileHover={{ y: -6 }}
-            className="glass rounded-3xl p-6 relative overflow-hidden group"
-          >
-            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full blur-2xl opacity-50 group-hover:opacity-80 transition"
-                 style={{ background: i % 2 ? "hsl(var(--amber-400) / 0.4)" : "hsl(var(--primary) / 0.4)" }} />
-            <div className="text-xs text-muted-foreground font-mono">{s.n}</div>
-            <div className="mt-4 h-12 w-12 rounded-2xl grid place-items-center bg-gradient-gold">
-              <s.icon className="size-5 text-on-primary" />
-            </div>
-            <div className="mt-5 font-display text-xl font-semibold">{s.t}</div>
-            <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Niveis({ niveis }: { niveis: NiveisPublicos | null }) {
-  // Nome, percentual e critério são os publicados pela Gestão. A página não
-  // conhece nenhum desses números: se a regra muda, esta trilha muda junto.
-  const tiers = (niveis?.niveis ?? []).map((nivel, indice) => ({
-    name: nivel.nome,
-    icon: ICONE_DO_NIVEL[nivel.codigo] ?? Award,
-    pct: formatarPercentualCentesimos(nivel.percentualCentesimos),
-    desc:
-      indice === 0
-        ? "Comece aqui: é o nível de entrada do programa."
-        : `Atinja ${quantosClientes(nivel.minimoClientes)}.`,
-    perks: [
-      `Comissão recorrente de ${formatarPercentualCentesimos(nivel.percentualCentesimos)} por mês`,
-      "Você recebe enquanto o cliente indicado continuar ativo",
-      ...(indice > 0 && niveis && niveis.protecaoDias > 0
-        ? [`Proteção de ${niveis.protecaoDias} ${niveis.protecaoDias === 1 ? "dia" : "dias"} contra queda de nível`]
-        : []),
-    ],
-    popular: indice === 1,
-  }));
-
-  if (!tiers.length) {
-    return (
-      <section id="niveis" className="container mx-auto px-6 py-28 relative">
-        <SectionHeader eyebrow="Níveis de carreira" title={<>Suba de nível e <span className="text-gradient-gold">multiplique</span> sua renda</>} />
-        <p className="mt-14 text-center text-sm text-muted-foreground">
-          Os níveis do programa estão sendo atualizados. Em instantes eles aparecem aqui.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section id="niveis" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Níveis de carreira" title={<>Suba de nível e <span className="text-gradient-gold">multiplique</span> sua renda</>} />
-      <div className="mt-14 grid md:grid-cols-3 gap-6">
-        {tiers.map((t, i) => (
-          <motion.div key={t.name}
-            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: i * 0.1 }}
-            className={`relative glass-strong rounded-3xl p-7 ${t.popular ? "ring-1 ring-primary/50 glow-amber" : ""}`}
-          >
-            {t.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-on-primary bg-gradient-gold">
-                Mais escolhido
+    <div className="relative rounded-3xl border border-border bg-card/80 p-5 shadow-elevated backdrop-blur sm:p-7" aria-hidden="true">
+      <span className="absolute right-4 top-4 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Ilustração</span>
+      <div className="space-y-3 pt-4">
+        {passos.map(({ Icone, texto }, i) => (
+          <div key={texto}>
+            <motion.div
+              className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 p-3"
+              initial={reduzir ? false : { opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + i * 0.35, duration: 0.45 }}
+            >
+              <span className={cn("grid size-10 place-items-center rounded-xl", i === passos.length - 1 ? "bg-gradient-gold text-on-primary" : "bg-primary/10 text-primary")}>
+                <Icone className="size-5" />
+              </span>
+              <span className="text-sm font-semibold text-foreground">{texto}</span>
+              {i === passos.length - 1 && (
+                <motion.span className="ml-auto text-xs text-muted-foreground" initial={reduzir ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8 }}>
+                  conforme as regras
+                </motion.span>
+              )}
+            </motion.div>
+            {i < passos.length - 1 && (
+              <div className="relative ml-8 h-4 w-px border-l border-dashed border-primary/50">
+                {!reduzir && (
+                  <motion.span
+                    className="absolute -left-1 size-2 rounded-full bg-primary"
+                    animate={{ top: ["0%", "100%"], opacity: [0, 1, 0] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.4 }}
+                  />
+                )}
               </div>
             )}
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl grid place-items-center bg-gradient-gold">
-                <t.icon className="size-5 text-on-primary" />
-              </div>
-              <div>
-                <div className="font-display text-xl font-semibold">{t.name}</div>
-                <div className="text-xs text-muted-foreground">{t.desc}</div>
-              </div>
-            </div>
-            <div className="mt-6 flex items-baseline gap-2">
-              <span className="font-display text-5xl font-semibold">{t.pct}</span>
-              <span className="text-sm text-muted-foreground">comissão recorrente</span>
-            </div>
-            <ul className="mt-6 space-y-3">
-              {t.perks.map((p) => (
-                <li key={p} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="size-4 text-primary" /> {p}
-                </li>
-              ))}
-            </ul>
-            <a href="#simulador" className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-              t.popular ? "text-on-primary bg-gradient-gold" : "glass hover:bg-white/5"
-            }`}>
-              Quero esse nível <ArrowRight className="size-4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Hero({ situacao, faixa }: { situacao: SituacaoNaPaginaPublica; faixa: string }) {
+  const selos = [
+    { Icone: ShieldCheck, texto: "Participação gratuita" },
+    { Icone: BadgeCheck, texto: "Ativação imediata na sua conta" },
+    { Icone: Wallet, texto: "Saque por Pix, pedido no painel" },
+  ];
+  return (
+    <section className="relative overflow-hidden pb-20 pt-32 sm:pb-28" aria-labelledby="titulo-parceiros">
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+        <div className="absolute -left-40 -top-40 size-[32rem] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 60%)" }} />
+        <div className="absolute -bottom-40 -right-32 size-[36rem] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, hsl(var(--amber-400) / 0.2), transparent 60%)" }} />
+      </div>
+      <div className="container mx-auto grid items-center gap-12 px-4 sm:px-6 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-semibold text-muted-foreground">
+            <Handshake className="size-3.5 text-primary" aria-hidden="true" /> Programa de Parceiros Indicadores
+          </motion.p>
+          <motion.h1 id="titulo-parceiros" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mt-5 font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+            Indique a Vincis e ganhe <span className="text-gradient-amber">comissão</span> quando seus indicados contratarem.
+          </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
+            Apresente a Vincis a pessoas e empresas que precisam de contabilidade ou apoio jurídico. Quando uma contratação
+            acontece e é paga pela plataforma, você recebe comissão: {faixa} por mês nos planos, conforme o seu nível, e{" "}
+            {PERCENTUAL_AVULSO}% nos serviços avulsos.
+          </motion.p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start">
+            <ChamadaParticipar situacao={situacao} />
+            <a href="#como-funciona" className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-3.5 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Ver como funciona <ArrowRight className="size-4" aria-hidden="true" />
             </a>
           </motion.div>
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {selos.map(({ Icone, texto }) => (
+              <li key={texto} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground">
+                <Icone className="size-3.5 text-primary" aria-hidden="true" /> {texto}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="lg:col-span-5">
+          <FluxoDoHero />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ----------------------------- Quem pode participar ----------------------------- */
+
+function QuemPode() {
+  const respostas = [
+    { Icone: UserCheck, titulo: "Precisa de uma conta na Vincis", texto: "O programa é ativado pela sua conta, depois de confirmar o cadastro. A ativação é feita na área do cliente." },
+    { Icone: ShieldCheck, titulo: "É gratuito", texto: "Não há taxa de adesão nem mensalidade para ser parceiro." },
+    { Icone: BadgeCheck, titulo: "Sem análise ou espera", texto: "Ao clicar em “Ativar meu link”, o link de indicação é criado na hora." },
+    { Icone: Scale, titulo: "Não precisa ser contador nem advogado", texto: "Nem ter experiência comercial. Basta conhecer pessoas que possam precisar da Vincis." },
+  ];
+  return (
+    <section className="container mx-auto px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="quem-pode">
+      <Cabecalho id="quem-pode" sobretitulo="Participação" titulo={<>Quem pode ser um <span className="text-gradient-gold">Parceiro Indicador</span> da Vincis?</>}
+        descricao="Qualquer pessoa com uma conta confirmada na Vincis que queira apresentar a plataforma a outras pessoas." />
+      <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {respostas.map(({ Icone, titulo, texto }, i) => (
+          <Revelar key={titulo} atraso={i * 0.06}>
+            <div className="h-full rounded-3xl border border-border bg-card p-5">
+              <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><Icone className="size-5" aria-hidden="true" /></span>
+              <h3 className="mt-4 font-semibold text-foreground">{titulo}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{texto}</p>
+            </div>
+          </Revelar>
+        ))}
+      </div>
+
+      <Revelar className="mt-10">
+        <div className="grid overflow-hidden rounded-3xl border border-border md:grid-cols-2">
+          <div className="bg-primary/5 p-6 sm:p-8">
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><Handshake className="size-4" aria-hidden="true" /> Parceiro Indicador</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">Apresenta novos clientes à Vincis.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Compartilha o próprio link e pode receber comissões conforme as regras do programa. Não executa serviços contábeis nem jurídicos.</p>
+          </div>
+          <div className="border-t border-border bg-card p-6 sm:p-8 md:border-l md:border-t-0">
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-foreground"><Briefcase className="size-4" aria-hidden="true" /> Profissional prestador</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">Realiza o serviço contratado.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Contador, advogado ou outro profissional habilitado, responsável técnico pelo trabalho. Indicar clientes não transforma ninguém em prestador.</p>
+          </div>
+        </div>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Hoje, o programa é ativado pela área do cliente. Contas exclusivamente profissionais podem{" "}
+          <Link href="/contato" className="text-primary underline underline-offset-4">falar com a Vincis</Link> para saber como participar.
+        </p>
+      </Revelar>
+    </section>
+  );
+}
+
+/* --------------------------------- Como você ganha --------------------------------- */
+
+function ComoGanha({ faixa }: { faixa: string }) {
+  const modalidades = [
+    {
+      Icone: Repeat, titulo: "Comissão recorrente", subtitulo: "Planos contábeis da Vincis", percentual: faixa, sufixo: "por mês, conforme o nível",
+      passos: ["O cliente que você indicou contrata o primeiro plano contábil dele.", "A cada mês prestado e com a mensalidade paga, nasce uma comissão.", "Ela já fica disponível para saque."],
+      atencao: "Mês não prestado, pagamento pendente, estornado ou plano cancelado não geram comissão.",
+    },
+    {
+      Icone: Briefcase, titulo: "Comissão avulsa", subtitulo: "Serviços do catálogo", percentual: `${PERCENTUAL_AVULSO}%`, sufixo: "do valor, em qualquer nível",
+      passos: ["O cliente contrata e paga um serviço do catálogo pela Vincis.", "A comissão é gerada na contratação paga.", "Fica disponível quando o serviço é concluído."],
+      atencao: "Contratação cancelada antes da conclusão cancela a comissão. Serviço sob orçamento, sem valor definido, não gera comissão.",
+    },
+  ];
+  return (
+    <section className="container mx-auto px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="como-ganha">
+      <Cabecalho id="como-ganha" sobretitulo="Comissões" titulo={<>Como você <span className="text-gradient-amber">ganha</span></>}
+        descricao="São duas modalidades, com regras diferentes. A comissão sai da parte da Vincis: o cliente não paga a mais e o profissional não recebe menos." />
+      <div className="mt-12 grid gap-5 lg:grid-cols-2">
+        {modalidades.map((m, i) => (
+          <Revelar key={m.titulo} atraso={i * 0.08}>
+            <div className="h-full rounded-3xl border border-border bg-card p-6 sm:p-8">
+              <div className="flex items-center gap-3">
+                <span className="grid size-12 place-items-center rounded-2xl bg-gradient-gold text-on-primary"><m.Icone className="size-5" aria-hidden="true" /></span>
+                <div>
+                  <h3 className="text-xl font-semibold text-foreground">{m.titulo}</h3>
+                  <p className="text-sm text-muted-foreground">{m.subtitulo}</p>
+                </div>
+              </div>
+              <p className="mt-6 flex flex-wrap items-baseline gap-2">
+                <span className="font-display text-4xl font-semibold text-foreground">{m.percentual}</span>
+                <span className="text-sm text-muted-foreground">{m.sufixo}</span>
+              </p>
+              <ol className="mt-6 space-y-3">
+                {m.passos.map((p, k) => (
+                  <li key={p} className="flex gap-3 text-sm text-foreground/90">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{k + 1}</span> {p}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-5 flex gap-2 rounded-2xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                <XCircle className="mt-0.5 size-4 shrink-0 text-red-500" aria-hidden="true" /> {m.atencao}
+              </p>
+            </div>
+          </Revelar>
         ))}
       </div>
     </section>
   );
 }
 
-function Simulador({ niveis }: { niveis: NiveisPublicos | null }) {
-  const opcoes = niveis?.niveis ?? [];
-  const [clientes, setClientes] = useState(15);
-  const [ticket, setTicket] = useState(450);
-  const [tier, setTier] = useState<string | null>(null);
-  // O percentual de cada nível vem da configuração; nenhum número aqui.
-  const selecionado =
-    opcoes.find((nivel) => nivel.codigo === tier) ??
-    opcoes[Math.min(1, opcoes.length - 1)] ??
-    null;
-  const pct = selecionado ? selecionado.percentualCentesimos / 10_000 : 0;
-  const mensal = clientes * ticket * pct;
-  const anual = mensal * 12;
-  const cinco = mensal * 60;
+/* ------------------------------------ Níveis ------------------------------------ */
 
-  const data = useMemo(
-    () => Array.from({ length: 12 }).map((_, i) => ({ m: i + 1, v: mensal * (i + 1) })),
-    [mensal]
-  );
-
-  if (!selecionado) {
-    return (
-      <section id="simulador" className="container mx-auto px-6 py-28 relative">
-        <SectionHeader eyebrow="Simulador interativo" title={<>Veja <span className="text-gradient-amber">quanto você pode ganhar</span> por mês</>} />
-        <p className="mt-14 text-center text-sm text-muted-foreground">
-          O simulador volta assim que os níveis do programa forem publicados.
-        </p>
-      </section>
-    );
-  }
-
+function Niveis({ niveis }: { niveis: NiveisPublicos | null }) {
+  const lista = niveis?.niveis ?? [];
   return (
-    <section id="simulador" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Simulador interativo" title={<>Veja <span className="text-gradient-amber">quanto você pode ganhar</span> por mês</>} />
-
-      <div className="mt-14 grid lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2 glass-strong rounded-3xl p-7 space-y-7">
-          <Slider label="Clientes indicados/mês" value={clientes} min={1} max={80} suffix=" clientes" onChange={setClientes} />
-          <Slider label="Ticket médio mensal" value={ticket} min={100} max={2000} step={50} prefix="R$ " onChange={setTicket} />
-          <div>
-            <div className="text-xs text-muted-foreground mb-2">Seu nível</div>
-            <div className="grid grid-cols-3 gap-2">
-              {opcoes.map((nivel) => (
-                <button key={nivel.codigo} onClick={() => setTier(nivel.codigo)}
-                  className={`rounded-xl py-2.5 text-xs font-semibold capitalize transition ${
-                    selecionado.codigo === nivel.codigo ? "text-on-primary bg-gradient-gold" : "glass hover:bg-white/5"
-                  }`}>
-                  {nivel.nome}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-3 glass-strong rounded-3xl p-7 relative overflow-hidden">
-          <div className="absolute -top-32 -right-32 h-72 w-72 rounded-full blur-3xl"
-               style={{ background: "hsl(var(--primary) / 0.3)" }} />
-          <div className="grid grid-cols-3 gap-3 relative">
-            <Stat label="Renda mensal" value={mensal} highlight />
-            <Stat label="Em 12 meses" value={anual} />
-            <Stat label="Em 5 anos" value={cinco} />
-          </div>
-          <div className="mt-7 h-56 relative">
-            <ResponsiveContainer>
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="grSim" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: number) => [`R$ ${v.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`, "Acumulado"]}
-                  labelFormatter={(l) => `Mês ${l}`}
-                />
-                <Area type="monotone" dataKey="v" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#grSim)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            * Estimativa baseada em comissão recorrente. Resultados reais variam de acordo com retenção e perfil dos clientes indicados.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Slider({ label, value, min, max, step = 1, prefix = "", suffix = "", onChange }:
-  { label: string; value: number; min: number; max: number; step?: number; prefix?: string; suffix?: string; onChange: (n: number) => void }) {
-  const pct = ((value - min) / (max - min)) * 100;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="font-display text-base font-semibold">{prefix}{value.toLocaleString("pt-BR")}{suffix}</div>
-      </div>
-      <div className="relative h-2 rounded-full bg-white/5">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-gold" style={{ width: `${pct}%` }} />
-        <input type="range" min={min} max={max} step={step} value={value}
-               onChange={(e) => onChange(Number(e.target.value))}
-               className="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer
-                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5
-                          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-lg
-                          [&::-webkit-slider-thumb]:ring-2 [&::-webkit-slider-thumb]:ring-primary" />
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
-  return (
-    <div className={`rounded-2xl p-4 ${highlight ? "ring-1 ring-primary/50" : ""}`}
-         style={highlight ? { background: "linear-gradient(135deg, hsl(var(--primary) / 0.15), transparent)" } : { background: "oklch(1 0 0 / 0.03)" }}>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="mt-1 font-display text-2xl font-semibold">
-        R$ <AnimatedNumber value={value} decimals={0} />
-      </div>
-    </div>
-  );
-}
-
-function PainelPreview({ niveis }: { niveis: NiveisPublicos | null }) {
-  const { topo } = nomesDosNiveis(niveis);
-  return (
-    <section id="painel" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Painel do Parceiro" title={<>Tudo o que você precisa em <span className="text-gradient-gold">um só lugar</span></>} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-        transition={{ duration: 0.7 }}
-        className="mt-12 relative"
-      >
-        <div className="absolute -inset-4 rounded-[2rem] blur-3xl opacity-50"
-             style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.4), hsl(var(--amber-400) / 0.4))" }} />
-        <div className="relative glass-strong rounded-3xl overflow-hidden shadow-elevated">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-            <span className="h-3 w-3 rounded-full bg-red-400/70" />
-            <span className="h-3 w-3 rounded-full bg-yellow-400/70" />
-            <span className="h-3 w-3 rounded-full bg-amber-400/70" />
-            <div className="ml-4 text-xs text-muted-foreground">app.vincis.com/painel</div>
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-0">
-            <div className="lg:col-span-2 border-r border-white/5 p-5 hidden lg:block">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="h-8 w-8 rounded-lg grid place-items-center bg-gradient-gold">
-                  <Sparkles className="size-4 text-on-primary" />
-                </div>
-                <div className="font-display text-sm font-semibold">Vincis</div>
-              </div>
-              {["Visão geral","Indicações","Materiais","Comissões","Ranking","Mentoria"].map((m, i) => (
-                <div key={m} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs mb-1 ${
-                  i === 0 ? "bg-white/5 text-foreground" : "text-muted-foreground"
-                }`}>
-                  <div className={`h-1.5 w-1.5 rounded-full ${i === 0 ? "bg-primary" : "bg-white/20"}`} />
-                  {m}
-                </div>
-              ))}
-            </div>
-
-            <div className="lg:col-span-10 p-6">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <div className="text-xs text-muted-foreground">Bem-vindo de volta</div>
-                  <div className="font-display text-2xl font-semibold">Olá, Lucas 👋</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="glass rounded-full px-3 py-1.5 text-xs flex items-center gap-2">
-                    <Crown className="size-3 text-amber-500" /> {topo} 87%
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { l: "Ganhos no mês", v: 8420, p: "R$ ", i: Wallet },
-                  { l: "Recorrente", v: 4280, p: "R$ ", i: Repeat },
-                  { l: "Indicações", v: 184, i: Users },
-                  { l: "Conversão", v: 34, s: "%", i: Target },
-                ].map((k) => (
-                  <div key={k.l} className="rounded-2xl p-4 bg-white/[0.03] border border-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[11px] text-muted-foreground">{k.l}</div>
-                      <div className="h-7 w-7 rounded-lg grid place-items-center bg-gradient-gold">
-                        <k.i className="size-3.5 text-on-primary" />
+    <section id="niveis" className="container mx-auto px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="titulo-niveis">
+      <Cabecalho id="titulo-niveis" sobretitulo="Níveis" titulo={<>Quanto mais clientes ativos, <span className="text-gradient-gold">maior o percentual</span></>}
+        descricao="O nível define o percentual da comissão recorrente e depende de quantos clientes que você indicou têm plano ativo, prestado e pago. Ao subir de nível, as próximas comissões já usam o novo percentual." />
+      {lista.length ? (
+        <>
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
+            {lista.map((nivel, i) => {
+              const Icone = ICONE_DO_NIVEL[nivel.codigo] ?? Award;
+              return (
+                <Revelar key={nivel.codigo} atraso={i * 0.08}>
+                  <div className="h-full rounded-3xl border border-border bg-card p-6 sm:p-7">
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-12 place-items-center rounded-2xl bg-gradient-gold text-on-primary"><Icone className="size-5" aria-hidden="true" /></span>
+                      <div>
+                        <h3 className="font-display text-xl font-semibold text-foreground">{nivel.nome}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {i === 0 ? "Nível de entrada" : `A partir de ${nivel.minimoClientes} ${nivel.minimoClientes === 1 ? "cliente recorrente ativo" : "clientes recorrentes ativos"}`}
+                        </p>
                       </div>
                     </div>
-                    <div className="mt-2 font-display text-xl font-semibold">
-                      <AnimatedNumber value={k.v} prefix={k.p ?? ""} suffix={k.s ?? ""} />
-                    </div>
+                    <p className="mt-6 flex items-baseline gap-2">
+                      <span className="font-display text-5xl font-semibold text-foreground">{formatarPercentualCentesimos(nivel.percentualCentesimos)}</span>
+                      <span className="text-sm text-muted-foreground">recorrente</span>
+                    </p>
+                    <p className="mt-4 text-sm text-muted-foreground">Comissão avulsa: {PERCENTUAL_AVULSO}%, igual em todos os níveis.</p>
                   </div>
-                ))}
-              </div>
+                </Revelar>
+              );
+            })}
+          </div>
+          {niveis && niveis.protecaoDias > 0 && (
+            <p className="mx-auto mt-6 flex max-w-2xl items-start gap-2 text-sm text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              Proteção de {niveis.protecaoDias} {niveis.protecaoDias === 1 ? "dia" : "dias"}: se a quantidade de clientes ativos cair abaixo do mínimo do seu nível, você mantém o nível por esse período antes de descer.
+            </p>
+          )}
+          <p className="mt-3 text-center text-xs text-muted-foreground">Percentuais e mínimos publicados pela Vincis. Podem ser atualizados; comissões já geradas mantêm o percentual delas.</p>
+        </>
+      ) : (
+        <p className="mt-12 text-center text-sm text-muted-foreground">Os níveis do programa estão sendo atualizados e aparecem aqui assim que forem publicados.</p>
+      )}
+    </section>
+  );
+}
 
-              <div className="mt-4 grid lg:grid-cols-3 gap-3">
-                <div className="lg:col-span-2 rounded-2xl p-4 bg-white/[0.03] border border-white/5">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Ganhos · 12 meses</div>
-                    <div className="text-[11px] text-muted-foreground">+31% vs ano anterior</div>
-                  </div>
-                  <div className="mt-3 h-44">
-                    <ResponsiveContainer>
-                      <AreaChart data={Array.from({ length: 12 }).map((_, i) => ({ x: i, y: 800 + i * 380 + Math.sin(i) * 200 }))}>
-                        <defs>
-                          <linearGradient id="grPanel" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--amber-400))" stopOpacity={0.6} />
-                            <stop offset="100%" stopColor="hsl(var(--amber-400))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <Area type="monotone" dataKey="y" stroke="hsl(var(--amber-400))" strokeWidth={2} fill="url(#grPanel)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+/* ------------------------------- Painel ilustrativo ------------------------------- */
+
+function PainelIlustrativo() {
+  const blocos = [
+    { Icone: Link2, titulo: "Meu link", texto: "Seu link de indicação para copiar e compartilhar." },
+    { Icone: Users, titulo: "Indicações", texto: "Quem chegou pelo seu link e o andamento de cada negócio." },
+    { Icone: CircleDollarSign, titulo: "Comissões", texto: "Geradas, disponíveis, pagas e canceladas, com a origem de cada uma." },
+    { Icone: Wallet, titulo: "Saque", texto: "Pedido do saldo disponível para a sua chave Pix cadastrada." },
+    { Icone: Award, titulo: "Nível", texto: "Seu nível atual e quantos clientes ativos faltam para o próximo." },
+    { Icone: Sparkles, titulo: "Campanhas", texto: "Campanhas com bônus, quando a Vincis abrir alguma, com regras próprias." },
+  ];
+  const linhas = [
+    { o: "Plano contábil · mês 1", t: "Recorrente", s: "Disponível", tom: "ok" },
+    { o: "Serviço do catálogo", t: "Avulsa", s: "Gerada", tom: "info" },
+    { o: "Serviço do catálogo", t: "Avulsa", s: "Cancelada", tom: "neutro" },
+  ] as const;
+  return (
+    <section id="painel" className="container mx-auto px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="titulo-painel">
+      <Cabecalho id="titulo-painel" sobretitulo="Painel do parceiro" titulo={<>Acompanhe tudo <span className="text-gradient-gold">no seu painel</span></>}
+        descricao="Depois de ativar o programa, sua área de parceiro reúne o link, as indicações, as comissões e os pedidos de saque." />
+      <Revelar className="mt-12">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-elevated">
+          <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
+            <span className="size-3 rounded-full bg-red-400/70" /><span className="size-3 rounded-full bg-amber-400/70" /><span className="size-3 rounded-full bg-emerald-400/70" />
+            <span className="ml-3 text-xs text-muted-foreground">Área do parceiro</span>
+            <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">Simulação ilustrativa · dados fictícios</span>
+          </div>
+          <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:col-span-3">
+              {blocos.map(({ Icone, titulo, texto }) => (
+                <div key={titulo} className="rounded-2xl border border-border bg-background/60 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Icone className="size-4 text-primary" aria-hidden="true" /> {titulo}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{texto}</p>
                 </div>
-                <div className="rounded-2xl p-4 bg-white/[0.03] border border-white/5 grid place-items-center">
-                  <div className="h-44 w-full">
-                    <ResponsiveContainer>
-                      <RadialBarChart innerRadius="65%" outerRadius="100%" data={[{ name: "x", value: 87, fill: "hsl(var(--primary))" }]} startAngle={90} endAngle={-270}>
-                        <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                        <RadialBar background={{ fill: "oklch(1 0 0 / 0.05)" } as unknown as Record<string, unknown>} dataKey="value" cornerRadius={20} />
-                      </RadialBarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="-mt-32 text-center pointer-events-none">
-                    <div className="font-display text-2xl font-semibold">87%</div>
-                    <div className="text-[10px] text-muted-foreground">para {topo}</div>
-                  </div>
+              ))}
+            </div>
+            <div className="lg:col-span-2">
+              <div className="rounded-2xl border border-border bg-background/60 p-4">
+                <p className="text-sm font-semibold text-foreground">Comissões (exemplo)</p>
+                <ul className="mt-3 divide-y divide-border text-xs">
+                  {linhas.map((l, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 py-2.5">
+                      <span className="min-w-0"><span className="block truncate text-foreground">{l.o}</span><span className="text-muted-foreground">{l.t}</span></span>
+                      <span className={cn("shrink-0 rounded-full border px-2 py-0.5 font-semibold",
+                        l.tom === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : l.tom === "info" ? "border-primary/30 bg-primary/10 text-foreground" : "border-border bg-muted text-muted-foreground")}>{l.s}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                  O saque leva todo o saldo disponível. A Vincis faz o Pix para a chave cadastrada e registra o pagamento no painel.
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <a href="/admin" className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
-          Explorar painel completo <ArrowRight className="size-4" />
-        </a>
-      </motion.div>
+      </Revelar>
     </section>
   );
 }
 
-function Ranking({ niveis }: { niveis: NiveisPublicos | null }) {
-  const { topo, meio } = nomesDosNiveis(niveis);
-  const list = [
-    { p: 1, n: "Marina Costa", c: "São Paulo · SP", v: 28430, g: 24, t: topo },
-    { p: 2, n: "Rafael Andrade", c: "Curitiba · PR", v: 24100, g: 18, t: topo },
-    { p: 3, n: "Camila Reis", c: "Recife · PE", v: 21800, g: 21, t: meio },
-    { p: 4, n: "Diego Martins", c: "Porto Alegre · RS", v: 19250, g: 9, t: meio },
-    { p: 5, n: "Aline Souza", c: "Salvador · BA", v: 17400, g: 14, t: meio },
-  ];
-  return (
-    <section id="ranking" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Ranking nacional" title={<>Os parceiros que estão <span className="text-gradient-amber">faturando alto</span></>} />
+/* ------------------------------------- FAQ ------------------------------------- */
 
-      <div className="mt-12 grid lg:grid-cols-3 gap-4">
-        {[list[1], list[0], list[2]].map((u, idx) => {
-          const pos = u.p;
-          const heights = [180, 220, 160];
+function Perguntas({ faixa, protecaoDias }: { faixa: string; protecaoDias: number }) {
+  const itens = [
+    { p: "Preciso pagar para ser parceiro?", r: "Não. A participação é gratuita: não há taxa de adesão nem mensalidade." },
+    { p: "Preciso ser contador ou advogado?", r: "Não. O Parceiro Indicador apenas apresenta a Vincis. Quem executa os serviços são os profissionais habilitados da plataforma." },
+    { p: "Como me torno parceiro?", r: "Com uma conta confirmada na Vincis, abra a área do Programa de Parceiros e clique em “Ativar meu link”. O link é criado na hora, sem análise." },
+    { p: "Quem conta como minha indicação?", r: `Quem acessa a Vincis pelo seu link e cria uma conta nova depois do clique. Quem já tinha conta na Vincis não vira indicação. O link fica guardado no navegador da pessoa por até ${DIAS_COOKIE_INDICACAO} dias; se ela abrir links de dois parceiros antes de se cadastrar, vale o último.` },
+    { p: "Quando recebo a comissão de um plano?", r: `A cada mês do plano que for prestado e pago, nasce uma comissão de ${faixa}, conforme o seu nível naquele momento, e ela já fica disponível para saque. Vale para o primeiro plano contábil que o cliente indicado contratar, enquanto esse plano estiver ativo.` },
+    { p: "E nos serviços avulsos?", r: `A comissão é de ${PERCENTUAL_AVULSO}% do valor do serviço contratado e pago pela Vincis, em qualquer nível. Ela é gerada na contratação e fica disponível quando o serviço é concluído.` },
+    { p: "Orçamentos e consultas geram comissão?", r: "Hoje, a comissão avulsa é gerada na contratação de serviços do catálogo pagos pela plataforma. Pedidos de orçamento ficam registrados como indicação, mas não geram comissão por si só." },
+    { p: "O que acontece se o cliente cancelar?", r: "Meses não prestados ou não pagos não geram comissão. Se uma contratação avulsa for cancelada antes da conclusão, a comissão é cancelada. Se o pagamento de um mês do plano for estornado, a comissão daquele mês é retirada." },
+    { p: "Como faço o saque?", r: "Cadastre sua chave Pix no painel e solicite o saque do saldo disponível. O pedido leva todo o saldo disponível; a Vincis faz o Pix para a sua chave e registra o pagamento no painel." },
+    { p: "Os percentuais podem mudar?", r: `Sim. A Vincis publica os níveis e pode atualizá-los. Comissões já geradas mantêm o percentual com que nasceram.${protecaoDias > 0 ? ` Se você ficar abaixo do mínimo do seu nível, mantém o nível por ${protecaoDias} ${protecaoDias === 1 ? "dia" : "dias"} antes de descer.` : ""}` },
+  ];
+  const [aberta, setAberta] = useState<number | null>(0);
+  return (
+    <section id="perguntas" className="container mx-auto px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="titulo-perguntas">
+      <Cabecalho id="titulo-perguntas" sobretitulo="Perguntas frequentes" titulo={<>Tire suas <span className="text-gradient-gold">dúvidas</span></>} />
+      <div className="mx-auto mt-12 max-w-3xl space-y-3">
+        {itens.map((it, i) => {
+          const aberto = aberta === i;
           return (
-            <motion.div
-              key={u.n}
-              initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className={`glass-strong rounded-3xl p-6 text-center relative ${pos === 1 ? "lg:order-2 ring-1 ring-amber-500/50" : pos === 2 ? "lg:order-1" : "lg:order-3"}`}
-            >
-              <div className="flex items-center justify-center">
-                <div className="relative h-20 w-20 rounded-full grid place-items-center font-display text-2xl font-semibold bg-gradient-gold">
-                  {u.n.split(" ").map(s => s[0]).slice(0,2).join("")}
-                  <div className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full grid place-items-center bg-background border border-white/10 font-mono text-xs">
-                    {pos}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 font-display text-lg font-semibold">{u.n}</div>
-              <div className="text-xs text-muted-foreground">{u.c}</div>
-              <div className="mt-4 font-display text-2xl font-semibold">
-                R$ <AnimatedNumber value={u.v} />
-              </div>
-              <div className="mt-1 text-xs text-amber-400 inline-flex items-center gap-1">
-                <TrendingUp className="size-3" /> +{u.g}% no mês
-              </div>
-              <div className="mt-4 mx-auto rounded-t-xl"
-                   style={{ height: heights[idx], width: 50, background: "linear-gradient(180deg, oklch(1 0 0 / 0.08), transparent)" }} />
-            </motion.div>
+            <div key={it.p} className="overflow-hidden rounded-2xl border border-border bg-card">
+              <h3>
+                <button type="button" onClick={() => setAberta(aberto ? null : i)} aria-expanded={aberto} aria-controls={`resposta-${i}`} id={`pergunta-${i}`}
+                  className="flex w-full items-center justify-between gap-4 p-5 text-left font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                  {it.p}
+                  <ChevronDown className={cn("size-4 shrink-0 transition-transform", aberto ? "rotate-180 text-primary" : "text-muted-foreground")} aria-hidden="true" />
+                </button>
+              </h3>
+              <AnimatePresence initial={false}>
+                {aberto && (
+                  <motion.div id={`resposta-${i}`} role="region" aria-labelledby={`pergunta-${i}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
+                    <p className="px-5 pb-5 text-sm text-muted-foreground">{it.r}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           );
         })}
       </div>
-
-      <div className="mt-8 glass rounded-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
-          <Flame className="size-4 text-amber-500" />
-          <span className="text-sm font-semibold">Comissões pagas agora</span>
-          <span className="ml-auto text-[10px] text-muted-foreground">ao vivo</span>
-        </div>
-        <div className="overflow-hidden py-3">
-          <motion.div className="flex gap-8 whitespace-nowrap"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}>
-            {[...Array(2)].flatMap((_, k) =>
-              ["Marina · R$ 480", "Rafael · R$ 280", "Camila · R$ 360", "Diego · R$ 540", "Aline · R$ 220", "Bruno · R$ 410", "Júlia · R$ 180"]
-                .map((s, i) => (
-                  <span key={`${k}-${i}`} className="text-sm text-muted-foreground inline-flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> {s}
-                  </span>
-                ))
-            )}
-          </motion.div>
-        </div>
-      </div>
     </section>
   );
 }
 
-function Depoimentos({ niveis }: { niveis: NiveisPublicos | null }) {
-  const { topo, meio } = nomesDosNiveis(niveis);
-  const items = [
-    { n: "Marina C.", r: "Top 1 nacional", q: "Em 8 meses construí uma renda recorrente que substituiu meu salário. O painel é absurdamente intuitivo." },
-    { n: "Rafael A.", r: topo, q: "O suporte e os materiais fazem total diferença. Eu só compartilho — a Vincis cuida do resto." },
-    { n: "Camila R.", r: meio, q: "Comecei sem entender de nada e em 60 dias bati minha primeira meta. O simulador é literalmente real." },
-  ];
-  return (
-    <section className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Quem já é parceiro" title={<>Histórias reais de quem <span className="text-gradient-amber">vive da Vincis</span></>} />
-      <div className="mt-12 grid md:grid-cols-3 gap-5">
-        {items.map((t, i) => (
-          <motion.div key={t.n}
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: i * 0.1 }}
-            className="glass rounded-3xl p-6"
-          >
-            <Quote className="size-6 text-primary opacity-70" />
-            <p className="mt-3 text-sm text-foreground/90 leading-relaxed">&ldquo;{t.q}&rdquo;</p>
-            <div className="mt-5 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full grid place-items-center font-semibold bg-gradient-gold text-on-primary">
-                {t.n[0]}
-              </div>
-              <div>
-                <div className="text-sm font-semibold">{t.n}</div>
-                <div className="text-[11px] text-muted-foreground">{t.r}</div>
-              </div>
-              <div className="ml-auto flex gap-0.5">
-                {[...Array(5)].map((_, k) => <Star key={k} className="size-3.5 fill-amber-500 text-amber-500" />)}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
+/* ------------------------------------ Final ------------------------------------ */
 
-function FAQ() {
-  const items = [
-    { q: "Preciso pagar para ser parceiro?", a: "Não. O programa Vincis é 100% gratuito. Você só investe seu tempo." },
-    { q: "Como funciona o pagamento?", a: "Pagamentos via Pix. Suas comissões liberadas ficam disponíveis para saque, e você pede quando quiser." },
-    { q: "Posso indicar de qualquer cidade?", a: "Sim. Atendemos todo o Brasil e parceiros podem atuar 100% online." },
-    { q: "O que acontece se o cliente cancelar?", a: "Você recebe enquanto o cliente estiver ativo. Sem letra miúda." },
-    { q: "Existe meta mínima?", a: "Não há meta obrigatória. Ao subir de nível, as próximas comissões passam a usar o percentual daquele nível." },
-  ];
-  const [open, setOpen] = useState<number | null>(0);
+function ChamadaFinal({ situacao, regrasHref }: { situacao: SituacaoNaPaginaPublica; regrasHref: string | null }) {
   return (
-    <section id="faq" className="container mx-auto px-6 py-28 relative">
-      <SectionHeader eyebrow="Perguntas frequentes" title={<>Tire suas <span className="text-gradient-gold">dúvidas</span></>} />
-      <div className="mt-12 max-w-3xl mx-auto space-y-3">
-        {items.map((it, i) => (
-          <div key={it.q} className="glass rounded-2xl overflow-hidden">
-            <button onClick={() => setOpen(open === i ? null : i)}
-                    className="w-full flex items-center justify-between gap-4 p-5 text-left">
-              <span className="font-medium">{it.q}</span>
-              <ChevronRight className={`size-4 transition ${open === i ? "rotate-90 text-primary" : "text-muted-foreground"}`} />
-            </button>
-            <AnimatePresence initial={false}>
-              {open === i && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="px-5 pb-5 text-sm text-muted-foreground"
-                >
-                  {it.a}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CTAFinal() {
-  return (
-    <section className="container mx-auto px-6 py-28">
-      <div className="relative overflow-hidden rounded-3xl p-10 md:p-16 text-center bg-gradient-hero">
-        <div className="absolute inset-0 bg-grid opacity-20 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          transition={{ duration: 0.6 }} className="relative">
-          <div className="glass inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs">
-            <InfinityIcon className="size-3 text-primary" /> Renda vitalícia
-          </div>
-          <h2 className="mt-5 font-display text-4xl md:text-6xl font-semibold leading-[1.05]">
-            Sua próxima década <br /> começa <span className="text-gradient-amber">aqui</span>.
+    <section className="container mx-auto px-4 pb-24 sm:px-6" aria-labelledby="titulo-final">
+      <Revelar>
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-card to-card p-8 text-center sm:p-14">
+          <h2 id="titulo-final" className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">
+            Conhece alguém que precisa da Vincis?
           </h2>
-          <p className="mt-5 max-w-xl mx-auto text-muted-foreground">
-            Junte-se a centenas de parceiros que já constroem renda recorrente com a Vincis. Sem mensalidade, sem letra miúda.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href="#simulador" className="group inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold text-on-primary glow-amber hover:scale-[1.02] transition bg-gradient-gold">
-              Quero me cadastrar agora <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-            </a>
-            <a href="#faq" className="glass rounded-full px-5 py-3 text-sm font-medium hover:bg-white/5">
-              Tenho dúvidas
-            </a>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">Ative seu link, compartilhe e acompanhe suas indicações e comissões no painel.</p>
+          <ChamadaParticipar situacao={situacao} centralizar className="mt-8" />
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+            <a href="#simulador" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Simular comissões</a>
+            {regrasHref && (
+              <Link href={regrasHref} className="inline-flex items-center gap-1.5 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                <FileText className="size-4" aria-hidden="true" /> Regras do programa
+              </Link>
+            )}
+            <Link href="/contato" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Falar com a Vincis</Link>
           </div>
-          <div className="mt-8 flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <div className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5" /> Aprovação em 24h</div>
-            <div className="inline-flex items-center gap-1.5"><BadgeDollarSign className="size-3.5" /> Sem mensalidade</div>
-            <div className="inline-flex items-center gap-1.5"><Globe2 className="size-3.5" /> Atuação nacional</div>
-          </div>
-        </motion.div>
-      </div>
+        </div>
+      </Revelar>
     </section>
   );
 }
 
-export function PaginaParceiros({ niveis = null }: { niveis?: NiveisPublicos | null }) {
+/* ------------------------------------ Página ------------------------------------ */
+
+export function PaginaParceiros({
+  niveis = null,
+  situacao = "visitante",
+  regrasHref = null,
+}: {
+  niveis?: NiveisPublicos | null;
+  situacao?: SituacaoNaPaginaPublica;
+  /** Página "Regras do Programa de Parceiros" do CMS, quando publicada. */
+  regrasHref?: string | null;
+}) {
+  const faixa = faixaDosPercentuais(niveis);
   return (
-    <div className="min-h-dvh bg-background text-foreground overflow-x-hidden">
-      <main>
-        <Hero />
-        <ComoFunciona />
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-dvh overflow-x-hidden bg-background text-foreground">
+        <Hero situacao={situacao} faixa={faixa} />
+        <QuemPode />
+        <section id="como-funciona" className="scroll-mt-24 border-y border-border bg-muted/20 py-20 sm:py-28" aria-labelledby="titulo-como">
+          <div className="container mx-auto px-4 sm:px-6">
+            <Cabecalho id="titulo-como" sobretitulo="Como funciona" titulo={<>A parceria, <span className="text-gradient-amber">passo a passo</span></>}
+              descricao="Do seu link até o saque: veja o que acontece em cada etapa." />
+            <div className="mt-12"><JornadaDoParceiro faixaRecorrente={faixa} /></div>
+          </div>
+        </section>
+        <ComoGanha faixa={faixa} />
         <Niveis niveis={niveis} />
-        <Simulador niveis={niveis} />
-        <PainelPreview niveis={niveis} />
-        <Ranking niveis={niveis} />
-        <Depoimentos niveis={niveis} />
-        <FAQ />
-        <CTAFinal />
-      </main>
-    </div>
+        <section id="simulador" className="scroll-mt-24 border-y border-border bg-muted/20 py-20 sm:py-28" aria-labelledby="titulo-simulador">
+          <div className="container mx-auto px-4 sm:px-6">
+            <Cabecalho id="titulo-simulador" sobretitulo="Simulador" titulo={<>Simule suas <span className="text-gradient-amber">comissões</span></>}
+              descricao="Escolha a modalidade e ajuste os valores. O resultado muda na hora." />
+            <div className="mt-10"><SimuladorDeComissoes niveis={niveis?.niveis ?? null} protecaoDias={niveis?.protecaoDias ?? 0} /></div>
+          </div>
+        </section>
+        <PainelIlustrativo />
+        <Perguntas faixa={faixa} protecaoDias={niveis?.protecaoDias ?? 0} />
+        <ChamadaFinal situacao={situacao} regrasHref={regrasHref} />
+      </div>
+    </MotionConfig>
   );
 }

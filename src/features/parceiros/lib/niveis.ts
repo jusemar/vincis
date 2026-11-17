@@ -15,6 +15,7 @@ import {
 } from '@/features/auditoria/lib/registrar-evento'
 import { TIMEZONE_PADRAO } from '@/features/consultorias/constants/consultoria'
 import { dataLocalDoInstante } from '@/features/consultorias/lib/tempo'
+import { nivelPorMinimoDeClientes } from './calculo'
 
 /*
   Os níveis do Programa de Parceiros.
@@ -361,11 +362,8 @@ export function nivelPorClientes(
   configuracao: ConfiguracaoDeNiveis,
   clientes: number,
 ): RegraDeNivel {
-  let atingido = configuracao.niveis[0]
-  for (const nivel of configuracao.niveis) {
-    if (clientes >= nivel.minimoClientes) atingido = nivel
-  }
-  return atingido
+  // A mesma regra do simulador público (`calculo.ts`).
+  return nivelPorMinimoDeClientes(configuracao.niveis, clientes)
 }
 
 export type NivelCalculado = {

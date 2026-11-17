@@ -9,12 +9,11 @@ import { ROTAS_INSTITUCIONAIS, ROTA_BUSCA_CONTABILIDADE, ROTA_BUSCA_JURIDICA, RO
  *
  * - Só afirmações confirmadas no código e no site (conferidas em 16/11/2026) e
  *   os dados institucionais informados pelo proprietário.
- * - Só páginas públicas reais, com URL absoluta. Sobre Nós, Termos e
- *   Privacidade são páginas do CMS (`PAGINAS_CMS_INSTITUCIONAIS`): se uma delas
- *   mudar de slug no painel, atualize aqui. Ficaram de fora, por ora,
- *   `/como-funciona` e `/parceiros`: as duas existem, mas trazem textos
- *   promocionais ainda não confirmados (ex.: "garantia de serviço",
- *   "pagamento semanal"). Entram aqui quando forem revisadas.
+ * - Só páginas públicas reais, com URL absoluta. Sobre Nós, Termos, Privacidade
+ *   e as Regras do Programa de Parceiros são páginas do CMS
+ *   (`PAGINAS_CMS_INSTITUCIONAIS`): se uma delas mudar de slug no painel,
+ *   atualize aqui. Fica de fora, por ora, `/como-funciona`, que traz textos
+ *   promocionais ainda não confirmados (ex.: "garantia de serviço").
  * - Nada de e-mail ou telefone por extenso: os contatos ficam na página
  *   `/contato`, onde são protegidos contra coleta automática.
  * - Nada de configuração, variável de ambiente, API interna ou infraestrutura.
@@ -43,6 +42,8 @@ export const PAGINAS_PUBLICAS_LLMS: SecaoPaginasLlms[] = [
       { titulo: 'Profissionais da área jurídica', rota: ROTA_BUSCA_JURIDICA, descricao: 'Busca já filtrada por advogados.' },
       { titulo: 'Solicitar orçamento', rota: ROTA_SERVICOS_AVULSOS, descricao: 'Descrever uma necessidade e receber propostas de profissionais.' },
       { titulo: 'Planos e Preços', rota: '/precos', descricao: 'Planos contábeis e valores vigentes.' },
+      { titulo: 'Programa de Parceiros', rota: '/parceiros', descricao: 'Programa de Parceiros Indicadores: como funciona, níveis e simulador de comissões.' },
+      { titulo: 'Regras do Programa de Parceiros', rota: '/regras-do-programa-de-parceiros', descricao: 'Quem pode participar, registro da indicação, comissões, níveis e saque.' },
     ],
   },
   {

@@ -15,7 +15,12 @@
  *   pagamento).
  */
 /** Slugs institucionais administrados pelo CMS (não reservar em `rotas-reservadas`). */
-export const PAGINAS_CMS_INSTITUCIONAIS = ['sobre-nos', 'termos-de-uso', 'politica-de-privacidade'] as const
+export const PAGINAS_CMS_INSTITUCIONAIS = [
+  'sobre-nos',
+  'termos-de-uso',
+  'politica-de-privacidade',
+  'regras-do-programa-de-parceiros',
+] as const
 
 export const ROTAS_INSTITUCIONAIS = {
   sobreNos: '/sobre-nos',
