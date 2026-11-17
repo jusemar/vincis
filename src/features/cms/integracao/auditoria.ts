@@ -18,6 +18,7 @@ export const ACOES_CMS = {
   paginaDespublicada: ACOES_AUDITORIA.cmsPaginaDespublicada,
   paginaArquivada: ACOES_AUDITORIA.cmsPaginaArquivada,
   navegacaoAlterada: ACOES_AUDITORIA.cmsNavegacaoAlterada,
+  cardHomeAlterado: ACOES_AUDITORIA.cmsCardHomeAlterado,
 } as const
 
 type Executor = Parameters<typeof registrarEventoAuditoria>[1]
@@ -40,7 +41,7 @@ async function ipDaRequisicao(): Promise<string | null> {
 export async function registrarEventoCms(
   evento: {
     acao: (typeof ACOES_CMS)[keyof typeof ACOES_CMS]
-    entidade: 'cms_pagina' | 'cms_grupo_navegacao' | 'cms_item_navegacao'
+    entidade: 'cms_pagina' | 'cms_grupo_navegacao' | 'cms_item_navegacao' | 'cms_card_home'
     registroAfetado: string
     autorId: string
     metadados?: EventoAuditoria['metadados']

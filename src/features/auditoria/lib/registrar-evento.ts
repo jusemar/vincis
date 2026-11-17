@@ -172,6 +172,8 @@ export const ACOES_AUDITORIA = {
   cmsPaginaArquivada: 'cms_pagina_arquivada',
   /** Grupo ou item de navegação criado, editado, ligado/desligado ou reordenado. */
   cmsNavegacaoAlterada: 'cms_navegacao_alterada',
+  /** Card da Home criado, editado, ligado/desligado, reordenado ou excluído (lógico). */
+  cmsCardHomeAlterado: 'cms_card_home_alterado',
 } as const
 
 export type AcaoAuditoria =

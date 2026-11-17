@@ -14,6 +14,9 @@ export const TAG_CMS_NAVEGACAO = 'cms-navegacao'
  */
 export const TAG_CMS_PAGINAS_PUBLICADAS = 'cms-paginas-publicadas'
 
+/** Cards de serviço da página inicial. */
+export const TAG_CMS_CARDS_HOME = 'cms-cards-home'
+
 export function tagCmsPagina(slug: string) {
   return `cms-pagina:${slug}`
 }

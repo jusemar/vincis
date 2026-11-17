@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileText, PanelBottom, PanelTop, Pencil, Plus, Search } from 'lucide-react'
+import { FileText, LayoutGrid, PanelBottom, PanelTop, Pencil, Plus, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,23 +14,25 @@ import { ROTA_GESTAO_CMS } from '../../lib/rotas'
 import { STATUS_PAGINA } from '../../nucleo/schemas/constantes'
 import type { StatusPagina } from '../../nucleo/types'
 import type {
+  CardHomeGestaoDTO,
   GrupoNavegacaoGestaoDTO,
   ListagemPaginasCms,
   PaginaAssociavelDTO,
 } from '../../types'
 import { BotaoArquivarPaginaCms } from './BotaoArquivarPaginaCms'
+import { GestaoCardsHomeCms } from './GestaoCardsHomeCms'
 import { GestaoNavegacaoCms } from './GestaoNavegacaoCms'
 
 /**
- * Tela do CMS na Central Vincis: páginas e a navegação (rodapé e cabeçalho),
- * em abas.
+ * Tela do CMS na Central Vincis: páginas, a navegação (rodapé e cabeçalho) e
+ * os Cards da Home, em abas.
  *
  * Server Component. Busca, filtro e paginação são parâmetros da URL num
  * formulário GET comum: funcionam sem JavaScript, ficam no histórico e podem
  * ser compartilhados. As partes interativas (arquivar, rodapé) são ilhas de
  * cliente.
  */
-export type AbaCms = 'paginas' | 'rodape' | 'cabecalho'
+export type AbaCms = 'paginas' | 'rodape' | 'cabecalho' | 'cards'
 
 type Filtros = { busca: string; status: StatusPagina | '' }
 
@@ -48,9 +50,10 @@ function Abas({ ativa }: { ativa: AbaCms }) {
     { id: 'paginas', rotulo: 'Páginas', Icone: FileText },
     { id: 'rodape', rotulo: 'Rodapé', Icone: PanelBottom },
     { id: 'cabecalho', rotulo: 'Cabeçalho', Icone: PanelTop },
+    { id: 'cards', rotulo: 'Cards da Home', Icone: LayoutGrid },
   ]
   return (
-    <nav aria-label="Seções do CMS" className="flex gap-1 rounded-lg bg-muted p-1">
+    <nav aria-label="Seções do CMS" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 sm:flex">
       {abas.map(({ id, rotulo, Icone }) => (
         <Link
           key={id}
@@ -209,6 +212,7 @@ export function CmsGestaoPage({
   paginas,
   grupos,
   paginasAssociaveis,
+  cardsHome,
 }: {
   gestorNome: string
   aba: AbaCms
@@ -216,6 +220,7 @@ export function CmsGestaoPage({
   paginas: ListagemPaginasCms
   grupos: GrupoNavegacaoGestaoDTO[]
   paginasAssociaveis: PaginaAssociavelDTO[]
+  cardsHome: CardHomeGestaoDTO[]
 }) {
   return (
     <>
@@ -227,7 +232,7 @@ export function CmsGestaoPage({
           <div className="min-w-0">
             <h1 className="text-2xl font-bold">Conteúdo do site</h1>
             <p className="truncate text-sm text-muted-foreground">
-              Páginas institucionais e navegação · {gestorNome}
+              Páginas institucionais, navegação e Cards da Home · {gestorNome}
             </p>
           </div>
         </div>
@@ -245,6 +250,8 @@ export function CmsGestaoPage({
         <Abas ativa={aba} />
         {aba === 'paginas' ? (
           <ListaPaginas paginas={paginas} filtros={filtros} />
+        ) : aba === 'cards' ? (
+          <GestaoCardsHomeCms cards={cardsHome} paginas={paginasAssociaveis} />
         ) : (
           <GestaoNavegacaoCms
             key={aba}

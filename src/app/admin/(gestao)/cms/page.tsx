@@ -2,6 +2,7 @@ import { exigirGestorDaPlataforma } from '@/features/admin/lib/exigir-gestor'
 import { CmsGestaoPage, type AbaCms } from '@/features/cms/components/admin/CmsGestaoPage'
 import { POR_PAGINA_GESTAO_CMS } from '@/features/cms/constants'
 import { statusPaginaSchema } from '@/features/cms/nucleo/schemas'
+import { listarCardsHomeGestao } from '@/features/cms/queries/cards-home'
 import {
   listarGruposNavegacaoCmsGestao,
   listarPaginasAssociaveisCmsGestao,
@@ -31,13 +32,22 @@ export default async function CmsRoute({ searchParams }: Propriedades) {
   const parametros = await searchParams
 
   const abaPedida = primeiro(parametros.aba)
-  const aba: AbaCms = abaPedida === 'rodape' || abaPedida === 'cabecalho' ? abaPedida : 'paginas'
+  const aba: AbaCms =
+    abaPedida === 'rodape' || abaPedida === 'cabecalho' || abaPedida === 'cards' ? abaPedida : 'paginas'
   const status = statusPaginaSchema.safeParse(primeiro(parametros.status))
   const busca = primeiro(parametros.busca).slice(0, 180)
   const numeroPagina = Math.max(1, Number.parseInt(primeiro(parametros.pagina), 10) || 1)
 
-  const [paginas, grupos, paginasAssociaveis] =
-    aba === 'paginas'
+  // Cada aba busca só o que mostra.
+  const [paginas, grupos, paginasAssociaveis, cardsHome] =
+    aba === 'cards'
+      ? await Promise.all([
+          Promise.resolve(null),
+          Promise.resolve([]),
+          listarPaginasAssociaveisCmsGestao(),
+          listarCardsHomeGestao(),
+        ])
+      : aba === 'paginas'
       ? [
           await listarPaginasCmsGestao({
             pagina: numeroPagina,
@@ -47,11 +57,13 @@ export default async function CmsRoute({ searchParams }: Propriedades) {
           }),
           [],
           [],
+          [],
         ]
       : await Promise.all([
           Promise.resolve(null),
           listarGruposNavegacaoCmsGestao(),
           listarPaginasAssociaveisCmsGestao(),
+          Promise.resolve([]),
         ])
 
   return (
@@ -62,6 +74,7 @@ export default async function CmsRoute({ searchParams }: Propriedades) {
       paginas={paginas ?? { itens: [], total: 0, pagina: 1, porPagina: POR_PAGINA_GESTAO_CMS }}
       grupos={grupos ?? []}
       paginasAssociaveis={paginasAssociaveis ?? []}
+      cardsHome={cardsHome ?? []}
     />
   )
 }

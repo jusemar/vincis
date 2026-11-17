@@ -232,6 +232,8 @@ export { cmsGruposNavegacao } from './tables/cms_grupos_navegacao/tabela'
 export { cmsGruposNavegacaoRelations } from './tables/cms_grupos_navegacao/relacoes'
 export { cmsItensNavegacao } from './tables/cms_itens_navegacao/tabela'
 export { cmsItensNavegacaoRelations } from './tables/cms_itens_navegacao/relacoes'
+export { cmsCardsHome } from './tables/cms_cards_home/tabela'
+export { cmsCardsHomeRelations } from './tables/cms_cards_home/relacoes'
 
 export { repassesProfissionais } from './tables/repasses_profissionais/tabela'
 export { repassesProfissionaisRelations } from './tables/repasses_profissionais/relacoes'

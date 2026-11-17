@@ -1,4 +1,5 @@
 import type { LocalNavegacao, NoConteudo, StatusPagina } from './nucleo/types'
+import type { EstiloCardHome, TipoDestinoCardHome } from './integracao/cards-home/constantes'
 
 /** Página na listagem da Gestão — sem o conteúdo, que pode ser longo. */
 export type PaginaCmsGestaoDTO = {
@@ -56,4 +57,36 @@ export type PaginaAssociavelDTO = {
   titulo: string
   slug: string
   status: StatusPagina
+}
+
+/** Card da Home na Gestão, com o destino resolvido para a tela. */
+export type CardHomeGestaoDTO = {
+  id: string
+  selo: string | null
+  titulo: string
+  descricao: string
+  textoBotao: string
+  estilo: EstiloCardHome
+  destinoTipo: TipoDestinoCardHome
+  paginaId: string | null
+  paginaTitulo: string | null
+  paginaSlug: string | null
+  paginaStatus: StatusPagina | null
+  rota: string | null
+  ativo: boolean
+  ordem: number
+  /** Endereço público, ou `null` quando o destino está fora do ar (o card não aparece). */
+  href: string | null
+  updatedAt: string
+}
+
+/** Card pronto para a Home: só os ativos, com destino válido, já em ordem. */
+export type CardHomePublicoDTO = {
+  id: string
+  selo: string | null
+  titulo: string
+  descricao: string
+  textoBotao: string
+  estilo: EstiloCardHome
+  href: string
 }

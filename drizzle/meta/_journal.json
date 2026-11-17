@@ -575,6 +575,20 @@
       "when": 1794770871636,
       "tag": "0081_repasses_profissionais",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794904526228,
+      "tag": "0082_cms_cards_home",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1794904535074,
+      "tag": "0083_cms_cards_home_iniciais",
+      "breakpoints": true
     }
   ]
 }
