@@ -207,3 +207,28 @@ export async function listarMenuCabecalhoPublico(): Promise<GrupoMenuPublico[]> 
     return []
   }
 }
+
+/**
+ * Páginas publicadas para o sitemap: endereço e data real da última alteração.
+ *
+ * Mesmos critérios de `buscarPaginaPublicada` — status `publicada`, identificador
+ * válido e fora das rotas reservadas — para que o sitemap nunca anuncie um
+ * endereço que responderia 404. Sem `unstable_cache` de propósito: o sitemap já
+ * é lido raramente e precisa refletir uma publicação nova sem esperar a etiqueta.
+ * Só leitura, duas colunas.
+ */
+export async function listarPaginasPublicadasParaSitemap(): Promise<
+  { slug: string; atualizadaEm: Date }[]
+> {
+  const linhas = await db
+    .select({ slug: cmsPaginas.slug, atualizadaEm: cmsPaginas.updatedAt })
+    .from(cmsPaginas)
+    .where(eq(cmsPaginas.status, 'publicada'))
+    .orderBy(asc(cmsPaginas.slug))
+  return linhas.filter(
+    ({ slug }) =>
+      slug.length <= TAMANHO_MAXIMO_IDENTIFICADOR &&
+      PADRAO_IDENTIFICADOR.test(slug) &&
+      !slugReservadoVincis(slug),
+  )
+}
