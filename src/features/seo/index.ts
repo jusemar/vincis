@@ -1,2 +1,6 @@
 export { montarSitemap } from './lib/montar-sitemap'
 export { montarRobots } from './lib/montar-robots'
+export { montarMetadadosPerfil, METADADOS_PERFIL_NAO_INDEXAVEL } from './lib/metadados-perfil'
+export { montarDadosEstruturadosPerfil, type DadosSeoPerfil } from './lib/perfil-publico'
+export { DadosEstruturados } from './components/DadosEstruturados'
+export { obterSeoDoPerfil } from './queries/perfil-publico'

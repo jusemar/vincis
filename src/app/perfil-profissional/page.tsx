@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import PerfilProfissionalV2 from "@/features/perfis/components/PerfilProfissionalV2";
 import { listarAvaliacoesPublicas } from "@/features/avaliacoes/queries/reputacao";
 import { mesDoInstante } from "@/features/consultorias/lib/mes";
@@ -11,7 +12,8 @@ import {
   listarExperienciasPublicas,
   listarPerguntasFrequentesPublicas,
 } from "@/features/perfis/queries/conteudo-vitrine";
-import { obterIdentidadePublica } from "@/features/servicos/queries/identidade-publica";
+import { obterIdentidadePublicaDaRequisicao } from "@/features/servicos/queries/identidade-publica";
+import { DadosEstruturados, obterSeoDoPerfil } from "@/features/seo";
 import { montarLinkDeIndicacao } from "@/features/parceiros/constants/destino";
 import { baseDoSite } from "@/features/parceiros/lib/link-de-indicacao";
 import { obterParceiroDaSessao } from "@/features/parceiros/queries/obter-parceiro";
@@ -23,6 +25,24 @@ import { listarServicosPublicos } from "@/features/servicos/queries/vitrine-publ
 type PerfilProfissionalRouteProps = {
   searchParams: Promise<{ prestador?: string | string[] }>;
 };
+
+/** Primeiro valor de `?prestador=` (a URL pode repetir o parâmetro). */
+function lerPrestador(valor: string | string[] | undefined) {
+  return Array.isArray(valor) ? valor[0] : valor;
+}
+
+/**
+ * Título, descrição, canonical, Open Graph e meta robots individuais.
+ * Regras em `features/seo`; só perfis públicos reais são indexáveis.
+ */
+export async function generateMetadata({
+  searchParams,
+}: PerfilProfissionalRouteProps): Promise<Metadata> {
+  const { metadados } = await obterSeoDoPerfil(
+    lerPrestador((await searchParams).prestador),
+  );
+  return metadados;
+}
 
 /**
  * Perfil público do prestador.
@@ -47,8 +67,10 @@ export default async function PerfilProfissionalRoute({
     : params.prestador;
 
   const identidade = prestadorId
-    ? ((await obterIdentidadePublica(prestadorId)) ?? undefined)
+    ? ((await obterIdentidadePublicaDaRequisicao(prestadorId)) ?? undefined)
     : undefined;
+  // Mesma leitura memorizada de `generateMetadata`: não repete consulta.
+  const { dadosEstruturados } = await obterSeoDoPerfil(prestadorId);
 
   /**
    * Quem está olhando, se estiver logado. Resolvida uma única vez e reaproveitada
@@ -195,29 +217,36 @@ export default async function PerfilProfissionalRoute({
     : undefined;
 
   return (
-    <PerfilProfissionalV2
-      identidade={identidade}
-      linkCompartilhavel={linkCompartilhavel}
-      servicos={servicos}
-      avaliacoes={avaliacoes}
-      agendaConsultoria={agendaConsultoria}
-      podeEditar={podeEditar}
-      casosSucesso={casosSucesso}
-      experiencias={experiencias}
-      faq={faq}
-      planosEPrecos={planosEPrecos}
-      prestadorId={identidade ? prestadorId : undefined}
-      solicitacaoDireta={
-        destinatario
-          ? {
-              id: destinatario.id,
-              nome: destinatario.nome,
-              categorias: destinatario.categorias,
-              especialidadesPorCategoria: destinatario.especialidadesPorCategoria,
-              documentosPorEmail: identidade?.perfilAdvocacia === "essencial",
-            }
-          : undefined
-      }
-    />
+    <>
+      {dadosEstruturados ? (
+        <DadosEstruturados dados={dadosEstruturados} />
+      ) : null}
+      <PerfilProfissionalV2
+        identidade={identidade}
+        conteudoNoHtmlInicial={Boolean(identidade)}
+        linkCompartilhavel={linkCompartilhavel}
+        servicos={servicos}
+        avaliacoes={avaliacoes}
+        agendaConsultoria={agendaConsultoria}
+        podeEditar={podeEditar}
+        casosSucesso={casosSucesso}
+        experiencias={experiencias}
+        faq={faq}
+        planosEPrecos={planosEPrecos}
+        prestadorId={identidade ? prestadorId : undefined}
+        solicitacaoDireta={
+          destinatario
+            ? {
+                id: destinatario.id,
+                nome: destinatario.nome,
+                categorias: destinatario.categorias,
+                especialidadesPorCategoria:
+                  destinatario.especialidadesPorCategoria,
+                documentosPorEmail: identidade?.perfilAdvocacia === "essencial",
+              }
+            : undefined
+        }
+      />
+    </>
   );
 }

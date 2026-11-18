@@ -1,6 +1,7 @@
 import { modeloContratacaoPublico } from '@/features/profissionais/constants/modelo-contratacao'
 import { situacaoDocumentos } from '@/features/perfil-pro/lib/perfil-pro'
 import { and, eq } from 'drizzle-orm'
+import { cache } from 'react'
 import { db } from '@/db/connection'
 import { nomeDoEscritorioPublico } from '@/features/empresas/queries/escritorio-publico'
 import { perfisProfissionais, usuarios } from '@/db/schema'
@@ -113,6 +114,13 @@ export async function obterIdentidadePublica(prestadorId: string) {
     escritorioNome,
   }
 }
+
+/**
+ * Mesma leitura, memorizada por requisição (`React.cache`): a página do perfil e
+ * o `generateMetadata` dela pedem a mesma identidade, e só uma consulta vai ao
+ * banco.
+ */
+export const obterIdentidadePublicaDaRequisicao = cache(obterIdentidadePublica)
 
 /**
  * "OAB/MG 123456" a partir de `numero_registro` + `estado_registro`. Número que

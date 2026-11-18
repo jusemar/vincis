@@ -405,6 +405,17 @@ type PerfilProfissionalV2Props = {
   planosEPrecos?: string;
   /** O Profissional deste perfil (`?prestador=`). Escopo da intenção guardada no login. */
   prestadorId?: string;
+  /**
+   * Pula o esqueleto de carregamento inicial (600 ms) e desenha o perfil já no
+   * HTML do servidor.
+   *
+   * Os dados chegam prontos do servidor; o esqueleto era só efeito visual, mas
+   * fazia o HTML inicial conter apenas blocos cinza — buscadores e prévias de
+   * link não viam nome, profissão nem serviços. Ligado só pela rota pública
+   * `/perfil-profissional` com prestador real; a demonstração da Home e a
+   * vitrine de exemplo mantêm o comportamento de antes.
+   */
+  conteudoNoHtmlInicial?: boolean;
 };
 
 export default function PerfilProfissionalV2({
@@ -420,6 +431,7 @@ export default function PerfilProfissionalV2({
   faq,
   planosEPrecos,
   prestadorId,
+  conteudoNoHtmlInicial = false,
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
@@ -852,12 +864,16 @@ export default function PerfilProfissionalV2({
 
   /** O formulário privado abre no lugar, sem tirar ninguém da página. */
   const [solicitando, setSolicitando] = useState(false);
-  const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
+  // Estado inicial idêntico no servidor e no navegador: sem divergência de hidratação.
+  const [status, setStatus] = useState<'loading' | 'error' | 'success'>(
+    conteudoNoHtmlInicial ? 'success' : 'loading',
+  );
 
   useEffect(() => {
+    if (conteudoNoHtmlInicial) return;
     const timer = setTimeout(() => setStatus('success'), 600);
     return () => clearTimeout(timer);
-  }, []);
+  }, [conteudoNoHtmlInicial]);
 
   if (status === 'loading') {
     return (
