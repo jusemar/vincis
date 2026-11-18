@@ -120,6 +120,16 @@ export async function demonstrarInteresseNaSimulacao(entrada: unknown) {
       'Este profissional não está com a tabela de preços publicada no momento.',
     )
   }
+  // Contratação pela Vincis: a contabilidade mensal desse contador é contratada
+  // nos planos da Vincis (/precos), e proposta recorrente é exclusiva do
+  // Autônomo. Aceitar o interesse aqui abriria uma negociação que não pode virar
+  // o plano mensal que o cliente simulou. A tela já não oferece o botão; esta é
+  // a proteção do servidor.
+  if (precificacao.modeloContratacao === 'vincis') {
+    return recusa(
+      'A contabilidade mensal deste contador é contratada nos planos da Vincis, em /precos, onde você pode escolhê-lo como contador responsável.',
+    )
+  }
 
   let precoMensalCentavos: number
   try {

@@ -260,7 +260,7 @@ function vestirParaCliente(registro: {
   fimEm: Date
   timezone: string
   duracaoMinutos: number
-  valorCentavos: number
+  valorCentavos: number | null
   status: string
   canceladoEm: Date | null
   canceladoPor: string | null
@@ -299,7 +299,7 @@ function vestirParaPrestador(registro: {
   fimEm: Date
   timezone: string
   duracaoMinutos: number
-  valorCentavos: number
+  valorCentavos: number | null
   status: string
   canceladoEm: Date | null
   canceladoPor: string | null

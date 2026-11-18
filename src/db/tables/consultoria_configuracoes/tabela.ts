@@ -65,7 +65,13 @@ export const consultoriaConfiguracoes = pgTable(
      * exatamente o que `atendimentos.status` já evita.
      */
     modalidade: varchar('modalidade', { length: 20 }).notNull().default('online'),
-    valorCentavos: integer('valor_centavos').notNull(),
+    /**
+     * Nulo só na advocacia: o honorário é combinado diretamente entre Cliente e
+     * advogado, e a plataforma não guarda valor algum (nem zero, nem palpite).
+     * Quem permite o nulo é a action, que lê a categoria no servidor; as demais
+     * categorias continuam obrigadas a informar um valor positivo.
+     */
+    valorCentavos: integer('valor_centavos'),
     duracaoMinutos: integer('duracao_minutos').notNull(),
     /**
      * Folga depois de cada consulta, em minutos.
@@ -99,7 +105,7 @@ export const consultoriaConfiguracoes = pgTable(
     // agenda impossível (slot de duração zero geraria laço infinito).
     valorPositivo: check(
       'consultoria_configuracoes_valor_positivo',
-      sql`valor_centavos > 0`,
+      sql`valor_centavos is null or valor_centavos > 0`,
     ),
     duracaoPositiva: check(
       'consultoria_configuracoes_duracao_valida',

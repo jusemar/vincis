@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql, type SQL } from 'drizzle-orm'
+import { and, eq, inArray, type SQL } from 'drizzle-orm'
 import { perfisProfissionais, usuarios } from '@/db/schema'
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
 import { condicaoPrestadorHabilitado } from '@/features/usuarios/lib/prestador'
@@ -34,50 +34,79 @@ export type PerfilParaCompatibilidade = {
   statusAnalise: string | null
   areasAtuacao: string[] | null
   especialidades: string[] | null
-}
-
-function textoDaAtuacao(perfil: PerfilParaCompatibilidade) {
-  return [...(perfil.areasAtuacao ?? []), ...(perfil.especialidades ?? [])]
-    .join(' ')
-    .toLowerCase()
+  /** Colaborador que optou pela vitrine pública (Assistente Contábil). */
+  vitrinePublica?: boolean | null
 }
 
 /**
- * As categorias que um prestador alcança.
+ * O Assistente Contábil: Colaborador com perfil na vitrine pública.
  *
- * Profissional regulamentado casa pelos **tipos internos** que a categoria
- * pública agrupa, e nunca por comparação de texto com o nome dela: é isso que
- * faz uma solicitação de "Contabilidade" alcançar tanto o contador quanto o
- * especialista fiscal, sem que nenhum dos dois tipos precise ser renomeado ou
- * fundido no cadastro.
+ * Profissional de apoio a escritórios de contabilidade, sem habilitação
+ * regulamentada. O cadastro grava `colaborador` como tipo; o nome público da
+ * categoria é "Assistente Contábil". O colaborador **interno** (sem vitrine)
+ * não é Assistente Contábil e não recebe pedido público.
+ */
+export function ehAssistenteContabil(perfil: PerfilParaCompatibilidade | null | undefined) {
+  return Boolean(
+    perfil &&
+      perfil.tipoPrestador === 'colaborador' &&
+      perfil.tipoProfissional === 'colaborador' &&
+      perfil.vitrinePublica,
+  )
+}
+
+/**
+ * As categorias que um prestador alcança — **pelo cadastro**.
  *
- * O Colaborador não declara categoria (o cadastro grava sempre `colaborador`),
- * então quem responde por ele são as áreas de atuação e as especialidades que
- * ele escreveu. Colaborador sem nenhuma área reconhecível não recebe
- * oportunidade: é preferível a fila vazia à fila errada. A habilitação
- * regulamentada continua sendo a do cadastro — o Colaborador entra por atuação
- * compatível, não por equiparação a Profissional.
+ * Profissional casa pelos tipos internos que a categoria agrupa (contador e
+ * especialista fiscal → Contabilidade; advogado → Jurídico). O Assistente
+ * Contábil casa pela categoria própria. Palavras da apresentação, das áreas ou
+ * das especialidades **não** mudam a categoria de ninguém: um colaborador que
+ * escreveu "fiscal" na atuação continua fora de Contabilidade.
  */
 export function categoriasCompativeisDoPrestador(
   perfil: PerfilParaCompatibilidade | null | undefined,
 ): CategoriaOportunidade[] {
   if (!perfil) return []
-
-  const atuacao = textoDaAtuacao(perfil)
+  const assistente = ehAssistenteContabil(perfil)
 
   return CATEGORIAS_OPORTUNIDADE.filter((categoria) => {
     const definicao = CATEGORIA_OPORTUNIDADE[categoria]
-    if (
+    if (definicao.alcancaAssistenteContabil) return assistente
+    return Boolean(
       perfil.tipoProfissional &&
-      (definicao.tiposProfissionais as string[]).includes(
-        perfil.tipoProfissional,
-      )
-    ) {
-      return true
-    }
-    if (perfil.tipoPrestador !== 'colaborador') return false
-    return definicao.termos.some((termo) => atuacao.includes(termo))
+        (definicao.tiposProfissionais as string[]).includes(perfil.tipoProfissional),
+    )
   })
+}
+
+/**
+ * As categorias em que um prestador recebe **solicitação privada**: as mesmas
+ * do cadastro (`categoriasCompativeisDoPrestador`). Mantida como porta nomeada
+ * porque criar, listar, abrir e responder o pedido privado a usam — uma regra
+ * só para as quatro.
+ */
+export function categoriasParaSolicitacaoPrivada(
+  perfil: PerfilParaCompatibilidade | null | undefined,
+): CategoriaOportunidade[] {
+  return categoriasCompativeisDoPrestador(perfil)
+}
+
+/**
+ * As especialidades que o formulário privado oferece, por categoria: o
+ * catálogo central da categoria do destinatário (contador → Contabilidade,
+ * advogado → Jurídico, assistente → Assistente Contábil). Nunca o catálogo de
+ * outra categoria. É a mesma lista que o servidor aceita ao gravar.
+ */
+export function especialidadesParaSolicitacaoPrivada(
+  perfil: PerfilParaCompatibilidade | null | undefined,
+): Partial<Record<CategoriaOportunidade, string[]>> {
+  return Object.fromEntries(
+    categoriasParaSolicitacaoPrivada(perfil).map((categoria) => [
+      categoria,
+      [...CATEGORIA_OPORTUNIDADE[categoria].especialidades],
+    ]),
+  )
 }
 
 /**
@@ -94,27 +123,18 @@ export function condicaoPrestadorCompativel(
   categoria: CategoriaOportunidade,
 ): SQL {
   const definicao = CATEGORIA_OPORTUNIDADE[categoria]
-  const porCategoriaDeclarada = inArray(
-    perfisProfissionais.tipoProfissional,
-    definicao.tiposProfissionais,
-  )
-
-  // O Colaborador é alcançado pelo texto da atuação, exatamente como na versão
-  // em memória acima.
-  const porAreaDeAtuacao = and(
-    eq(perfisProfissionais.tipoPrestador, 'colaborador'),
-    or(
-      ...definicao.termos.map(
-        (termo) =>
-          sql`(${perfisProfissionais.areasAtuacao}::text ilike ${`%${termo}%`} or ${perfisProfissionais.especialidades}::text ilike ${`%${termo}%`})`,
-      ),
-    ),
-  )
+  const alcance = definicao.alcancaAssistenteContabil
+    ? and(
+        eq(perfisProfissionais.tipoPrestador, 'colaborador'),
+        eq(perfisProfissionais.tipoProfissional, 'colaborador'),
+        eq(perfisProfissionais.vitrinePublica, true),
+      )
+    : inArray(perfisProfissionais.tipoProfissional, definicao.tiposProfissionais)
 
   return and(
     eq(usuarios.status, 'ativo'),
     condicaoContaVerificada(),
     condicaoPrestadorHabilitado(),
-    or(porCategoriaDeclarada, porAreaDeAtuacao),
+    alcance,
   ) as SQL
 }

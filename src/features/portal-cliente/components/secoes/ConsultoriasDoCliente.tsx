@@ -9,7 +9,7 @@ import { rotaDoAtendimento } from '@/features/consultorias/constants/contratacao
 import {
   dataPorExtensoComDiaDaSemana,
   duracaoPorExtenso,
-  formatarPreco,
+  formatarValorConsultoria,
 } from '@/features/consultorias/lib/formato'
 import { AcoesDaConsultoria } from '@/features/consultorias/components/ciclo/AcoesDaConsultoria'
 import type { ConsultoriaDoClienteDTO } from '@/features/consultorias/types/agendamento'
@@ -278,7 +278,7 @@ export function ConsultoriasDoCliente({
                   {duracaoPorExtenso(proxima.duracaoMinutos)} ·{' '}
                   {/* Sem pagamento pela Vincis (consultoria jurídica): não há valor a mostrar. */}
                   {proxima.pagamentoStatus
-                    ? formatarPreco(proxima.valorCentavos)
+                    ? formatarValorConsultoria(proxima.valorCentavos)
                     : 'Honorários combinados com o profissional'}
                 </span>
               </p>

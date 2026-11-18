@@ -123,6 +123,7 @@ export async function enviarProposta(entrada: unknown) {
       statusAnalise: perfisProfissionais.statusAnalise,
       areasAtuacao: perfisProfissionais.areasAtuacao,
       especialidades: perfisProfissionais.especialidades,
+      vitrinePublica: perfisProfissionais.vitrinePublica,
     })
     .from(perfisProfissionais)
     .where(eq(perfisProfissionais.usuarioId, sessao.id))
@@ -189,9 +190,14 @@ export async function enviarProposta(entrada: unknown) {
     }
   }
 
-  const compativeis = categoriasCompativeisDoPrestador(perfil ?? null)
+  // Pública: regra da categoria. Privada: o vínculo é com o destinatário
+  // (conferido logo abaixo), validado no nascimento do pedido — a categoria
+  // atual do cadastro dele não o tira do pedido que lhe foi dirigido.
   if (
-    !compativeis.includes(oportunidade.categoria as CategoriaOportunidade)
+    !ehPrivada(oportunidade.visibilidade) &&
+    !categoriasCompativeisDoPrestador(perfil ?? null).includes(
+      oportunidade.categoria as CategoriaOportunidade,
+    )
   ) {
     return semPermissaoPara('enviar proposta nesta categoria')
   }

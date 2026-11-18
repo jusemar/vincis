@@ -16,7 +16,7 @@ import { ConfiguracaoDaConsultoria } from '@/features/consultorias/components/pr
 import { AVISO_PAGAMENTO_NO_CANCELAMENTO } from '@/features/consultorias/constants/ciclo';
 import {
   duracaoPorExtenso,
-  formatarPreco,
+  formatarValorConsultoria,
 } from '@/features/consultorias/lib/formato';
 import type { ConsultoriaDoPrestadorDTO2 } from '@/features/consultorias/types/agendamento';
 
@@ -515,7 +515,7 @@ export default function AppointmentsPage({
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Valor contratado</p>
                     <p className="font-medium">
-                      {formatarPreco(selecionada.valorCentavos)}
+                      {formatarValorConsultoria(selecionada.valorCentavos)}
                       {selecionada.pagamentoStatus === 'aprovado' ? ' · pago' : ''}
                     </p>
                   </div>

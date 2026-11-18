@@ -61,11 +61,21 @@ export const ConsultoriaConfiguracaoSchema = z.object({
     .min(5, 'Descreva a consultoria em uma linha.')
     .max(280),
   modalidade: z.enum(MODALIDADES_CONSULTORIA).default(MODALIDADE_PADRAO),
-  /** Em centavos. Dinheiro nunca trafega como decimal nesta plataforma. */
-  valorCentavos: z.coerce
-    .number()
-    .int('Informe o valor em centavos.')
-    .positive('Informe um valor maior que zero.'),
+  /**
+   * Em centavos. Dinheiro nunca trafega como decimal nesta plataforma.
+   *
+   * Pode chegar vazio: a advocacia não informa valor (honorário combinado
+   * diretamente). Quem decide se o vazio é aceito é a action, que lê a
+   * categoria do prestador no servidor — as demais continuam obrigadas a
+   * informar um valor positivo.
+   */
+  valorCentavos: z.preprocess(
+    (valor) => (valor === null || valor === undefined || valor === '' ? null : valor),
+    z.union([
+      z.null(),
+      z.coerce.number().int('Informe o valor em centavos.').positive('Informe um valor maior que zero.'),
+    ]),
+  ),
   duracaoMinutos: z.coerce
     .number()
     .int()

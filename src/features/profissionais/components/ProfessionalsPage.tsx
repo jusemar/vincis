@@ -28,7 +28,10 @@ const FILTROS_INICIAIS: FilterState = {
 export default function ProfessionalsPage({
   areaInicial,
   abrirOrcamento = false,
+  localizacoes,
 }: {
+  /** Cidades com profissional público ("Cidade, UF"), lidas no servidor. */
+  localizacoes?: string[];
   /** Filtro de profissão vindo da URL (`?area=`). */
   areaInicial?: AreaBusca;
   /** Abre o pedido de orçamento já expandido (`?orcamento=1`). */
@@ -69,7 +72,9 @@ export default function ProfessionalsPage({
                 ? "contabilidade"
                 : filtrosAdiados.profession === "advogado"
                   ? "advocacia"
-                  : "especialista_fiscal",
+                  : filtrosAdiados.profession === "assistente"
+                    ? "assistente_contabil"
+                    : "todos",
           especialidade:
             filtrosAdiados.specialty === "Todas as Especialidades"
               ? ""
@@ -95,13 +100,20 @@ export default function ProfessionalsPage({
           resultado.dados.profissionais
             .map((item) => ({
               id: item.id,
-              name: item.nome,
+              // Escritório aparece pelo nome do escritório; a pessoa, como responsável.
+              name: item.escritorioNome ?? item.nome,
+              responsavel: item.escritorioNome ? item.nome : null,
+              // Identificação do card: do cadastro, nunca do texto livre.
+              tipoProfissional: item.profissao,
+              ehEscritorio: Boolean(item.escritorioNome),
               photo: item.avatarUrl ?? null,
               profession: (item.profissao === "advocacia"
                 ? "advogado"
                 : item.profissao === "contabilidade"
                   ? "contador"
-                  : "tecnico") as Professional["profession"],
+                  : item.profissao === "colaborador"
+                    ? "assistente"
+                    : "tecnico") as Professional["profession"],
               specialty:
                 item.especialidades[0] ??
                 item.areasAtuacao[0] ??
@@ -119,6 +131,7 @@ export default function ProfessionalsPage({
               specialties: item.especialidades,
               about: item.apresentacao,
               certifications: item.certificacoes,
+              registroVerificado: item.registroVerificado,
               perfilAdvocacia: item.perfilAdvocacia,
               modeloContratacao: item.modeloContratacao,
             }))
@@ -160,8 +173,8 @@ export default function ProfessionalsPage({
               <span className="text-gradient-gold">Profissional</span>
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Escolha entre contadores, advogados e técnicos especializados.
-              Todos verificados e prontos para ajudar seu negócio.
+              Escolha entre contadores, advogados e assistentes contábeis.
+              Compare perfis, serviços e agendas antes de escolher.
             </p>
           </motion.div>
         </div>
@@ -173,6 +186,7 @@ export default function ProfessionalsPage({
         <ChamadaSolicitarOrcamento abertoInicial={abrirOrcamento} />
         <FilterBar
           filters={filters}
+          localizacoes={localizacoes}
           onFilterChange={(valor) => {
             setFilters(valor);
             setPagina(1);
@@ -200,7 +214,7 @@ export default function ProfessionalsPage({
           )}
         </div>
         {!carregando && profissionais.length ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
             {profissionais.map((item) => (
               <ProfessionalCard key={item.id} professional={item} />
             ))}

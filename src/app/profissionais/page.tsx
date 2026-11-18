@@ -1,5 +1,6 @@
 import ProfessionalsPage from "@/features/profissionais/components/ProfessionalsPage";
 import { lerAbrirOrcamento, lerAreaBusca } from "@/features/profissionais/constants/busca-url";
+import { listarLocalizacoesPublicas } from "@/features/profissionais/queries/localizacoes-publicas";
 
 /**
  * Busca pública de profissionais.
@@ -17,11 +18,13 @@ export default async function ProfissionaisRoute({
   const parametros = await searchParams;
   const area = lerAreaBusca(parametros.area);
   const abrirOrcamento = lerAbrirOrcamento(parametros.orcamento);
+  const localizacoes = await listarLocalizacoesPublicas();
   return (
     <ProfessionalsPage
       key={`${area ?? "todas"}-${abrirOrcamento ? "orcamento" : "busca"}`}
       areaInicial={area}
       abrirOrcamento={abrirOrcamento}
+      localizacoes={localizacoes}
     />
   );
 }

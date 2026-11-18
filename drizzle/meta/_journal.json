@@ -589,6 +589,13 @@
       "when": 1794904535074,
       "tag": "0083_cms_cards_home_iniciais",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794953696099,
+      "tag": "0084_consultoria_juridica_e_vitrine_colaborador",
+      "breakpoints": true
     }
   ]
 }

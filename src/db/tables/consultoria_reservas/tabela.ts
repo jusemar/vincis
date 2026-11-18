@@ -80,7 +80,8 @@ export const consultoriaReservas = pgTable(
     expiraEm: timestamp('expira_em').notNull(),
     status: varchar('status', { length: 20 }).notNull().default('ativa'),
     /** Fotografia financeira do momento da reserva. */
-    valorCentavos: integer('valor_centavos').notNull(),
+    // Nulo = consultoria jurídica (honorário combinado diretamente).
+    valorCentavos: integer('valor_centavos'),
     duracaoMinutos: integer('duracao_minutos').notNull(),
     /** Só para exibir a reserva no fuso da agenda. */
     timezone: varchar('timezone', { length: 64 }).notNull(),
@@ -133,7 +134,7 @@ export const consultoriaReservas = pgTable(
     ),
     valorPositivo: check(
       'consultoria_reservas_valor_positivo',
-      sql`valor_centavos > 0`,
+      sql`valor_centavos is null or valor_centavos > 0`,
     ),
     duracaoValida: check(
       'consultoria_reservas_duracao_valida',

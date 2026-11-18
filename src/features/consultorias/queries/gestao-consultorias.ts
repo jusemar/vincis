@@ -293,7 +293,7 @@ function vestir(registro: {
   fimEm: Date
   timezone: string
   duracaoMinutos: number
-  valorCentavos: number
+  valorCentavos: number | null
   status: string
   remarcacoes: number
   criadoEm: Date
@@ -502,7 +502,7 @@ export async function obterConsultoriaGestao(
           status: linha.pagamentoStatus ?? 'aprovado',
           referencia: linha.pagamentoReferencia,
           origem: extras.pagamentoOrigem ?? 'simulado',
-          valorCentavos: extras.pagamentoValor ?? linha.valorCentavos,
+          valorCentavos: extras.pagamentoValor ?? linha.valorCentavos ?? 0,
           aprovadoEm: extras.pagamentoAprovadoEm.toISOString(),
         }
       : null,

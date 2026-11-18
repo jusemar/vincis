@@ -182,6 +182,17 @@ export async function criarOportunidade(formData: FormData) {
         contaNaoConfirmada: false,
       }
     }
+    // Especialidades: só as que o formulário deste destinatário oferece — a
+    // mesma lista, resolvida do cadastro dele, nunca do que veio no payload.
+    const aceitas = destinatario.especialidadesPorCategoria[dados.categoria] ?? []
+    if (dados.especialidades.some((item) => !aceitas.includes(item))) {
+      return {
+        sucesso: false as const,
+        mensagem: 'Escolha apenas especialidades oferecidas por este profissional.',
+        precisaEntrar: false,
+        contaNaoConfirmada: false,
+      }
+    }
   }
 
   /*

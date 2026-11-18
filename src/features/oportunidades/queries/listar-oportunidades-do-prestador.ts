@@ -11,7 +11,7 @@ import {
   usuarios,
 } from '@/db/schema'
 import { prestadorHabilitado } from '@/features/usuarios/lib/prestador'
-import { LIMITE_OPORTUNIDADES_CARREGADAS } from '../constants/oportunidade'
+import { LIMITE_OPORTUNIDADES_CARREGADAS, type CategoriaOportunidade } from '../constants/oportunidade'
 import { montarAnexo } from '../lib/anexos-dto'
 import { naoLidasPorOportunidade } from '../lib/conversa'
 import { ehFluxoDireto } from '../lib/fluxo-direto'
@@ -33,12 +33,28 @@ async function perfilDoPrestador(prestadorId: string) {
       statusAnalise: perfisProfissionais.statusAnalise,
       areasAtuacao: perfisProfissionais.areasAtuacao,
       especialidades: perfisProfissionais.especialidades,
+      vitrinePublica: perfisProfissionais.vitrinePublica,
     })
     .from(perfisProfissionais)
     .where(eq(perfisProfissionais.usuarioId, prestadorId))
     .limit(1)
 
   return perfil ?? null
+}
+
+/**
+ * Alcance de um prestador: públicas da categoria dele **ou** privadas
+ * dirigidas a ele. A privada vale pela pessoa — validada contra o cadastro no
+ * nascimento do pedido —, então uma mudança posterior de categoria não a tira
+ * da lista do destinatário, nem a mostra a mais ninguém.
+ */
+function porPublicaOuPrivada(prestadorId: string, categorias: CategoriaOportunidade[]) {
+  return or(
+    categorias.length
+      ? and(eq(oportunidades.visibilidade, 'publica'), inArray(oportunidades.categoria, categorias))
+      : undefined,
+    and(eq(oportunidades.visibilidade, 'privada'), eq(oportunidades.destinatarioId, prestadorId)),
+  )
 }
 
 /**
@@ -101,8 +117,8 @@ export async function listarOportunidadesDoPrestador(
   const perfil = await perfilDoPrestador(prestadorId)
   if (!prestadorHabilitado(perfil)) return []
 
+  // Pública alcança a categoria; privada, a pessoa (`porPublicaOuPrivada`).
   const categorias = categoriasCompativeisDoPrestador(perfil)
-  if (!categorias.length) return []
 
   const minhaProposta = db.$with('minha_proposta').as(
     db
@@ -184,14 +200,10 @@ export async function listarOportunidadesDoPrestador(
     .leftJoin(atendimentos, eq(atendimentos.oportunidadeId, oportunidades.id))
     .where(
       and(
-        inArray(oportunidades.categoria, categorias),
         // A porta privada: pública alcança a categoria, privada alcança uma
         // pessoa. Sem esta condição, todo prestador compatível veria o pedido
         // que o Cliente dirigiu a um só.
-        or(
-          eq(oportunidades.visibilidade, 'publica'),
-          eq(oportunidades.destinatarioId, prestadorId),
-        ),
+        porPublicaOuPrivada(prestadorId, categorias),
         or(
           // Aberta **e** dentro do prazo global: vencida sai da vitrine mesmo
           // antes de alguém materializar o status.
@@ -312,7 +324,6 @@ export async function contarDisponiveisPorOrigem(
   if (!prestadorHabilitado(perfil)) return vazio
 
   const categorias = categoriasCompativeisDoPrestador(perfil)
-  if (!categorias.length) return vazio
 
   const [linha] = await db
     .select({
@@ -337,11 +348,7 @@ export async function contarDisponiveisPorOrigem(
     .where(
       and(
         condicaoOportunidadeAtiva(),
-        inArray(oportunidades.categoria, categorias),
-        or(
-          eq(oportunidades.visibilidade, 'publica'),
-          eq(oportunidades.destinatarioId, prestadorId),
-        ),
+        porPublicaOuPrivada(prestadorId, categorias),
         isNull(oportunidadePropostas.id),
         isNull(oportunidadeDispensas.id),
       ),

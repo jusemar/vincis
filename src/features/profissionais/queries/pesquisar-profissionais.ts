@@ -2,12 +2,15 @@ import { modeloContratacaoPublico } from "@/features/profissionais/constants/mod
 import { situacoesDocumentos } from "@/features/perfil-pro/lib/perfil-pro";
 import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/connection";
+import { nomesDosEscritoriosPublicos } from "@/features/empresas/queries/escritorio-publico";
 import { perfisProfissionais, usuarios } from "@/db/schema";
 import { obterReputacaoDosPrestadores } from "@/features/avaliacoes/queries/reputacao";
 import { condicaoContaVerificada } from "@/features/usuarios/lib/condicao-verificacao";
+import { registroDoPrestadorVerificado } from "@/features/usuarios/lib/prestador";
 import {
   condicaoPrestadorHabilitado,
   condicaoPrestadorHabilitadoDoTipo,
+  condicaoPrestadorPublico,
 } from "@/features/usuarios/lib/prestador";
 import {
   PesquisaProfissionaisSchema,
@@ -24,7 +27,9 @@ export async function pesquisarProfissionaisReais(
     // Habilitação por tipo: profissional aprovado ou colaborador ativo.
     filtros.tipoPrestador === "todos"
       ? condicaoPrestadorHabilitado()
-      : condicaoPrestadorHabilitadoDoTipo(filtros.tipoPrestador),
+      : filtros.tipoPrestador === "publico"
+        ? condicaoPrestadorPublico()
+        : condicaoPrestadorHabilitadoDoTipo(filtros.tipoPrestador),
   ];
   if (filtros.busca) {
     const termo = `%${filtros.busca}%`;
@@ -39,7 +44,15 @@ export async function pesquisarProfissionaisReais(
     );
     if (busca) condicoes.push(busca);
   }
-  if (filtros.profissao !== "todos")
+  // "Assistente Contábil": o colaborador com vitrine pública, cujo cadastro
+  // grava `colaborador` como categoria. Opção própria na busca — "Técnicos"
+  // continua sendo só o Especialista Fiscal. O recorte público (vitrine)
+  // segue garantido por `condicaoPrestadorPublico`.
+  if (filtros.profissao === "assistente_contabil")
+    condicoes.push(eq(perfisProfissionais.tipoProfissional, "colaborador"));
+  // "Contadores" = só `contabilidade`. O especialista fiscal legado (sem CRC)
+  // não é apresentado como contador: aparece em "Todas as Profissões".
+  else if (filtros.profissao !== "todos")
     condicoes.push(eq(perfisProfissionais.tipoProfissional, filtros.profissao));
   if (filtros.estado)
     condicoes.push(
@@ -87,6 +100,8 @@ export async function pesquisarProfissionaisReais(
         modalidade: perfisProfissionais.modalidadeAtuacao,
         valorHoraCentavos: perfisProfissionais.valorHoraCentavos,
         disponivel: perfisProfissionais.disponivelAtendimento,
+        // Só para derivar `registroVerificado`; a chave nunca sai desta query.
+        comprovanteRegistroChave: perfisProfissionais.comprovanteRegistroChave,
       })
       .from(perfisProfissionais)
       .innerJoin(usuarios, eq(usuarios.id, perfisProfissionais.usuarioId))
@@ -115,16 +130,22 @@ export async function pesquisarProfissionaisReais(
   );
   // Perfil Essencial/Pro (só advocacia). Rótulo informativo: não entra na
   // ordenação, que segue `created_at` como sempre — Pro não compra exposição.
+  // Escritórios: nome do escritório do qual o prestador é proprietário (uma consulta).
+  const escritorios = await nomesDosEscritoriosPublicos(
+    registros.filter((r) => r.modalidade === "escritorio").map(({ id }) => id),
+  );
   const situacoes = await situacoesDocumentos(
     db,
     registros.map(({ id }) => id),
   );
 
   return {
-    profissionais: registros.map((registro) => {
+    profissionais: registros.map(({ comprovanteRegistroChave, ...registro }) => {
       const reputacao = reputacoes.get(registro.id);
       return {
         ...registro,
+        // Mesma regra do perfil público: o selo do card só com registro comprovado.
+        registroVerificado: registroDoPrestadorVerificado(registro.tipoPrestador, comprovanteRegistroChave),
         // Honorário de advogado não é exibido publicamente: o valor fica no
         // banco, mas não sai daqui — o card mostra "Consultar honorários".
         valorHoraCentavos:
@@ -134,6 +155,7 @@ export async function pesquisarProfissionaisReais(
         // Contábil: selo só com modelo definido; nunca inventado.
         modeloContratacao: modeloContratacaoPublico(registro.profissao, registro.modeloContratacao),
         totalAvaliacoes: reputacao?.total ?? 0,
+        escritorioNome: escritorios.get(registro.id) ?? null,
       };
     }),
     total: total?.valor ?? 0,

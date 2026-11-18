@@ -9,16 +9,39 @@ import {
   ChevronDown,
   X,
 } from "lucide-react";
-import { ESPECIALIDADES_POR_CATEGORIA } from "../constants/taxonomia-profissional";
+import { CATALOGO_ESPECIALIDADES, ESPECIALIDADES_POR_CATEGORIA } from "../constants/taxonomia-profissional";
 import type { FilterState } from "../types/profissionais";
+import { ROTULO_ASSISTENTE_CONTABIL } from "@/features/usuarios/constants/prestador";
 
 interface FilterBarProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
   variant?: "public" | "adminEquipe";
+  /**
+   * Localizações reais do cadastro ("Cidade, UF"). Ausente, o filtro usa a
+   * lista padrão — é o caso da pesquisa de equipe no painel.
+   */
+  localizacoes?: string[];
 }
 
-const professions = [
+/*
+  Vitrine pública: as três categorias públicas (as mesmas do orçamento geral).
+  "Técnicos" saiu daqui — foi substituído por "Assistente Contábil", o
+  Colaborador que optou por aparecer em Profissionais. O especialista fiscal
+  legado (sem CRC) não é apresentado como contador: aparece só em "Todas".
+*/
+const PROFISSOES_PUBLICAS = [
+  { value: "all", label: "Todas as Profissões" },
+  { value: "contador", label: "Contadores" },
+  { value: "advogado", label: "Advogados" },
+  { value: "assistente", label: ROTULO_ASSISTENTE_CONTABIL },
+];
+
+/*
+  Pesquisa de equipe do painel (`adminEquipe`): opções internas de sempre. Os
+  colaboradores ali são do escritório e não recebem o nome público.
+*/
+const PROFISSOES_EQUIPE = [
   { value: "all", label: "Todas as Profissões" },
   { value: "contador", label: "Contadores" },
   { value: "advogado", label: "Advogados" },
@@ -26,26 +49,15 @@ const professions = [
 ];
 
 /**
- * Mesmas especialidades de sempre, agora lidas da taxonomia compartilhada.
- *
- * As chaves aqui são as da interface de busca (`contador`, `advogado`,
- * `tecnico`); as da taxonomia são as categorias reais do cadastro. O de-para
- * fica nesta linha e em nenhum outro lugar.
+ * Especialidades do filtro, lidas do catálogo central — a mesma lista do
+ * orçamento. As chaves são as da interface de busca; o de-para fica aqui.
  */
 const specialties = {
   all: ["Todas as Especialidades"],
-  contador: [
-    "Todas as Especialidades",
-    ...ESPECIALIDADES_POR_CATEGORIA.contabilidade,
-  ],
-  advogado: [
-    "Todas as Especialidades",
-    ...ESPECIALIDADES_POR_CATEGORIA.advocacia,
-  ],
-  tecnico: [
-    "Todas as Especialidades",
-    ...ESPECIALIDADES_POR_CATEGORIA.especialista_fiscal,
-  ],
+  contador: ["Todas as Especialidades", ...CATALOGO_ESPECIALIDADES.contabilidade],
+  advogado: ["Todas as Especialidades", ...CATALOGO_ESPECIALIDADES.advocacia],
+  tecnico: ["Todas as Especialidades", ...ESPECIALIDADES_POR_CATEGORIA.especialista_fiscal],
+  assistente: ["Todas as Especialidades", ...CATALOGO_ESPECIALIDADES.assistente_contabil],
 };
 
 const locations = [
@@ -65,7 +77,12 @@ export default function FilterBar({
   filters,
   onFilterChange,
   variant = "public",
+  localizacoes,
 }: FilterBarProps) {
+  const opcoesLocalizacao = localizacoes?.length
+    ? ["Todas as Localizações", ...localizacoes, "Remoto"]
+    : locations;
+  const opcoesProfissao = variant === "public" ? PROFISSOES_PUBLICAS : PROFISSOES_EQUIPE;
   const [isExpanded, setIsExpanded] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -137,7 +154,7 @@ export default function FilterBar({
               }}
               className="px-4 py-3 rounded-xl bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer min-w-[160px]"
             >
-              {professions.map((p) => (
+              {opcoesProfissao.map((p) => (
                 <option key={p.value} value={p.value}>
                   {p.label}
                 </option>
@@ -149,7 +166,7 @@ export default function FilterBar({
               onChange={(e) => handleChange("location", e.target.value)}
               className="px-4 py-3 rounded-xl bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer min-w-[160px]"
             >
-              {locations.map((loc) => (
+              {opcoesLocalizacao.map((loc) => (
                 <option key={loc} value={loc}>
                   {loc}
                 </option>
@@ -582,7 +599,7 @@ export default function FilterBar({
         >
           {filters.profession !== "all" && (
             <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm flex items-center gap-2 border border-primary/20">
-              {professions.find((p) => p.value === filters.profession)?.label}
+              {opcoesProfissao.find((p) => p.value === filters.profession)?.label}
               <button
                 onClick={() => handleChange("profession", "all")}
                 className="hover:text-primary/70"

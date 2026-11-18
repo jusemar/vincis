@@ -70,6 +70,14 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
   avaliacaoMedia: integer('avaliacao_media'),
   totalAvaliacoes: integer('total_avaliacoes').notNull().default(0),
   disponivelAtendimento: boolean('disponivel_atendimento').notNull().default(true),
+  /**
+   * Colaborador que também atua como **prestador público** (aparece na
+   * listagem e tem perfil público). Falso por padrão: a conta de colaborador
+   * nasce para trabalhar dentro de escritórios, e ninguém vira vitrine sem
+   * escolher. Para o Profissional não se aplica — o público dele é decidido
+   * pela análise do cadastro.
+   */
+  vitrinePublica: boolean('vitrine_publica').notNull().default(false),
   regimesAtendidos: text('regimes_atendidos').array().notNull().default([]),
   /**
    * Conteúdo livre do bloco "Sobre" do perfil público.

@@ -348,7 +348,7 @@ describe('cada Profissional tem o preço dele', () => {
 
 describe('o que está em edição não é o que está no ar', () => {
   it('salvar o rascunho não muda nada na página pública', async () => {
-    entrarComo(cenario.tokens.colaboradorSozinho)
+    entrarComo(cenario.tokens.profissionalMembro)
     const salvo = await salvarRascunhoDePrecos(
       entradaDe(valoresCom({ precosBase: { simples: 15_000 } })),
     )
@@ -356,18 +356,18 @@ describe('o que está em edição não é o que está no ar', () => {
 
     expect(salvo.sucesso).toBe(true)
     expect(
-      await obterPrecificacaoPublicaDoProfissional(cenario.ids.colaboradorSozinho),
+      await obterPrecificacaoPublicaDoProfissional(cenario.ids.profissionalMembro),
     ).toBeNull()
-    expect(await temPrecosPublicados(cenario.ids.colaboradorSozinho)).toBe(false)
+    expect(await temPrecosPublicados(cenario.ids.profissionalMembro)).toBe(false)
   })
 
   it('publicar põe no ar exatamente o que estava em edição', async () => {
-    entrarComo(cenario.tokens.colaboradorSozinho)
+    entrarComo(cenario.tokens.profissionalMembro)
     await publicarPrecos(entradaDe(valoresCom({ precosBase: { simples: 15_000 } })))
     sairDaSessao()
 
     const publica = await obterPrecificacaoPublicaDoProfissional(
-      cenario.ids.colaboradorSozinho,
+      cenario.ids.profissionalMembro,
     )
     expect(
       calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, MINIMO).mensalCentavos,
@@ -375,12 +375,12 @@ describe('o que está em edição não é o que está no ar', () => {
   })
 
   it('alterar o rascunho depois de publicar não mexe no que o cliente vê', async () => {
-    entrarComo(cenario.tokens.colaboradorSozinho)
+    entrarComo(cenario.tokens.profissionalMembro)
     await salvarRascunhoDePrecos(
       entradaDe(valoresCom({ precosBase: { simples: 99_900 } })),
     )
     const configuracao = await obterConfiguracaoDoProfissional(
-      cenario.ids.colaboradorSozinho,
+      cenario.ids.profissionalMembro,
     )
     sairDaSessao()
 
@@ -388,7 +388,7 @@ describe('o que está em edição não é o que está no ar', () => {
     expect(configuracao!.publicadoValores!.precosBase.simples).toBe(15_000)
 
     const publica = await obterPrecificacaoPublicaDoProfissional(
-      cenario.ids.colaboradorSozinho,
+      cenario.ids.profissionalMembro,
     )
     expect(
       calcularPreco(publica!.tabela, SERVICO_DO_PROFISSIONAL, MINIMO).mensalCentavos,
@@ -396,19 +396,37 @@ describe('o que está em edição não é o que está no ar', () => {
   })
 
   it('despublicar tira do ar sem apagar o que foi configurado', async () => {
-    entrarComo(cenario.tokens.colaboradorSozinho)
+    entrarComo(cenario.tokens.profissionalMembro)
     expect((await despublicarPrecos()).sucesso).toBe(true)
     const configuracao = await obterConfiguracaoDoProfissional(
-      cenario.ids.colaboradorSozinho,
+      cenario.ids.profissionalMembro,
     )
     sairDaSessao()
 
     expect(
-      await obterPrecificacaoPublicaDoProfissional(cenario.ids.colaboradorSozinho),
+      await obterPrecificacaoPublicaDoProfissional(cenario.ids.profissionalMembro),
     ).toBeNull()
     expect(configuracao!.publicado).toBe(false)
     expect(configuracao!.publicadoValores!.precosBase.simples).toBe(15_000)
     expect(configuracao!.rascunho.precosBase.simples).toBe(99_900)
+  })
+
+  it('colaborador (profissional de apoio) não cria mensalidade: só avulsos e agenda', async () => {
+    entrarComo(cenario.tokens.colaboradorSozinho)
+    const rascunho = await salvarRascunhoDePrecos(
+      entradaDe(valoresCom({ precosBase: { simples: 15_000 } })),
+    )
+    const publicado = await publicarPrecos(
+      entradaDe(valoresCom({ precosBase: { simples: 15_000 } })),
+    )
+    sairDaSessao()
+
+    expect(rascunho.sucesso).toBe(false)
+    expect(publicado.sucesso).toBe(false)
+    expect(
+      await obterPrecificacaoPublicaDoProfissional(cenario.ids.colaboradorSozinho),
+    ).toBeNull()
+    expect(await temPrecosPublicados(cenario.ids.colaboradorSozinho)).toBe(false)
   })
 
   it('quem nunca configurou abre com a referência, sem nada gravado', async () => {

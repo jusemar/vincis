@@ -22,6 +22,7 @@ import { useAuth } from "@/features/usuarios";
 import { consultarCep } from "../../actions/consultar-cep";
 import { salvarPerfilColaborador } from "../../actions/salvar-perfil-colaborador";
 import { REGIMES_TRIBUTARIOS } from "../../schemas/perfil-profissional";
+import { ROTULO_ASSISTENTE_CONTABIL } from "@/features/usuarios/constants/prestador";
 import {
   PerfilColaboradorSchema,
   type PerfilColaboradorDTO,
@@ -93,6 +94,7 @@ export function OnboardingColaborador({
       certificacoes: dadosIniciais.certificacoes ?? "",
       valorHora: dadosIniciais.valorHora ?? 0,
       disponivelAtendimento: dadosIniciais.disponivelAtendimento ?? true,
+      vitrinePublica: dadosIniciais.vitrinePublica ?? false,
       regimesAtendidos: dadosIniciais.regimesAtendidos ?? [],
       telefoneContato: dadosIniciais.telefoneContato ?? whatsapp ?? "",
       emailProfissional: dadosIniciais.emailProfissional ?? email,
@@ -301,6 +303,20 @@ export function OnboardingColaborador({
                       {...register("disponivelAtendimento")}
                     />
                     Disponível para atendimento
+                  </label>
+                  <label className="flex items-start gap-2 rounded-lg border p-3 text-sm sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-5 accent-primary"
+                      {...register("vitrinePublica")}
+                    />
+                    <span>
+                      Exibir meu perfil na vitrine pública como {ROTULO_ASSISTENTE_CONTABIL}
+                      <span className="block text-xs text-muted-foreground">
+                        Seu perfil e seus serviços aparecem em Profissionais para clientes da Vincis.
+                        Desmarcado, você atua apenas nos escritórios que convidarem você.
+                      </span>
+                    </span>
                   </label>
                   <div className="sm:col-span-2">
                     <Label>Regimes que você atende</Label>

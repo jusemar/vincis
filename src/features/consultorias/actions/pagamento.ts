@@ -219,6 +219,11 @@ export async function iniciarPagamentoDaConsultoria(
   if (await prestadorCobraDiretamente(db, configuracao.prestadorId)) {
     return { situacao: 'indisponivel', mensagem: MENSAGEM_HONORARIOS_DIRETOS }
   }
+  // Sem valor só existe na advocacia (honorário direto). Fora dela, uma
+  // reserva sem valor nunca vira cobrança — não há preço para cobrar.
+  if (reserva.valorCentavos === null) {
+    return { situacao: 'indisponivel', mensagem: MENSAGEM_HONORARIOS_DIRETOS }
+  }
   const comissaoVincis = await retratoComissaoVigente(reserva.valorCentavos)
   if (!comissaoVincis) {
     console.warn('[CONSULTORIA_SEM_COMISSAO]', { reservaId: reserva.id })
@@ -412,6 +417,8 @@ export async function pagarConsultoriaSimulado(
         .limit(1)
 
       if (!configuracao) return EXPIRADA
+      // Reserva sem valor (advocacia) nunca passa pelo pagamento.
+      if (reserva.valorCentavos === null) return EXPIRADA
 
       const simulacao = processarPagamentoSimulado({
         valorCentavos: reserva.valorCentavos,

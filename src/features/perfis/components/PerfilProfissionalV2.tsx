@@ -9,7 +9,7 @@ import {
   CheckCircle2, Lock, Users, Send,
   ChevronRight, ShieldCheck, Shield, FileText,
   Pencil, X, Check, Plus, ChevronUp, ChevronDown, Trash2,
-  Calculator,
+  Calculator, MapPin, Building2, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -29,6 +29,7 @@ import { ROTULO_PERFIL } from '@/features/perfil-pro/constants/perfil-pro';
 import { SeloModeloContratacao } from '@/features/profissionais/components/SeloModeloContratacao';
 import { salvarVitrineProfissional } from '@/features/usuarios/actions/salvar-vitrine-profissional';
 import { BotaoCompartilhar } from '@/features/parceiros/components/cliente/BotaoCompartilhar';
+import { nomeCompletoDoEscritorio, tituloDoEscritorio } from '@/features/empresas/lib/titulo-escritorio';
 import { REGIMES_TRIBUTARIOS } from '@/features/usuarios/schemas/perfil-profissional';
 import {
   salvarCasosSucesso,
@@ -76,16 +77,6 @@ const ROTULO_REGIME: Record<(typeof REGIMES_TRIBUTARIOS)[number], string> = {
   simples_nacional: 'Simples Nacional',
   lucro_presumido: 'Lucro Presumido',
   lucro_real: 'Lucro Real',
-};
-
-/**
- * Substantivo do kicker "Sobre o ___", por `tipoProfissional`. Nunca gravado
- * no banco — é apresentação, derivada do cadastro (campo protegido).
- */
-const ROTULO_TIPO_PROFISSIONAL: Record<string, string> = {
-  contabilidade: 'Contador',
-  especialista_fiscal: 'Especialista Fiscal',
-  advocacia: 'Advogado',
 };
 
 /** Chave estável para itens novos do rascunho, antes de existirem no banco. */
@@ -280,6 +271,10 @@ export type IdentidadePublica = {
   perfilAdvocacia?: 'essencial' | 'pro' | null
   /** Contabilidade: modelo comercial definido pelo gestor (nulo = não exibir). */
   modeloContratacao?: 'vincis' | 'autonomo' | null
+  /** `profissional` (registro aprovado na análise) ou `colaborador` (sem habilitação). */
+  tipoPrestador?: string | null
+  /** Cadastro aprovado com comprovante do registro (CRC/OAB) guardado. */
+  registroVerificado?: boolean
   /** Advocacia: registro da OAB já salvo ("OAB/MG 123456"), exibido em Formação. */
   registroProfissional?: string | null
   totalAvaliacoes: number
@@ -306,6 +301,14 @@ export type IdentidadePublica = {
   /** Conteúdo do bloco "Sobre". Vazio/ausente = o bloco correspondente some. */
   sobreTitulo?: string | null
   sobreTexto?: string | null
+  /** `individual` ou `escritorio`, como o gestor aprovou. */
+  modalidadeAtuacao?: string
+  /**
+   * Nome do escritório quando o prestador atua como escritório (empresa da
+   * qual é proprietário). Presente, o perfil se apresenta pelo escritório e a
+   * pessoa aparece como responsável técnica.
+   */
+  escritorioNome?: string | null
 }
 
 /** Um card de "Comentários de clientes", já no formato que a seção desenha. */
@@ -420,7 +423,32 @@ export default function PerfilProfissionalV2({
 }: PerfilProfissionalV2Props = {}) {
   // Dados reais quando o perfil é de um prestador; caso contrário mantém o
   // conteúdo de demonstração, sem alterar o layout em nenhum dos dois casos.
-  const nomeExibido = identidade?.nome ?? 'Carlos Eduardo Mendes';
+  const nomeExibido =
+    identidade?.escritorioNome || identidade?.nome || 'Carlos Eduardo Mendes';
+  /** A pessoa por trás do escritório. Nulo no perfil individual e na demonstração. */
+  const responsavelDoEscritorio = identidade?.escritorioNome ? identidade.nome : null;
+  /**
+   * Título do escritório: "Escritório | Alfa" (sem repetir quando o nome já
+   * começa com "Escritório"). Em texto corrido, "Escritório Alfa".
+   */
+  const tituloEscritorio = identidade?.escritorioNome
+    ? tituloDoEscritorio(identidade.escritorioNome)
+    : null;
+  const nomeEmTexto = identidade?.escritorioNome
+    ? nomeCompletoDoEscritorio(identidade.escritorioNome)
+    : nomeExibido;
+  /** "Belo Horizonte/MG", só com os dois dados no cadastro. */
+  const localizacao =
+    identidade?.cidade && identidade?.estado ? `${identidade.cidade}/${identidade.estado}` : null;
+  /**
+   * Rótulo do bloco de destaque, sustentado pelo cadastro. A demonstração (sem
+   * prestador) mantém o rótulo de exemplo do layout.
+   */
+  const rotuloDestaque = identidade
+    ? identidade.escritorioNome
+      ? 'Escritório'
+      : 'Individual'
+    : 'Premium';
   /** "Dra. Ana Carolina Silva" → "Dra. Ana" — o tratamento vem do cadastro. */
   const primeiroNome = nomeExibido.split(/\s+/).slice(0, 2).join(' ');
   const apresentacaoExibida =
@@ -465,9 +493,15 @@ export default function PerfilProfissionalV2({
    * decide sozinha, mais abaixo, se ainda tem algo para mostrar (Formação e
    * Especializações continuam contando).
    */
-  const kickerSobre = identidade
-    ? `Sobre o ${ROTULO_TIPO_PROFISSIONAL[identidade.tipoProfissional ?? ''] ?? 'Profissional'}`
-    : 'Sobre o Contador';
+  // "Sobre o Contador" impunha gênero e profissão a quem não é contador (ou é
+  // contadora). O bloco descreve o atendimento — o kicker diz exatamente isso.
+  const kickerSobre = identidade ? 'Sobre o atendimento' : 'Sobre o Contador';
+  /**
+   * Advocacia: as áreas não são títulos de especialista (esse título depende de
+   * certificação própria). O mesmo dado aparece como "Áreas de atuação".
+   */
+  const rotuloEspecialidades =
+    identidade?.tipoProfissional === 'advocacia' ? 'Áreas de atuação' : null;
   const sobreTituloExibido = identidade
     ? (identidade.sobreTitulo ?? '')
     : 'Especialista em rotinas fiscais e regularização';
@@ -568,7 +602,11 @@ export default function PerfilProfissionalV2({
       setRascunhoConsultoria({
         titulo: resultado.dados.titulo,
         descricaoCurta: resultado.dados.descricaoCurta,
-        valor: (resultado.dados.valorCentavos / 100).toFixed(2).replace('.', ','),
+        // Advocacia: sem valor (honorário combinado diretamente).
+        valor:
+          resultado.dados.valorCentavos === null
+            ? ''
+            : (resultado.dados.valorCentavos / 100).toFixed(2).replace('.', ','),
         duracaoMinutos: String(resultado.dados.duracaoMinutos),
       });
     } else {
@@ -631,7 +669,10 @@ export default function PerfilProfissionalV2({
             titulo: rascunhoConsultoria.titulo,
             descricaoCurta: rascunhoConsultoria.descricaoCurta,
             modalidade: consultoriaAtual.modalidade,
-            valorCentavos: Math.round(Number(rascunhoConsultoria.valor.replace(',', '.')) * 100),
+            valorCentavos:
+              consultoriaAtual.valorCentavos === null
+                ? null
+                : Math.round(Number(rascunhoConsultoria.valor.replace(',', '.')) * 100),
             duracaoMinutos: Number(rascunhoConsultoria.duracaoMinutos),
             intervaloMinutos: consultoriaAtual.intervaloMinutos,
             antecedenciaMinimaMinutos: consultoriaAtual.antecedenciaMinimaMinutos,
@@ -911,7 +952,7 @@ export default function PerfilProfissionalV2({
                   <ChevronRight className="h-3 w-3" />
                   <Link href="/profissionais" className="alvo-toque-h inline-flex items-center transition-colors hover:text-primary">Profissionais</Link>
                   <ChevronRight className="h-3 w-3" />
-                  <span className="text-foreground font-semibold">{nomeExibido}</span>
+                  <span className="text-foreground font-semibold">{nomeEmTexto}</span>
                 </motion.nav>
 
                 {/*
@@ -963,10 +1004,35 @@ export default function PerfilProfissionalV2({
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.05 }}
-                className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5"
+                className="text-4xl sm:text-5xl font-bold tracking-tighter leading-[1.04] text-foreground mb-2.5 [overflow-wrap:anywhere]"
               >
-                {nomeExibido}
+                {tituloEscritorio?.rotulo ? (
+                  <>
+                    <span className="font-semibold text-muted-foreground">{tituloEscritorio.rotulo}</span>
+                    <span aria-hidden className="mx-2 font-light text-muted-foreground/50">|</span>
+                    {tituloEscritorio.nome}
+                  </>
+                ) : (
+                  nomeExibido
+                )}
               </motion.h1>
+              {responsavelDoEscritorio || localizacao ? (
+                <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+                  {responsavelDoEscritorio ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      Responsável técnico:{' '}
+                      <span className="font-semibold text-foreground">{responsavelDoEscritorio}</span>
+                    </span>
+                  ) : null}
+                  {localizacao ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-foreground">{localizacao}</span>
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {/*
                 O identificador público, o mesmo que o parceiro vê no card do
                 negócio. Só aparece quando existe: perfil de demonstração não
@@ -996,8 +1062,8 @@ export default function PerfilProfissionalV2({
                   {linkCompartilhavel ? (
                     <BotaoCompartilhar
                       url={linkCompartilhavel}
-                      titulo={nomeExibido}
-                      texto={`Conheça ${nomeExibido} na Vincis`}
+                      titulo={nomeEmTexto}
+                      texto={`Conheça ${nomeEmTexto} na Vincis`}
                     />
                   ) : null}
                 </div>
@@ -1012,7 +1078,7 @@ export default function PerfilProfissionalV2({
                     className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-base sm:text-[17px] text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
-              ) : (
+              ) : apresentacaoExibida.trim() ? (
                 <motion.p
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1021,7 +1087,7 @@ export default function PerfilProfissionalV2({
                 >
                   {apresentacaoExibida}
                 </motion.p>
-              )}
+              ) : null /* Resumo vazio: nada de parágrafo nem margem reservada. */}
 
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -1029,10 +1095,21 @@ export default function PerfilProfissionalV2({
                 transition={{ duration: 0.5, delay: 0.15 }}
                 className="flex flex-wrap gap-2 mb-6"
               >
-                <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
-                  <BadgeCheck className="h-3.5 w-3.5 text-primary" />
-                  Perfil verificado
-                </span>
+                {/* Estado real da verificação: o selo só aparece com registro
+                    comprovado na análise. Profissional regulamentado sem
+                    comprovante aparece como pendente; o Colaborador não tem
+                    registro a verificar e não recebe nenhum dos dois. */}
+                {!identidade || identidade.registroVerificado ? (
+                  <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                    Perfil verificado
+                  </span>
+                ) : identidade.tipoPrestador === 'profissional' ? (
+                  <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    Verificação de registro pendente
+                  </span>
+                ) : null}
                 {(!identidade || identidade.disponivelAtendimento) && (
                   <span className="inline-flex items-center gap-1.5 glass rounded-full px-2.5 py-1.5 text-xs font-bold text-foreground/80">
                     <span className="w-[7px] h-[7px] rounded-full bg-green-500 shadow-[0_0_0_4px_rgba(22,163,74,0.14)]" />
@@ -1052,7 +1129,7 @@ export default function PerfilProfissionalV2({
                 className="grid grid-cols-1 md:grid-cols-[120px_1fr_120px_1fr_120px] rounded-xl border border-border bg-card shadow-sm overflow-hidden"
               >
                 <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground grid place-items-center font-bold text-sm p-3">
-                  Premium
+                  {rotuloDestaque}
                 </div>
                 <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
                   <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">
@@ -1079,8 +1156,17 @@ export default function PerfilProfissionalV2({
                   <span className="text-xs font-bold text-muted-foreground">experiência</span>
                 </div>
                 <div className="p-3 md:p-4 grid content-center border-t md:border-t-0 md:border-l border-border min-h-[72px]">
-                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">430+</span>
-                  <span className="text-xs font-bold text-muted-foreground">declarações</span>
+                  {/*
+                    Antes: "430+ declarações" fixo para todo perfil real. Agora só
+                    o que o cadastro sustenta — a localização. A demonstração
+                    (sem prestador) mantém o exemplo do layout.
+                  */}
+                  <span className="block text-2xl font-bold tracking-tight text-foreground leading-none mb-1">
+                    {identidade ? (localizacao ?? '—') : '430+'}
+                  </span>
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {identidade ? 'localização' : 'declarações'}
+                  </span>
                 </div>
               </motion.div>
             </div>
@@ -1211,7 +1297,7 @@ export default function PerfilProfissionalV2({
                 {(emEdicao || itensEspecializacoes.length > 0) && (
                   <div className="bg-muted/30 p-4 rounded-xl">
                     <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
-                      <Award className="h-5 w-5 text-primary" /> Especializações
+                      <Award className="h-5 w-5 text-primary" /> {rotuloEspecialidades ?? 'Especializações'}
                     </h3>
                     {emEdicao ? (
                       <EditorDeChips
@@ -1257,7 +1343,47 @@ export default function PerfilProfissionalV2({
             valor na hora não precisa pedir orçamento para descobri-lo — e quem
             precisa de algo fora da tabela encontra o pedido logo abaixo.
           */}
-          {planosEPrecos ? (
+          {identidade?.modeloContratacao === 'vincis' ? (
+            /*
+              Contador "pela Vincis": a contabilidade mensal é contratada nos
+              planos da Vincis (/precos), pela tabela central, e lá o cliente
+              escolhe este contador (ou escritório) como responsável. A tabela
+              individual de "Meus preços" é só referência — por isso o botão
+              leva aos planos, não a ela. Texto sem gênero gramatical: o
+              cadastro não guarda essa informação, e o bloco vale para todos.
+            */
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+            >
+              <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                <span className="block text-xs font-bold text-primary mb-3 uppercase tracking-[0.3em]">
+                  Contabilidade mensal
+                </span>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">
+                      Contabilidade mensal para sua empresa
+                    </h2>
+                    <p className="mt-2 max-w-xl text-base text-muted-foreground leading-relaxed">
+                      {identidade.escritorioNome
+                        ? `Conte com a equipe do ${nomeCompletoDoEscritorio(identidade.escritorioNome)} para acompanhar a rotina contábil da sua empresa. Conheça os planos da Vincis, confira o que está incluído e escolha o escritório para cuidar do seu negócio.`
+                        : `Tenha acompanhamento de ${identidade.nome} para organizar a rotina contábil do seu negócio. Conheça os planos da Vincis, confira o que está incluído e escolha ${identidade.nome} como responsável pela sua contabilidade.`}
+                    </p>
+                  </div>
+                  <Link
+                    href="/precos"
+                    className="alvo-toque-h bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-all shadow-sm hover:bg-primary/90"
+                  >
+                    <Calculator className="h-4 w-4" />
+                    Conhecer planos
+                  </Link>
+                </div>
+              </section>
+            </motion.div>
+          ) : planosEPrecos ? (
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1311,7 +1437,7 @@ export default function PerfilProfissionalV2({
                 {solicitacaoDireta ? (
                   <>
                     O pedido feito aqui vai somente para {primeiroNome}. Nenhum
-                    outro profissional vai vê-lo.
+                    outro profissional terá acesso.
                   </>
                 ) : (
                   <>
@@ -1477,7 +1603,7 @@ export default function PerfilProfissionalV2({
                     )}
 
                     <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                      <p className="text-xs text-muted-foreground flex-1 leading-relaxed">{service.note}</p>
+                      <p className="text-xs text-muted-foreground flex-1 leading-relaxed whitespace-pre-line">{service.note}</p>
                       <button
                         type="button"
                         disabled={!service.id}
@@ -1971,6 +2097,9 @@ export default function PerfilProfissionalV2({
                       className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                     />
                     <div className="grid grid-cols-2 gap-2">
+                      {consultoriaAtual?.valorCentavos === null ? (
+                        <p className="self-center text-xs text-muted-foreground">Honorários combinados com o cliente</p>
+                      ) : (
                       <input
                         value={rascunhoConsultoria.valor}
                         onChange={(e) => setRascunhoConsultoria((r) => ({ ...r, valor: e.target.value }))}
@@ -1978,6 +2107,7 @@ export default function PerfilProfissionalV2({
                         inputMode="decimal"
                         className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
                       />
+                      )}
                       <input
                         value={rascunhoConsultoria.duracaoMinutos}
                         onChange={(e) =>
@@ -2005,7 +2135,7 @@ export default function PerfilProfissionalV2({
               {/* Specialties */}
               {(emEdicao || tagsEspecialidadesSidebar.length > 0) && (
                 <div className="bg-card p-5 rounded-2xl border border-border">
-                  <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">Especialidades</h6>
+                  <h6 className="text-xs font-bold mb-4 uppercase text-muted-foreground/60">{rotuloEspecialidades ?? 'Especialidades'}</h6>
                   {emEdicao ? (
                     <EditorDeChips
                       itens={rascunho.especialidades}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REGIMES_TRIBUTARIOS } from "./perfil-profissional";
+import { REGIMES_TRIBUTARIOS, apresentacaoDoPerfil } from "./perfil-profissional";
 
 /**
  * Cadastro do Colaborador.
@@ -27,11 +27,7 @@ export const PerfilColaboradorSchema = z.object({
     .trim()
     .min(3, "Informe pelo menos uma área de atuação.")
     .max(500, "As áreas de atuação devem ter no máximo 500 caracteres."),
-  apresentacao: z
-    .string()
-    .trim()
-    .min(30, "A apresentação deve ter pelo menos 30 caracteres.")
-    .max(1000, "A apresentação deve ter no máximo 1000 caracteres."),
+  apresentacao: apresentacaoDoPerfil,
   cidade: z
     .string()
     .trim()
@@ -63,6 +59,12 @@ export const PerfilColaboradorSchema = z.object({
   certificacoes: z.string().trim().max(1000).optional().default(""),
   valorHora: z.coerce.number().min(0).max(100000).optional().default(0),
   disponivelAtendimento: z.boolean().optional().default(true),
+  /**
+   * Escolha do próprio colaborador de atuar também como prestador público
+   * (listagem e perfil público). Desligada por padrão: a conta de colaborador
+   * serve primeiro ao trabalho interno dos escritórios.
+   */
+  vitrinePublica: z.boolean().optional().default(false),
   regimesAtendidos: z.array(z.enum(REGIMES_TRIBUTARIOS)).default([]),
   telefoneContato: z
     .string()

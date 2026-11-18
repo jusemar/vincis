@@ -1,6 +1,7 @@
 import { modeloContratacaoPublico } from '@/features/profissionais/constants/modelo-contratacao'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
+import { nomeDoEscritorioPublico } from '@/features/empresas/queries/escritorio-publico'
 import {
   perfisProfissionais,
   precificacaoProfissional,
@@ -52,6 +53,7 @@ export async function obterPrecificacaoPublicaDoProfissional(
       nome: usuarios.nome,
       tipoProfissional: perfisProfissionais.tipoProfissional,
       modeloContratacao: perfisProfissionais.modeloContratacao,
+      modalidadeAtuacao: perfisProfissionais.modalidadeAtuacao,
       publicado: precificacaoProfissional.publicado,
       publicadoEm: precificacaoProfissional.publicadoEm,
     })
@@ -70,6 +72,8 @@ export async function obterPrecificacaoPublicaDoProfissional(
         eq(usuarios.status, 'ativo'),
         condicaoContaVerificada(),
         condicaoPrestadorHabilitado(),
+        // Mensalidade própria é só do Profissional; Colaborador nunca expõe tabela.
+        eq(perfisProfissionais.tipoPrestador, 'profissional'),
         eq(precificacaoProfissional.publicado, true),
       ),
     )
@@ -107,11 +111,16 @@ export async function obterPrecificacaoPublicaDoProfissional(
     return null
   }
 
-  const primeiroNome = primeiroNomeDe(prestador.nome)
+  // Escritório se apresenta pelo nome inteiro do escritório; a pessoa segue
+  // identificada como responsável.
+  const escritorioNome =
+    prestador.modalidadeAtuacao === 'escritorio' ? await nomeDoEscritorioPublico(prestadorId) : null
+  const primeiroNome = escritorioNome ?? primeiroNomeDe(prestador.nome)
 
   return {
     prestadorId,
-    nome: prestador.nome,
+    nome: escritorioNome ?? prestador.nome,
+    responsavel: escritorioNome ? prestador.nome : null,
     primeiroNome,
     tabela: tabelaDoProfissional(estrutura, valores, { primeiroNome }),
     publicadoEm: prestador.publicadoEm,

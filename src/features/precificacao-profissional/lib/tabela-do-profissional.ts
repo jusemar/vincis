@@ -126,7 +126,16 @@ export function tabelaDoProfissional(
 
     parametros: {
       arredondamentoCentavos: ARREDONDAMENTO_DO_PROFISSIONAL,
-      funcionariosPadrao: estrutura.parametros.funcionariosPadrao,
+      /*
+        A página do Profissional abre sem funcionários registrados.
+
+        O padrão da Vincis (hoje 3) existe para a vitrine da casa; aqui ele
+        fazia o configurador abrir já cobrando o funcionário excedente, e o
+        cliente via um preço maior que o plano anunciado "sem folha" sem ter
+        informado empregado nenhum. Zero é a resposta neutra: quem tem folha
+        informa a quantidade e o acréscimo aparece na hora.
+      */
+      funcionariosPadrao: 0,
     },
   }
 }

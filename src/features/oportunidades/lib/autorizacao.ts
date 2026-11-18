@@ -87,13 +87,21 @@ export async function obterVinculoComOportunidade(
       statusAnalise: perfisProfissionais.statusAnalise,
       areasAtuacao: perfisProfissionais.areasAtuacao,
       especialidades: perfisProfissionais.especialidades,
+      vitrinePublica: perfisProfissionais.vitrinePublica,
     })
     .from(perfisProfissionais)
     .where(eq(perfisProfissionais.usuarioId, usuarioId))
     .limit(1)
 
   if (!prestadorHabilitado(perfil ?? null)) return null
+  /*
+    Privada: o vínculo é com a pessoa (já conferido acima que é o
+    destinatário), validado contra o cadastro dele quando o pedido nasceu. Uma
+    mudança posterior de categoria do cadastro não tira dele o pedido que lhe
+    foi dirigido — e não dá acesso a mais ninguém. Pública: regra da categoria.
+  */
   if (
+    !ehPrivada(oportunidade.visibilidade) &&
     !categoriasCompativeisDoPrestador(perfil ?? null).includes(
       oportunidade.categoria as CategoriaOportunidade,
     )

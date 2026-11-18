@@ -151,6 +151,17 @@ describe('salvarVitrineProfissional', () => {
     expect(resultado.sucesso).toBe(false)
   })
 
+  it('aceita resumo em branco (o topo do perfil fica sem parágrafo)', async () => {
+    entrarComo(contas.dono.token)
+    const resultado = await salvarVitrineProfissional(payload({ apresentacao: '' }))
+    expect(resultado.sucesso).toBe(true)
+    const [perfil] = await db
+      .select({ apresentacao: perfisProfissionais.apresentacao })
+      .from(perfisProfissionais)
+      .where(eq(perfisProfissionais.usuarioId, contas.dono.id))
+    expect(perfil.apresentacao).toBe('')
+  })
+
   it('rejeita regime tributário fora do enum aceito', async () => {
     entrarComo(contas.dono.token)
     const resultado = await salvarVitrineProfissional(

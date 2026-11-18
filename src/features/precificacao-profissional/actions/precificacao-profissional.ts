@@ -23,7 +23,7 @@ import {
 } from '@/features/precificacao/lib/registro'
 import { obterTabelaPrecificacao } from '@/features/precificacao/queries/obter-tabela-precificacao'
 import { ROTA_MEUS_PRECOS } from '../constants/precificacao-profissional'
-import { autorizarPrestador } from '../lib/autorizar-prestador'
+import { autorizarPrestador, autorizarPrestadorComMensalidade } from '../lib/autorizar-prestador'
 import { conferirValoresDoProfissional } from '../lib/conferencia'
 import { impressaoDosValores, linhasDosValores } from '../lib/grade'
 import {
@@ -163,7 +163,9 @@ async function gravar({
   entrada: unknown
   publicar: boolean
 }): Promise<ResultadoDaGravacao> {
-  const prestador = await autorizarPrestador()
+  // Montar/publicar mensalidade é só do Profissional; despublicar segue aberto
+  // a qualquer prestador (fechar a porta nunca cria recorrência).
+  const prestador = await autorizarPrestadorComMensalidade()
   if (!prestador) return NAO_AUTORIZADO
 
   const esquema = publicar ? PublicarSchema : SalvarRascunhoSchema

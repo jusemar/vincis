@@ -48,6 +48,7 @@ type Chave =
   | 'advogado'
   | 'colabFiscal'
   | 'colabMarketing'
+  | 'assistente'
   | 'contadorPendente'
   | 'gestorProfissional'
 
@@ -66,6 +67,7 @@ const DEFINICOES: Record<
     tipoProfissional?: string
     statusAnalise?: string
     areasAtuacao?: string[]
+    vitrinePublica?: boolean
   }
 > = {
   clienteA: { perfil: 'cliente' },
@@ -104,6 +106,17 @@ const DEFINICOES: Record<
     tipoProfissional: 'colaborador',
     statusAnalise: 'ativo',
     areasAtuacao: ['Fotografia de produto'],
+  },
+  // Assistente Contábil: colaborador com vitrine pública. Recebe só a
+  // categoria própria; a palavra "contábil" na atuação não o leva a
+  // Contabilidade.
+  assistente: {
+    perfil: 'colaborador',
+    prestador: 'colaborador',
+    tipoProfissional: 'colaborador',
+    statusAnalise: 'ativo',
+    areasAtuacao: ['Rotinas de escritório contábil e fiscal'],
+    vitrinePublica: true,
   },
   contadorPendente: {
     perfil: 'profissional',
@@ -215,6 +228,7 @@ async function montar() {
         tipoPrestador: def.prestador,
         tipoProfissional: def.tipoProfissional!,
         areasAtuacao: def.areasAtuacao ?? [],
+        vitrinePublica: def.vitrinePublica ?? false,
         apresentacao: 'Conta de teste de oportunidades.',
         nomeAtuacao: chave,
         modalidadeAtuacao: 'individual',
@@ -310,7 +324,7 @@ describe('quem pode solicitar', () => {
   it('prestador não solicita orçamento', async () => {
     entrarComo(contas.contador.token)
     expect((await criarOportunidade(montarFormulario())).sucesso).toBe(false)
-    entrarComo(contas.colabFiscal.token)
+    entrarComo(contas.especialistaFiscal.token)
     expect((await criarOportunidade(montarFormulario())).sucesso).toBe(false)
     expect(await db.select().from(oportunidades)).toHaveLength(0)
   })
@@ -326,10 +340,11 @@ describe('quem pode solicitar', () => {
 })
 
 describe('dados da solicitação', () => {
-  it('a interface pública oferece exatamente duas categorias', () => {
-    expect([...CATEGORIAS_OPORTUNIDADE]).toEqual(['contabilidade', 'advocacia'])
+  it('a interface pública oferece exatamente três categorias', () => {
+    expect([...CATEGORIAS_OPORTUNIDADE]).toEqual(['contabilidade', 'advocacia', 'assistente_contabil'])
     expect(CATEGORIA_OPORTUNIDADE.contabilidade.rotulo).toBe('Contabilidade')
     expect(CATEGORIA_OPORTUNIDADE.advocacia.rotulo).toBe('Jurídico - Advogado')
+    expect(CATEGORIA_OPORTUNIDADE.assistente_contabil.rotulo).toBe('Assistente Contábil')
     // Nenhum rótulo público expõe o enquadramento técnico interno.
     const rotulos = CATEGORIAS_OPORTUNIDADE.map(
       (c) => CATEGORIA_OPORTUNIDADE[c].rotulo,
@@ -338,7 +353,7 @@ describe('dados da solicitação', () => {
     expect(rotulos).not.toContain('Consultoria')
   })
 
-  it('categoria fora das duas públicas é rejeitada no servidor', async () => {
+  it('categoria fora das três públicas é rejeitada no servidor', async () => {
     for (const categoria of ['consultoria', 'especialista_fiscal', 'juridico']) {
       entrarComo(contas.clienteA.token)
       const resultado = await criarOportunidade(
@@ -349,8 +364,8 @@ describe('dados da solicitação', () => {
     expect(await db.select().from(oportunidades)).toHaveLength(0)
   })
 
-  it('as duas categorias públicas são aceitas', async () => {
-    for (const categoria of ['contabilidade', 'advocacia']) {
+  it('as três categorias públicas são aceitas', async () => {
+    for (const categoria of ['contabilidade', 'advocacia', 'assistente_contabil']) {
       entrarComo(contas.clienteA.token)
       const resultado = await criarOportunidade(montarFormulario({ categoria }))
       expect(resultado.sucesso).toBe(true)
@@ -479,7 +494,7 @@ describe('dados da solicitação', () => {
 })
 
 describe('quem recebe a oportunidade', () => {
-  it('avisa profissionais da categoria e colaboradores da área', async () => {
+  it('avisa os profissionais da categoria; colaborador interno e assistente ficam fora', async () => {
     const id = await solicitarComo('clienteA')
 
     const avisadas = await db
@@ -497,7 +512,10 @@ describe('quem recebe a oportunidade', () => {
     // Agrupamento público: "Contabilidade" alcança também o especialista
     // fiscal, sem que o tipo interno dele tenha sido renomeado ou fundido.
     expect(avisados).toContain(contas.especialistaFiscal.id)
-    expect(avisados).toContain(contas.colabFiscal.id)
+    // Colaborador interno: fora da distribuição pública, mesmo com "fiscal"
+    // escrito na atuação. Palavras não mudam a categoria de ninguém.
+    expect(avisados).not.toContain(contas.colabFiscal.id)
+    expect(avisados).not.toContain(contas.assistente.id)
     expect(avisados).not.toContain(contas.advogado.id)
     expect(avisados).not.toContain(contas.colabMarketing.id)
     // Quem ainda não foi habilitado não recebe trabalho pela plataforma.
@@ -702,7 +720,7 @@ describe('proposta do prestador', () => {
     const id = await solicitarComo('clienteA')
     entrarComo(contas.contador.token)
     await enviarProposta({ ...PROPOSTA, oportunidadeId: id })
-    entrarComo(contas.colabFiscal.token)
+    entrarComo(contas.especialistaFiscal.token)
     const segunda = await enviarProposta({ ...PROPOSTA, oportunidadeId: id })
 
     expect(segunda.sucesso).toBe(true)
@@ -788,7 +806,7 @@ describe('privacidade das propostas', () => {
       .from(oportunidadePropostas)
       .where(eq(oportunidadePropostas.oportunidadeId, id))
 
-    const doColaborador = await listarComo('colabFiscal')
+    const doColaborador = await listarComo('especialistaFiscal')
     const vista = doColaborador!.lista.find((item) => item.id === id)
     expect(vista).toBeDefined()
     // A proposta do contador existe, mas não chega até aqui — nem o registro,
@@ -802,7 +820,7 @@ describe('privacidade das propostas', () => {
 
     entrarComo(contas.contador.token)
     await enviarProposta({ ...PROPOSTA, oportunidadeId: id })
-    entrarComo(contas.colabFiscal.token)
+    entrarComo(contas.especialistaFiscal.token)
     await enviarProposta({
       ...PROPOSTA,
       oportunidadeId: id,
@@ -854,7 +872,7 @@ describe('banner do Dashboard e "não tenho interesse"', () => {
 
     expect(await contarOportunidadesDisponiveis(contas.contador.id)).toBe(0)
     // O colega continua com a mesma oportunidade esperando resposta.
-    expect(await contarOportunidadesDisponiveis(contas.colabFiscal.id)).toBe(1)
+    expect(await contarOportunidadesDisponiveis(contas.especialistaFiscal.id)).toBe(1)
   })
 
   it('"não tenho interesse" tira da fila só de quem dispensou', async () => {
@@ -865,7 +883,7 @@ describe('banner do Dashboard e "não tenho interesse"', () => {
     expect(resultado.sucesso).toBe(true)
 
     expect(await contarOportunidadesDisponiveis(contas.contador.id)).toBe(0)
-    expect(await contarOportunidadesDisponiveis(contas.colabFiscal.id)).toBe(1)
+    expect(await contarOportunidadesDisponiveis(contas.especialistaFiscal.id)).toBe(1)
     expect(
       await contarOportunidadesDisponiveis(contas.especialistaFiscal.id),
     ).toBe(1)
@@ -973,5 +991,67 @@ describe('forma do formulário público', () => {
   it('mostra o contador de caracteres da descrição', () => {
     expect(formulario).toContain('LIMITE_DESCRICAO_OPORTUNIDADE')
     expect(formulario).toContain('descricao.length')
+  })
+})
+
+describe('categoria Assistente Contábil', () => {
+  const ASSISTENTE = { categoria: 'assistente_contabil' }
+  const PROPOSTA = {
+    mensagem: 'Organizo as notas e os documentos de faturamento do mês para a contabilidade.',
+    valor: '90,00',
+    prazoEstimadoDias: 3,
+  }
+
+  async function avisadosDe(id: string) {
+    const linhas = await db
+      .select({ destinatarioId: notificacoes.destinatarioId })
+      .from(notificacoes)
+      .where(
+        and(
+          eq(notificacoes.recursoId, id),
+          eq(notificacoes.tipo, TIPOS_NOTIFICACAO.oportunidadeDisponivel),
+        ),
+      )
+    return linhas.map(({ destinatarioId }) => destinatarioId)
+  }
+
+  it('avisa só o assistente da vitrine — nem contador, nem colaborador interno', async () => {
+    const id = await solicitarComo('clienteA', ASSISTENTE)
+    expect(await avisadosDe(id)).toEqual([contas.assistente.id])
+
+    expect((await listarComo('assistente'))?.lista.map((item) => item.id)).toContain(id)
+    expect((await listarComo('contador'))?.lista.map((item) => item.id)).not.toContain(id)
+    expect((await listarComo('colabFiscal'))?.lista.map((item) => item.id)).not.toContain(id)
+  })
+
+  it('o pedido de Contabilidade não vai ao assistente (sem desvio entre categorias)', async () => {
+    const id = await solicitarComo('clienteA')
+    expect(await avisadosDe(id)).not.toContain(contas.assistente.id)
+    expect((await listarComo('assistente'))?.lista.map((item) => item.id)).not.toContain(id)
+
+    entrarComo(contas.assistente.token)
+    expect((await enviarProposta({ ...PROPOSTA, oportunidadeId: id })).sucesso).toBe(false)
+  })
+
+  it('especialidades: só as do catálogo do Assistente Contábil', async () => {
+    const id = await solicitarComo('clienteA', ASSISTENTE, ['Faturamento', 'Contas a receber'])
+    const [registro] = await db.select().from(oportunidades).where(eq(oportunidades.id, id))
+    expect(registro.especialidades).toEqual(['Faturamento', 'Contas a receber'])
+
+    entrarComo(contas.clienteA.token)
+    // Especialidade de Contabilidade com a categoria Assistente Contábil: recusada.
+    expect(
+      (await criarOportunidade(montarFormulario(ASSISTENTE, ['Simples Nacional']))).sucesso,
+    ).toBe(false)
+    // E a do assistente com a categoria Contabilidade, também.
+    expect(
+      (await criarOportunidade(montarFormulario({}, ['Faturamento']))).sucesso,
+    ).toBe(false)
+  })
+
+  it('o assistente responde ao pedido da própria categoria', async () => {
+    const id = await solicitarComo('clienteA', ASSISTENTE)
+    entrarComo(contas.assistente.token)
+    expect((await enviarProposta({ ...PROPOSTA, oportunidadeId: id })).sucesso).toBe(true)
   })
 })

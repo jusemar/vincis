@@ -10,6 +10,7 @@ import {
 } from '@/db/schema'
 import { SEM_AUTORIZACAO } from '@/features/usuarios/constants/autorizacao'
 import { obterPrestadorSessao } from '@/features/usuarios/lib/obter-prestador-sessao'
+import { prestadorCobraDiretamente } from '@/features/profissionais/lib/honorarios'
 import type { ModalidadeConsultoria, TipoExcecao } from '../constants/consultoria'
 import { horaParaColuna } from '../lib/tempo'
 import {
@@ -39,11 +40,13 @@ function primeiraMensagem(erro: { issues: { message: string }[] }) {
 
 /** A configuração do prestador da sessão, com faixas e exceções. */
 export async function obterMinhaConsultoria(): Promise<
-  | { sucesso: true; dados: ConsultoriaDoPrestadorDTO | null }
+  | { sucesso: true; dados: ConsultoriaDoPrestadorDTO | null; honorariosDiretos: boolean }
   | { sucesso: false; mensagem: string; dados: null }
 > {
   const prestador = await obterPrestadorSessao()
   if (!prestador) return { ...SEM_AUTORIZACAO, dados: null }
+  // Advocacia: a tela não pede valor (honorário combinado diretamente).
+  const juridico = await prestadorCobraDiretamente(db, prestador.usuarioId)
 
   const [configuracao] = await db
     .select()
@@ -51,7 +54,7 @@ export async function obterMinhaConsultoria(): Promise<
     .where(eq(consultoriaConfiguracoes.prestadorId, prestador.usuarioId))
     .limit(1)
 
-  if (!configuracao) return { sucesso: true as const, dados: null }
+  if (!configuracao) return { sucesso: true as const, dados: null, honorariosDiretos: juridico }
 
   const [faixas, excecoes] = await Promise.all([
     db
@@ -95,6 +98,7 @@ export async function obterMinhaConsultoria(): Promise<
 
   return {
     sucesso: true as const,
+    honorariosDiretos: juridico,
     dados: {
       id: configuracao.id,
       prestadorId: configuracao.prestadorId,
@@ -133,7 +137,17 @@ export async function salvarConsultoria(entrada: unknown) {
     return { sucesso: false as const, mensagem: primeiraMensagem(validacao.error) }
   }
 
-  const valores = validacao.data
+  /*
+    Valor por categoria, decidido aqui e não pela tela:
+    - advocacia: nunca grava valor — o honorário é combinado diretamente entre
+      Cliente e advogado, sem Pix e sem comissão; um valor enviado é descartado;
+    - demais: valor positivo obrigatório (a consulta é paga pela plataforma).
+  */
+  const juridico = await prestadorCobraDiretamente(db, prestador.usuarioId)
+  if (!juridico && validacao.data.valorCentavos === null) {
+    return { sucesso: false as const, mensagem: 'Informe um valor maior que zero.' }
+  }
+  const valores = { ...validacao.data, valorCentavos: juridico ? null : validacao.data.valorCentavos }
   const [salva] = await db
     .insert(consultoriaConfiguracoes)
     .values({ prestadorId: prestador.usuarioId, ...valores })

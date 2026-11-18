@@ -213,6 +213,7 @@ export default async function PerfilProfissionalRoute({
               id: destinatario.id,
               nome: destinatario.nome,
               categorias: destinatario.categorias,
+              especialidadesPorCategoria: destinatario.especialidadesPorCategoria,
               documentosPorEmail: identidade?.perfilAdvocacia === "essencial",
             }
           : undefined

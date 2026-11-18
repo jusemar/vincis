@@ -1094,6 +1094,9 @@ export default function EquipeEscritorioPage() {
                             certifications: profissional.numeroRegistro
                               ? [profissional.numeroRegistro]
                               : [],
+                            // Identificação do card a partir do cadastro.
+                            tipoProfissional: profissional.tipoProfissional,
+                            ehEscritorio: false,
                           } satisfies Professional
                         }
                         adminControls={

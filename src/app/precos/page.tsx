@@ -6,7 +6,7 @@ import {
   registrarFalha,
 } from "@/features/precificacao/lib/registro";
 import type { TabelaPrecificacao } from "@/features/precificacao/types/precificacao";
-import { listarContadoresParceiros } from "@/features/profissionais/queries/contadores-parceiros";
+import { listarContadoresParceirosPublicos } from "@/features/profissionais/queries/contadores-parceiros";
 import { obterSessaoServidor } from "@/features/usuarios/lib/sessao-servidor";
 
 /**
@@ -48,9 +48,8 @@ export default async function PrecosRoute() {
   // Só contadores parceiros aptos (modelo "Contratação pela Vincis"): é entre
   // eles que o cliente pode escolher o responsável. Autônomo não entra.
   // Só quem tem vaga: contador no limite da capacidade não aparece para novos clientes.
-  const contadores = (await listarContadoresParceiros(undefined, { somenteComVaga: true })).map(
-    ({ id, nome, cidade, estado }) => ({ id, nome, cidade, estado }),
-  );
+  // Escritórios aparecem pelo nome do escritório, com o responsável.
+  const contadores = await listarContadoresParceirosPublicos();
 
   return <PricingPage tabela={tabela} autenticado={sessao !== null} contadores={contadores} />;
 }

@@ -12,7 +12,7 @@ import {
   abrirConsultoriaGestao,
   buscarConsultoriasGestao,
 } from '../../actions/gestao-consultorias'
-import { formatarPreco } from '../../lib/formato'
+import { formatarPreco, formatarValorConsultoria } from '../../lib/formato'
 import type {
   ConsultoriaGestaoDTO,
   DetalheConsultoriaGestaoDTO,
@@ -277,7 +277,7 @@ export function GestaoConsultoriasPage({
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5">
-                    {formatarPreco(c.valorCentavos)}
+                    {formatarValorConsultoria(c.valorCentavos)}
                   </td>
                   <td className="px-3 py-2.5">
                     <span
@@ -467,7 +467,7 @@ function DetalheDaConsultoria({
           <Par rotulo="Serviço" valor={dados.servico} />
           <Par rotulo="Data" valor={`${dataBR(dados.data)} · ${dados.inicio} às ${dados.fim}`} />
           <Par rotulo="Duração" valor={`${dados.duracaoMinutos} minutos`} />
-          <Par rotulo="Valor" valor={formatarPreco(dados.valorCentavos)} />
+          <Par rotulo="Valor" valor={formatarValorConsultoria(dados.valorCentavos)} />
           <Par rotulo="Status" valor={STATUS_ROTULO[dados.status] ?? dados.status} />
           <Par rotulo="Fuso" valor={dados.timezone} />
           <Par rotulo="Criada em" valor={momentoBR(dados.criadoEm)} />

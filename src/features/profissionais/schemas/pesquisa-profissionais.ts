@@ -10,7 +10,9 @@ export const PesquisaProfissionaisSchema = z.object({
    * (a montagem de equipe do escritório) pede explicitamente `todos`.
    */
   tipoPrestador: z
-    .enum(["profissional", "colaborador", "todos"])
+    // `publico`: a vitrine — profissionais habilitados e colaboradores que
+    // escolheram a vitrine pública. É o único modo da action pública.
+    .enum(["profissional", "colaborador", "todos", "publico"])
     .optional()
     .default("profissional"),
   busca: z.string().trim().max(100).optional().default(""),

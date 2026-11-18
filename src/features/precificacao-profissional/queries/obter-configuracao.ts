@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import {
+  perfisProfissionais,
   precificacaoProfissional,
   precificacaoProfissionalValores,
   usuarios,
@@ -111,10 +112,17 @@ export async function temPrecosPublicados(
   const [linha] = await db
     .select({ publicado: precificacaoProfissional.publicado })
     .from(precificacaoProfissional)
+    // Só Profissional oferece mensalidade: Colaborador nunca ganha o botão,
+    // mesmo com uma linha publicada antiga.
+    .innerJoin(
+      perfisProfissionais,
+      eq(perfisProfissionais.usuarioId, precificacaoProfissional.profissionalId),
+    )
     .where(
       and(
         eq(precificacaoProfissional.profissionalId, prestadorId),
         eq(precificacaoProfissional.publicado, true),
+        eq(perfisProfissionais.tipoPrestador, 'profissional'),
       ),
     )
     .limit(1)

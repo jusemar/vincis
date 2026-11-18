@@ -1,5 +1,7 @@
-import { and, asc, eq, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, type SQL } from 'drizzle-orm'
 import { db } from '@/db/connection'
+import { nomesDosEscritoriosPublicos } from '@/features/empresas/queries/escritorio-publico'
+import { nomeCompletoDoEscritorio } from '@/features/empresas/lib/titulo-escritorio'
 import { perfisProfissionais, usuarios } from '@/db/schema'
 import type { ExecutorDb } from '@/features/atendimentos/lib/executor'
 import { clienteJaOcupaVaga, ocupacaoPorContador } from '@/features/assinaturas/queries/carteira-do-contador'
@@ -91,6 +93,34 @@ export async function listarContadoresParceiros(
     .orderBy(asc(usuarios.nome))
   const contadores = await comCapacidade(executor, linhas)
   return somenteComVaga ? contadores.filter((c) => !c.lotado) : contadores
+}
+
+/**
+ * A lista de escolha do cliente em `/precos`.
+ *
+ * Quem atua como escritório aparece pelo nome do escritório, com a pessoa como
+ * responsável — o mesmo que o perfil público mostra. Sem isto o cliente que
+ * veio do perfil "Vincis Alfa" encontraria só "Rafael Duarte" na lista. O id
+ * continua sendo o do contador responsável: a escolha gravada não muda.
+ */
+export async function listarContadoresParceirosPublicos(): Promise<ContadorParceiroPublico[]> {
+  const contadores = await listarContadoresParceiros(undefined, { somenteComVaga: true })
+  if (contadores.length === 0) return []
+  const escritorios = await db
+    .select({ id: perfisProfissionais.usuarioId })
+    .from(perfisProfissionais)
+    .where(
+      and(
+        inArray(perfisProfissionais.usuarioId, contadores.map((c) => c.id)),
+        eq(perfisProfissionais.modalidadeAtuacao, 'escritorio'),
+      ),
+    )
+  const nomes = await nomesDosEscritoriosPublicos(escritorios.map((e) => e.id))
+  return contadores.map(({ id, nome, cidade, estado }) => {
+    const escritorio = nomes.get(id)
+    // "Escritório Alfa — resp. Rafael Duarte" (sem repetir "Escritório").
+    return { id, nome: escritorio ? `${nomeCompletoDoEscritorio(escritorio)} — resp. ${nome}` : nome, cidade, estado }
+  })
 }
 
 /** O contador informado é elegível agora? Conferido no servidor a cada uso. */

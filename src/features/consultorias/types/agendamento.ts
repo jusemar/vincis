@@ -24,7 +24,8 @@ type BaseDoAgendamento = {
   /** O identificador IANA. A tela o exibe quando pode fazer diferença. */
   timezone: string
   duracaoMinutos: number
-  valorCentavos: number
+  /** Nulo na consultoria jurídica: honorário combinado diretamente. */
+  valorCentavos: number | null
   /** `agendada` (de pé) ou `cancelada` (desfeita, mas preservada). */
   status: string
   /**

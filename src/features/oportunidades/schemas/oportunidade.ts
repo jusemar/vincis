@@ -81,6 +81,9 @@ export const NovaOportunidadeSchema = z
     // Vocabulário fechado **da categoria pública escolhida**: uma especialidade
     // jurídica enviada junto de uma solicitação contábil é recusada aqui, e não
     // só escondida na tela.
+    // Catálogo central da categoria — o mesmo que a interface mostra, no
+    // orçamento geral e no privado. Com destinatário, a action ainda confere a
+    // lista dele (`especialidadesPorCategoria`).
     const permitidas = especialidadesDaCategoria(dados.categoria)
     const invalida = dados.especialidades.find(
       (item) => !permitidas.includes(item),

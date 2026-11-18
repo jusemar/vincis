@@ -79,8 +79,13 @@ function Moldura({
       */}
       {fotoUrl ? (
         <div className="relative h-48">
-          {/* `<img>` simples: URL pública externa (Vercel Blob) ou `blob:` da prévia local. */}
-          <img alt={nome} className="w-full h-full object-cover" src={fotoUrl} />
+          {/*
+            `<img>` simples: URL pública externa (Vercel Blob) ou `blob:` da prévia local.
+            A moldura é larga e baixa, e a foto costuma ser um retrato: o recorte
+            ancorado a 20% do topo mantém o rosto inteiro (o centro cortaria a testa).
+            `object-cover` preserva a proporção — recorta, nunca distorce.
+          */}
+          <img alt={nome} className="h-full w-full object-cover object-[center_20%]" src={fotoUrl} />
           {/*
             Favoritar e compartilhar continuam decorativos, como já eram. Ligá-los
             é decisão de outra etapa; removê-los mudaria o card aprovado.
@@ -378,7 +383,14 @@ export function CardConsultoria({
 
         <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-lg mb-6">
           <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <span className="text-sm font-semibold text-foreground">Responde em até 2h úteis</span>
+          {/*
+            Antes: "Responde em até 2h úteis", fixo para todo prestador e sem
+            nenhum dado por trás. Agora a regra real desta agenda: a
+            antecedência mínima que a consultoria exige para agendar.
+          */}
+          <span className="text-sm font-semibold text-foreground">
+            {rotuloAntecedencia(consultoria.antecedenciaMinimaMinutos)}
+          </span>
         </div>
 
         <div className="mb-6">
@@ -480,4 +492,15 @@ export function CardConsultoria({
       </div>
     </Moldura>
   )
+}
+
+/** "Agende com pelo menos 2 h de antecedência", a partir da configuração real. */
+function rotuloAntecedencia(minutos: number): string {
+  if (minutos <= 0) return 'Agendamento sem antecedência mínima'
+  if (minutos % 1440 === 0) {
+    const dias = minutos / 1440
+    return `Agende com pelo menos ${dias} ${dias === 1 ? 'dia' : 'dias'} de antecedência`
+  }
+  if (minutos % 60 === 0) return `Agende com pelo menos ${minutos / 60} h de antecedência`
+  return `Agende com pelo menos ${minutos} min de antecedência`
 }

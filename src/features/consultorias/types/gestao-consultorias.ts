@@ -17,7 +17,8 @@ export type ConsultoriaGestaoDTO = {
   inicioEm: string
   timezone: string
   duracaoMinutos: number
-  valorCentavos: number
+  /** Nulo na consultoria jurídica (honorário direto). */
+  valorCentavos: number | null
   status: string
   remarcacoes: number
   criadoEm: string

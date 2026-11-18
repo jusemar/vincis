@@ -53,6 +53,14 @@ export const ROTA_CADASTRO_PRESTADOR: Record<TipoPrestador, string> = {
   colaborador: '/cadastro-colaborador',
 }
 
+/**
+ * Nome público da categoria do Colaborador que optou pela vitrine pública:
+ * profissional de apoio a escritórios de contabilidade, sem habilitação
+ * regulamentada. É só o nome exibido — o tipo gravado continua `colaborador`,
+ * e nenhuma permissão ou habilitação depende deste texto.
+ */
+export const ROTULO_ASSISTENTE_CONTABIL = 'Assistente Contábil'
+
 /** Rótulos de interface do tipo da pessoa. */
 export const ROTULO_TIPO_PRESTADOR: Record<TipoPrestador, string> = {
   profissional: 'Profissional',

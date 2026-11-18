@@ -1,6 +1,9 @@
 import {
+  CATALOGO_ESPECIALIDADES,
+  CATEGORIAS_PUBLICAS,
   ESPECIALIDADES_POR_CATEGORIA,
   type CategoriaProfissional,
+  type CategoriaPublica,
 } from '@/features/profissionais/constants/taxonomia-profissional'
 
 /**
@@ -13,7 +16,8 @@ import {
  *
  * ## Categoria pública ≠ tipo profissional interno
  *
- * O Cliente escolhe entre **duas** categorias: Contabilidade e Jurídico. Ele
+ * O Cliente escolhe entre **três** categorias: Contabilidade, Jurídico e
+ * Assistente Contábil. Ele
  * não decide se o caso dele é de contador, de especialista fiscal ou de
  * colaborador contábil — esse enquadramento é responsabilidade da plataforma, e
  * pedir isso a quem está justamente com dúvida seria devolver o problema.
@@ -31,65 +35,57 @@ import {
  * dados.
  */
 
-export const CATEGORIAS_OPORTUNIDADE = ['contabilidade', 'advocacia'] as const
+/**
+ * As três categorias públicas, na ordem em que o Cliente as vê. A lista mora no
+ * catálogo central (`CATEGORIAS_PUBLICAS`) para que busca, orçamento e
+ * validação nunca divirjam.
+ */
+export const CATEGORIAS_OPORTUNIDADE = CATEGORIAS_PUBLICAS
 
-export type CategoriaOportunidade = (typeof CATEGORIAS_OPORTUNIDADE)[number]
+export type CategoriaOportunidade = CategoriaPublica
 
+/**
+ * Quem cada categoria alcança — **pelo cadastro**, nunca por palavras da
+ * apresentação ou das especialidades do prestador.
+ *
+ * - Contabilidade: contador e especialista fiscal (tipos internos declarados).
+ * - Jurídico: só quem declarou advocacia (habilitação regulamentada).
+ * - Assistente Contábil: o colaborador que optou pela vitrine pública. O
+ *   colaborador interno de escritório não entra em pedido público nenhum.
+ */
 export const CATEGORIA_OPORTUNIDADE: Record<
   CategoriaOportunidade,
   {
     rotulo: string
     descricao: string
-    /** Tipos internos alcançados por esta categoria pública. */
+    /** Tipos internos (`tipo_profissional`) alcançados por esta categoria. */
     tiposProfissionais: CategoriaProfissional[]
-    /** Especialidades oferecidas ao Cliente dentro da categoria. */
+    /** Alcança o Assistente Contábil (colaborador com vitrine pública). */
+    alcancaAssistenteContabil: boolean
+    /** Especialidades oferecidas ao Cliente — o catálogo central. */
     especialidades: readonly string[]
-    /**
-     * Termos que reconhecem a atuação de um Colaborador nesta área.
-     *
-     * Casam por *substring* no texto livre que o Colaborador escreveu, então
-     * precisam ser inequívocos: um termo genérico como `process` ou `depart`
-     * alcançaria "Melhoria de Processos" e "Departamento Jurídico", tornando
-     * elegível para Contabilidade quem nunca declarou atuação contábil. É a
-     * mesma razão por que dados de teste de TI e Marketing **não** podem virar
-     * porta de entrada — nenhum termo aqui os alcança.
-     */
-    termos: string[]
   }
 > = {
   contabilidade: {
     rotulo: 'Contabilidade',
     descricao: 'Abertura de empresa, impostos, folha e obrigações contábeis.',
-    // Contador e especialista fiscal atendem a mesma demanda do ponto de vista
-    // de quem pede orçamento. Deixar o especialista fiscal de fora esconderia
-    // dele metade do trabalho da própria área.
     tiposProfissionais: ['contabilidade', 'especialista_fiscal'],
-    especialidades: ESPECIALIDADES_POR_CATEGORIA.contabilidade,
-    termos: [
-      'contab',
-      'fiscal',
-      'tribut',
-      'folha de pagamento',
-      'imposto',
-      'departamento pessoal',
-      'escrita',
-    ],
+    alcancaAssistenteContabil: false,
+    especialidades: CATALOGO_ESPECIALIDADES.contabilidade,
   },
   advocacia: {
     rotulo: 'Jurídico - Advogado',
     descricao: 'Contratos, processos e orientação jurídica.',
-    // Habilitação regulamentada: só quem declarou advocacia no cadastro.
     tiposProfissionais: ['advocacia'],
-    especialidades: ESPECIALIDADES_POR_CATEGORIA.advocacia,
-    termos: [
-      'jurid',
-      'jurí',
-      'advoc',
-      'direito',
-      'trabalhista',
-      'contencioso',
-      'litig',
-    ],
+    alcancaAssistenteContabil: false,
+    especialidades: CATALOGO_ESPECIALIDADES.advocacia,
+  },
+  assistente_contabil: {
+    rotulo: 'Assistente Contábil',
+    descricao: 'Apoio operacional e administrativo: documentos, faturamento, contas e rotinas.',
+    tiposProfissionais: [],
+    alcancaAssistenteContabil: true,
+    especialidades: CATALOGO_ESPECIALIDADES.assistente_contabil,
   },
 }
 
@@ -108,6 +104,8 @@ export const CATEGORIA_ATENDIMENTO_DA_OPORTUNIDADE: Record<
 > = {
   contabilidade: 'contabil',
   advocacia: 'juridico',
+  // Apoio operacional contábil: mesmo vocabulário do Atendimento contábil.
+  assistente_contabil: 'contabil',
 }
 
 /** Categoria pública → área do registro na carteira (`AREAS_CLIENTE`). */
@@ -117,6 +115,7 @@ export const AREA_CARTEIRA_DA_OPORTUNIDADE: Record<
 > = {
   contabilidade: 'contabil',
   advocacia: 'juridico',
+  assistente_contabil: 'contabil',
 }
 
 export function rotuloDaCategoria(categoria: string) {

@@ -2,10 +2,11 @@ import { modeloContratacaoPublico } from '@/features/profissionais/constants/mod
 import { situacaoDocumentos } from '@/features/perfil-pro/lib/perfil-pro'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/connection'
+import { nomeDoEscritorioPublico } from '@/features/empresas/queries/escritorio-publico'
 import { perfisProfissionais, usuarios } from '@/db/schema'
 import { obterReputacaoDoPrestador } from '@/features/avaliacoes/queries/reputacao'
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
-import { condicaoPrestadorHabilitado } from '@/features/usuarios/lib/prestador'
+import { condicaoPrestadorPublico, registroDoPrestadorVerificado } from '@/features/usuarios/lib/prestador'
 
 /**
  * Identidade pública de um prestador, para o perfil aberto por `?prestador=`.
@@ -42,11 +43,17 @@ export async function obterIdentidadePublica(prestadorId: string) {
       fotoDestaqueUrl: perfisProfissionais.fotoDestaqueUrl,
       valorHoraCentavos: perfisProfissionais.valorHoraCentavos,
       tipoProfissional: perfisProfissionais.tipoProfissional,
+      // Profissional (cadastro regulamentado aprovado) x Colaborador (sem
+      // habilitação a verificar): decide o selo "Perfil verificado".
+      tipoPrestador: perfisProfissionais.tipoPrestador,
       sobreTitulo: perfisProfissionais.sobreTitulo,
       sobreTexto: perfisProfissionais.sobreTexto,
       numeroRegistro: perfisProfissionais.numeroRegistro,
       estadoRegistro: perfisProfissionais.estadoRegistro,
       modeloContratacaoBruto: perfisProfissionais.modeloContratacao,
+      // Só a presença do comprovante; a chave do arquivo nunca sai daqui.
+      comprovanteRegistroChave: perfisProfissionais.comprovanteRegistroChave,
+      modalidadeAtuacao: perfisProfissionais.modalidadeAtuacao,
     })
     .from(usuarios)
     .innerJoin(
@@ -58,7 +65,8 @@ export async function obterIdentidadePublica(prestadorId: string) {
         eq(usuarios.id, prestadorId),
         eq(usuarios.status, 'ativo'),
         condicaoContaVerificada(),
-        condicaoPrestadorHabilitado(),
+        // Público: profissional habilitado ou colaborador com vitrine pública.
+        condicaoPrestadorPublico(),
       ),
     )
     .limit(1)
@@ -80,10 +88,17 @@ export async function obterIdentidadePublica(prestadorId: string) {
   const reputacao = await obterReputacaoDoPrestador(prestadorId)
   // Perfil Essencial/Pro — só advocacia; identifica recursos, não qualidade.
   const documentos = await situacaoDocumentos(db, prestadorId)
+  // Escritório aparece pelo nome do escritório; a pessoa vira o responsável.
+  const escritorioNome =
+    prestador.modalidadeAtuacao === 'escritorio'
+      ? await nomeDoEscritorioPublico(prestadorId)
+      : null
 
-  const { numeroRegistro, estadoRegistro, modeloContratacaoBruto, ...publico } = prestador
+  const { numeroRegistro, estadoRegistro, modeloContratacaoBruto, comprovanteRegistroChave, ...publico } = prestador
   return {
     ...publico,
+    // Regra única com os cards da vitrine (`usuarios/lib/prestador`).
+    registroVerificado: registroDoPrestadorVerificado(prestador.tipoPrestador, comprovanteRegistroChave),
     // Registro da OAB já salvo no cadastro (sem campo novo), para "Formação".
     registroProfissional:
       prestador.tipoProfissional === 'advocacia' ? rotuloRegistroOab(numeroRegistro, estadoRegistro) : null,
@@ -95,6 +110,7 @@ export async function obterIdentidadePublica(prestadorId: string) {
     // Contábil: modelo comercial só quando definido pelo gestor.
     modeloContratacao: modeloContratacaoPublico(prestador.tipoProfissional, modeloContratacaoBruto),
     totalAvaliacoes: reputacao.total,
+    escritorioNome,
   }
 }
 

@@ -33,3 +33,21 @@ export async function autorizarPrestador() {
 
   return usuario
 }
+
+/**
+ * Quem pode montar e publicar uma tabela de mensalidade própria.
+ *
+ * Só o prestador **Profissional**. O Colaborador (profissional de apoio, sem
+ * habilitação regulamentada) oferece apenas serviços avulsos e a agenda: não
+ * cria recorrência. O menu esconde "Meus preços" para ele, mas é aqui que a
+ * regra vale — rota e action relêem o tipo no banco.
+ */
+export async function autorizarPrestadorComMensalidade() {
+  const usuario = await obterSessaoServidor()
+  if (!usuario) return null
+
+  const acesso = await resolverAcessoUsuario(usuario.id)
+  if (!acesso || acesso.tipoPrestador !== 'profissional' || !acesso.habilitado) return null
+
+  return usuario
+}

@@ -73,6 +73,8 @@ export function ConfiguracaoDaConsultoria() {
     undefined,
   )
   const [bloqueios, setBloqueios] = useState<Bloqueio[]>([])
+  /** Advocacia: sem campo de valor — honorário combinado diretamente. */
+  const [juridico, setJuridico] = useState(false)
   const [aviso, setAviso] = useState<{ tom: 'ok' | 'erro'; texto: string } | null>(null)
 
   /**
@@ -88,6 +90,7 @@ export function ConfiguracaoDaConsultoria() {
       listarBloqueiosDaAgenda(),
     ])
     setDados(consultoria.sucesso ? consultoria.dados : null)
+    setJuridico(consultoria.sucesso ? consultoria.honorariosDiretos : false)
     setBloqueios(lista.sucesso ? lista.dados : [])
   }
 
@@ -98,6 +101,7 @@ export function ConfiguracaoDaConsultoria() {
       .then(([consultoria, lista]) => {
         if (!vivo) return
         setDados(consultoria.sucesso ? consultoria.dados : null)
+        setJuridico(consultoria.sucesso ? consultoria.honorariosDiretos : false)
         setBloqueios(lista.sucesso ? lista.dados : [])
       })
       .catch(() => {
@@ -117,9 +121,11 @@ export function ConfiguracaoDaConsultoria() {
       <div className="rounded-xl border border-dashed border-border p-6 text-center">
         <p className="font-medium">Você ainda não configurou sua consultoria.</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Defina preço, duração e horários para que os clientes possam agendar.
+          {juridico
+            ? 'Defina duração e horários para que os clientes possam solicitar o atendimento. Os honorários são combinados diretamente com cada cliente.'
+            : 'Defina preço, duração e horários para que os clientes possam agendar.'}
         </p>
-        <ConsultoriaForm dados={null} aoSalvar={recarregar} aoAvisar={setAviso} />
+        <ConsultoriaForm dados={null} juridico={juridico} aoSalvar={recarregar} aoAvisar={setAviso} />
       </div>
     )
   }
@@ -251,6 +257,7 @@ function CartaoDaConsultoria({
       {editando ? (
         <ConsultoriaForm
           dados={dados}
+          juridico={dados.valorCentavos === null}
           aoSalvar={async () => {
             setEditando(false)
             await aoSalvar()
@@ -259,7 +266,10 @@ function CartaoDaConsultoria({
         />
       ) : (
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Info rotulo="Preço" valor={formatarPreco(dados.valorCentavos)} />
+          <Info
+            rotulo={dados.valorCentavos === null ? 'Honorários' : 'Preço'}
+            valor={dados.valorCentavos === null ? 'Combinados com o cliente' : formatarPreco(dados.valorCentavos)}
+          />
           <Info rotulo="Duração" valor={`${dados.duracaoMinutos} minutos`} />
           <Info
             rotulo="Antecedência mínima"
@@ -301,10 +311,13 @@ const HORIZONTES = [30, 60, 90]
 
 function ConsultoriaForm({
   dados,
+  juridico,
   aoSalvar,
   aoAvisar,
 }: {
   dados: ConsultoriaDoPrestadorDTO | null
+  /** Advocacia: sem valor — o servidor também descarta qualquer valor enviado. */
+  juridico: boolean
   aoSalvar: () => Promise<void>
   aoAvisar: Aviso
 }) {
@@ -315,7 +328,7 @@ function ConsultoriaForm({
   // O preço vive em reais no formulário e em centavos no servidor. A conversão
   // acontece num lugar só, no envio.
   const [reais, setReais] = useState(
-    dados ? (dados.valorCentavos / 100).toFixed(2) : '150.00',
+    dados?.valorCentavos ? (dados.valorCentavos / 100).toFixed(2) : '150.00',
   )
   const [duracao, setDuracao] = useState(dados?.duracaoMinutos ?? 60)
   const [intervalo, setIntervalo] = useState(dados?.intervaloMinutos ?? 0)
@@ -329,7 +342,7 @@ function ConsultoriaForm({
       const r = await salvarConsultoria({
         titulo,
         descricaoCurta: descricao,
-        valorCentavos: Math.round(Number(reais.replace(',', '.')) * 100),
+        valorCentavos: juridico ? null : Math.round(Number(reais.replace(',', '.')) * 100),
         duracaoMinutos: duracao,
         intervaloMinutos: intervalo,
         antecedenciaMinimaMinutos: antecedencia,
@@ -352,15 +365,21 @@ function ConsultoriaForm({
           className={entrada}
         />
       </Campo>
-      <Campo rotulo="Preço (R$)" htmlFor="cfg-preco">
-        <input
-          id="cfg-preco"
-          inputMode="decimal"
-          value={reais}
-          onChange={(e) => setReais(e.target.value)}
-          className={entrada}
-        />
-      </Campo>
+      {juridico ? (
+        <p className="self-end rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+          Honorários combinados diretamente com o cliente. A agenda pública não mostra valor e a Vincis não cobra comissão.
+        </p>
+      ) : (
+        <Campo rotulo="Preço (R$)" htmlFor="cfg-preco">
+          <input
+            id="cfg-preco"
+            inputMode="decimal"
+            value={reais}
+            onChange={(e) => setReais(e.target.value)}
+            className={entrada}
+          />
+        </Campo>
+      )}
       <Campo rotulo="Resumo" htmlFor="cfg-descricao" className="sm:col-span-2">
         <input
           id="cfg-descricao"

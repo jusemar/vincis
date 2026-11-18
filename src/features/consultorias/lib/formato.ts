@@ -18,6 +18,14 @@ export function formatarPreco(centavos: number): string {
 }
 
 /**
+ * Valor de uma consultoria contratada. Nulo = consultoria jurídica: o
+ * honorário é combinado diretamente e a plataforma não tem valor a mostrar.
+ */
+export function formatarValorConsultoria(centavos: number | null): string {
+  return centavos === null ? 'Honorários combinados com o profissional' : formatarPreco(centavos)
+}
+
+/**
  * `2026-08-31` → `31 de agosto de 2026`.
  *
  * A data local da agenda é lida como UTC de propósito: ela já é a data no fuso

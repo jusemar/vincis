@@ -402,7 +402,7 @@ describe('elegibilidade profissional', () => {
     expect(gravada).toBeUndefined()
   })
 
-  it('dados de teste de TI e Marketing não tornam ninguém elegível para Contabilidade', async () => {
+  it('palavras da atuação não tornam colaborador elegível para Contabilidade', async () => {
     const contabil = await solicitar(CONTABIL)
 
     const doTI = await listarOportunidadesDoPrestador(contas.colaboradorTI.id)
@@ -411,11 +411,13 @@ describe('elegibilidade profissional', () => {
       await obterVinculoComOportunidade(contabil, contas.colaboradorTI.id),
     ).toBeNull()
 
-    // O colaborador com atuação contábil real continua funcionando.
+    // Colaborador interno com atuação contábil escrita também fica fora: a
+    // categoria vem do cadastro, nunca de palavras da atuação, e colaborador
+    // interno não entra em pedido público.
     const doContabil = await listarOportunidadesDoPrestador(
       contas.colaboradorContabil.id,
     )
-    expect(doContabil.map((item) => item.id)).toContain(contabil)
+    expect(doContabil.map((item) => item.id)).not.toContain(contabil)
   })
 
   it('prestador não habilitado continua bloqueado', async () => {

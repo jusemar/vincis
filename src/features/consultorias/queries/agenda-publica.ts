@@ -11,7 +11,7 @@ import {
   usuarios,
 } from '@/db/schema'
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
-import { condicaoPrestadorHabilitado } from '@/features/usuarios/lib/prestador'
+import { condicaoPrestadorPublico } from '@/features/usuarios/lib/prestador'
 import type { ModalidadeConsultoria, TipoExcecao } from '../constants/consultoria'
 import {
   type ExcecaoDoDia,
@@ -100,7 +100,8 @@ async function carregarConfiguracao(
         eq(consultoriaConfiguracoes.ativa, true),
         eq(usuarios.status, 'ativo'),
         condicaoContaVerificada(),
-        condicaoPrestadorHabilitado(),
+        // Público: profissional habilitado ou colaborador com vitrine pública.
+        condicaoPrestadorPublico(),
       ),
     )
     .limit(1)
@@ -108,12 +109,14 @@ async function carregarConfiguracao(
   if (!registro) return null
   const { tipoProfissional, ...configuracao } = registro
   const juridico = honorariosDiretos(tipoProfissional)
+  // Fora da advocacia, consultoria sem valor não é oferecida (não há o que cobrar).
+  if (!juridico && registro.valorCentavos === null) return null
   return {
     ...configuracao,
     modalidade: registro.modalidade as ModalidadeConsultoria,
     // Advogado: o valor configurado não sai para o público — honorário é
     // combinado direto. A reserva lê o valor da configuração no servidor.
-    valorCentavos: juridico ? 0 : registro.valorCentavos,
+    valorCentavos: juridico ? 0 : (registro.valorCentavos ?? 0),
     honorariosDiretos: juridico,
   }
 }

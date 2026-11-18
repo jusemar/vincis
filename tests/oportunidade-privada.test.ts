@@ -26,6 +26,7 @@ import {
   usuariosPerfis,
 } from '@/db/schema'
 import { TIPOS_NOTIFICACAO } from '@/features/notificacoes/constants/notificacao'
+import { CATEGORIA_OPORTUNIDADE } from '@/features/oportunidades/constants/oportunidade'
 import {
   aceitarProposta,
   criarContraproposta,
@@ -70,15 +71,20 @@ type Chave =
   | 'contador'
   | 'contadorRival'
   | 'advogado'
+  | 'assistente'
+  | 'colaboradorInterno'
 
 const DEFINICOES: Record<
   Chave,
   {
     perfil: string
     confirmada?: boolean
-    prestador?: 'profissional'
+    prestador?: 'profissional' | 'colaborador'
     tipoProfissional?: string
     statusAnalise?: string
+    vitrinePublica?: boolean
+    /** Atuação em texto livre; o padrão casa com a categoria contábil. */
+    especialidades?: string[]
   }
 > = {
   cliente: { perfil: 'cliente' },
@@ -103,6 +109,25 @@ const DEFINICOES: Record<
     prestador: 'profissional',
     tipoProfissional: 'advocacia',
     statusAnalise: 'aprovado',
+  },
+  // Assistente Contábil: colaborador na vitrine pública, com atuação que não
+  // casa com nenhum termo da categoria — recebe só o pedido dirigido a ele.
+  assistente: {
+    perfil: 'colaborador',
+    prestador: 'colaborador',
+    tipoProfissional: 'colaborador',
+    statusAnalise: 'ativo',
+    vitrinePublica: true,
+    especialidades: ['Apoio ao faturamento', 'Organização de documentos'],
+  },
+  // Mesmo cadastro, mas interno de escritório (fora da vitrine).
+  colaboradorInterno: {
+    perfil: 'colaborador',
+    prestador: 'colaborador',
+    tipoProfissional: 'colaborador',
+    statusAnalise: 'ativo',
+    vitrinePublica: false,
+    especialidades: ['Apoio ao faturamento', 'Organização de documentos'],
   },
 }
 
@@ -244,7 +269,8 @@ async function montar() {
         cidade: 'São Paulo',
         estado: 'SP',
         areasAtuacao: [],
-        especialidades: ['Planejamento Tributário'],
+        especialidades: def.especialidades ?? ['Planejamento Tributário'],
+        vitrinePublica: def.vitrinePublica ?? false,
         telefoneContato: '11999999999',
         emailProfissional: `${chave}${SUFIXO}`,
         statusAnalise: def.statusAnalise!,
@@ -745,5 +771,117 @@ describe('o destinatário oferecido ao formulário', () => {
   it('quem não é prestador habilitado não recebe solicitação direta', async () => {
     expect(await obterDestinatarioPrivado(contas.cliente.id)).toBeNull()
     expect(await obterDestinatarioPrivado(randomUUID())).toBeNull()
+  })
+})
+
+describe('Assistente Contábil no pedido privado', () => {
+  // Mesmos campos obrigatórios do pedido contábil; só a categoria muda.
+  const ASSISTENTE = { ...CONTABIL, categoria: 'assistente_contabil' }
+
+  it('o perfil oferece pedido privado na categoria dele; o colaborador interno não', async () => {
+    const assistente = await obterDestinatarioPrivado(contas.assistente.id)
+    expect(assistente?.categorias).toEqual(['assistente_contabil'])
+    expect(await obterDestinatarioPrivado(contas.colaboradorInterno.id)).toBeNull()
+  })
+
+  it('o pedido chega só a ele, e ele pode responder', async () => {
+    const id = await solicitarPrivada(ASSISTENTE, 'cliente', 'assistente')
+
+    const [linha] = await db.select().from(oportunidades).where(eq(oportunidades.id, id))
+    expect(linha.visibilidade).toBe('privada')
+    expect(linha.destinatarioId).toBe(contas.assistente.id)
+
+    expect(await obterVinculoComOportunidade(id, contas.assistente.id)).toBe('prestador')
+    expect(await obterVinculoComOportunidade(id, contas.contador.id)).toBeNull()
+    expect((await listarOportunidadesDoPrestador(contas.assistente.id)).map((o) => o.id)).toEqual([id])
+    expect((await listarOportunidadesDoPrestador(contas.contador.id)).map((o) => o.id)).not.toContain(id)
+    expect(await contarDisponiveisPorOrigem(contas.assistente.id)).toEqual({ total: 1, diretas: 1 })
+
+    const avisos = await db
+      .select({ destinatarioId: notificacoes.destinatarioId })
+      .from(notificacoes)
+      .where(eq(notificacoes.recursoId, id))
+    expect(avisos.map((aviso) => aviso.destinatarioId)).toEqual([contas.assistente.id])
+
+    // Outro profissional não envia proposta, mesmo com o id na mão.
+    expect((await propor('contador', id)).sucesso).toBe(false)
+    expect((await propor('assistente', id)).sucesso).toBe(true)
+  })
+
+  it('pedido privado ao assistente não pode usar a categoria Contabilidade', async () => {
+    entrarComo(contas.cliente.token)
+    const resultado = await criarOportunidade(
+      formulario({ ...CONTABIL, destinatarioId: contas.assistente.id }),
+    )
+    expect(resultado.sucesso).toBe(false)
+  })
+
+  it('especialidades: o catálogo da categoria do destinatário, nunca de outra', async () => {
+    const assistente = await obterDestinatarioPrivado(contas.assistente.id)
+    expect(assistente?.especialidadesPorCategoria).toEqual({
+      assistente_contabil: [...CATEGORIA_OPORTUNIDADE.assistente_contabil.especialidades],
+    })
+    const contador = await obterDestinatarioPrivado(contas.contador.id)
+    expect(contador?.especialidadesPorCategoria).toEqual({
+      contabilidade: [...CATEGORIA_OPORTUNIDADE.contabilidade.especialidades],
+    })
+
+    entrarComo(contas.cliente.token)
+    const paraAssistente = (especialidades: string[]) =>
+      criarOportunidade(
+        formulario({ ...ASSISTENTE, destinatarioId: contas.assistente.id }, especialidades),
+      )
+    expect((await paraAssistente(['Simples Nacional'])).sucesso).toBe(false)
+    const aceita = await paraAssistente(['Faturamento'])
+    expect(aceita.sucesso).toBe(true)
+    const id = (aceita as { dados: { oportunidadeId: string } }).dados.oportunidadeId
+    const [linha] = await db.select().from(oportunidades).where(eq(oportunidades.id, id))
+    expect(linha.especialidades).toEqual(['Faturamento'])
+
+    const paraContador = (especialidades: string[]) =>
+      criarOportunidade(
+        formulario({ ...CONTABIL, destinatarioId: contas.contador.id }, especialidades),
+      )
+    expect((await paraContador(['Faturamento'])).sucesso).toBe(false)
+    expect((await paraContador(['Simples Nacional'])).sucesso).toBe(true)
+  })
+
+  it('a solicitação pública de Contabilidade não chega ao assistente', async () => {
+    entrarComo(contas.cliente.token)
+    const resultado = await criarOportunidade(formulario(CONTABIL))
+    expect(resultado.sucesso).toBe(true)
+    const id = (resultado as { dados: { oportunidadeId: string } }).dados.oportunidadeId
+
+    expect(await obterVinculoComOportunidade(id, contas.assistente.id)).toBeNull()
+    expect((await listarOportunidadesDoPrestador(contas.assistente.id)).map((o) => o.id)).not.toContain(id)
+    expect((await propor('assistente', id)).sucesso).toBe(false)
+  })
+})
+
+describe('vínculo privado sobrevive à mudança de categoria do destinatário', () => {
+  it('o destinatário mantém o acesso; terceiros continuam bloqueados', async () => {
+    // Pedido de Contabilidade dirigido ao contador...
+    const id = await solicitarPrivada()
+    // ...e depois o cadastro dele muda de categoria (como a Juliana, que passou
+    // a Assistente Contábil). A categoria histórica do pedido não é reescrita.
+    await db
+      .update(perfisProfissionais)
+      .set({ tipoProfissional: 'advocacia' })
+      .where(eq(perfisProfissionais.usuarioId, contas.contador.id))
+
+    const [linha] = await db.select().from(oportunidades).where(eq(oportunidades.id, id))
+    expect(linha.categoria).toBe('contabilidade')
+    expect(linha.visibilidade).toBe('privada')
+
+    expect(await obterVinculoComOportunidade(id, contas.cliente.id)).toBe('cliente')
+    expect(await obterVinculoComOportunidade(id, contas.contador.id)).toBe('prestador')
+    expect((await listarOportunidadesDoPrestador(contas.contador.id)).map((o) => o.id)).toContain(id)
+    expect((await propor('contador', id)).sucesso).toBe(true)
+
+    // Terceiros: nem o contador rival (mesma categoria do pedido), nem o advogado.
+    expect(await obterVinculoComOportunidade(id, contas.contadorRival.id)).toBeNull()
+    expect(await obterVinculoComOportunidade(id, contas.advogado.id)).toBeNull()
+    expect((await listarOportunidadesDoPrestador(contas.contadorRival.id)).map((o) => o.id)).not.toContain(id)
+    expect((await propor('contadorRival', id)).sucesso).toBe(false)
   })
 })

@@ -80,7 +80,9 @@ export type AgendaDoDiaDTO = {
 }
 
 /** A configuração como o próprio Profissional a edita. */
-export type ConsultoriaDoPrestadorDTO = ConsultoriaPublicaDTO & {
+export type ConsultoriaDoPrestadorDTO = Omit<ConsultoriaPublicaDTO, 'valorCentavos'> & {
+  /** Nulo na advocacia: honorário combinado diretamente, sem valor na plataforma. */
+  valorCentavos: number | null
   intervaloMinutos: number
   ativa: boolean
   faixas: FaixaSemanalDoPrestadorDTO[]

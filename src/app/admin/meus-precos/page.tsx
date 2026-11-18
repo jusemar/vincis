@@ -7,7 +7,7 @@ import {
 } from '@/features/precificacao/lib/registro'
 import type { TabelaPrecificacao } from '@/features/precificacao/types/precificacao'
 import { MeusPrecosPage } from '@/features/precificacao-profissional/components/painel/MeusPrecosPage'
-import { autorizarPrestador } from '@/features/precificacao-profissional/lib/autorizar-prestador'
+import { autorizarPrestadorComMensalidade } from '@/features/precificacao-profissional/lib/autorizar-prestador'
 import {
   obterConfiguracaoDoProfissional,
   obterEstruturaDaGrade,
@@ -70,7 +70,8 @@ async function carregar(profissionalId: string): Promise<Dados | null> {
 }
 
 export default async function MeusPrecosRoute() {
-  const prestador = await autorizarPrestador()
+  // Colaborador não tem mensalidade própria: volta ao painel.
+  const prestador = await autorizarPrestadorComMensalidade()
   if (!prestador) redirect(ROTA_ADMIN)
 
   const dados = await carregar(prestador.id)

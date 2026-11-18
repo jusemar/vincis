@@ -71,6 +71,7 @@ export default async function PrecosDoProfissionalRoute({
     <PlanosDoProfissional
       tabela={precificacao.tabela}
       nome={precificacao.nome}
+      responsavel={precificacao.responsavel}
       primeiroNome={precificacao.primeiroNome}
       prestadorId={precificacao.prestadorId}
       autenticado={sessao !== null}

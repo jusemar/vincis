@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REGIMES_TRIBUTARIOS } from "./perfil-profissional";
+import { REGIMES_TRIBUTARIOS, apresentacaoDoPerfil } from "./perfil-profissional";
 
 /**
  * Whitelist da edição inline do perfil público (vitrine).
@@ -20,11 +20,7 @@ const listaDeStrings = (maxItens: number, maxCadaItem: number) =>
 const anoAtual = new Date().getFullYear();
 
 export const VitrineProfissionalSchema = z.object({
-  apresentacao: z
-    .string()
-    .trim()
-    .min(30, "A apresentação deve ter pelo menos 30 caracteres.")
-    .max(1000, "A apresentação deve ter no máximo 1000 caracteres."),
+  apresentacao: apresentacaoDoPerfil,
   especialidades: listaDeStrings(30, 80),
   certificacoes: listaDeStrings(30, 120),
   formacao: z.string().trim().max(255).optional().default(""),

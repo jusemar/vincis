@@ -39,7 +39,7 @@ function paraDTO(
     fimEm: Date
     expiraEm: Date
     duracaoMinutos: number
-    valorCentavos: number
+    valorCentavos: number | null
     timezone: string
   },
   resumo: ResumoContratacaoDTO,
@@ -54,7 +54,8 @@ function paraDTO(
     fimEm: registro.fimEm,
     expiraEm: registro.expiraEm,
     duracaoMinutos: registro.duracaoMinutos,
-    valorCentavos: registro.valorCentavos,
+    // Jurídica: sem valor na plataforma; o público recebe 0 e `honorariosDiretos`.
+    valorCentavos: registro.valorCentavos ?? 0,
   }
 }
 
@@ -253,9 +254,8 @@ export async function reservarHorarioDaConsultoria(
           inicioEm: resumo.inicioEm,
           fimEm: resumo.fimEm,
           expiraEm: expiracaoDe(agora, HOLD_CONSULTORIA_MINUTOS),
-          // Advogado: o resumo público não traz valor (honorário combinado
-          // direto); o snapshot interno vem da configuração, só para registro.
-          valorCentavos: resumo.honorariosDiretos ? configuracao.valorCentavos : resumo.valorCentavos,
+          // Advogado: honorário combinado direto — a reserva não guarda valor.
+          valorCentavos: resumo.honorariosDiretos ? null : resumo.valorCentavos,
           duracaoMinutos: resumo.duracaoMinutos,
           timezone: resumo.timezone,
           descricao: resumo.descricao,

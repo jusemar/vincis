@@ -71,7 +71,8 @@ export const consultoriaAgendamentos = pgTable(
     inicioEm: timestamp('inicio_em').notNull(),
     fimEm: timestamp('fim_em').notNull(),
     timezone: varchar('timezone', { length: 64 }).notNull(),
-    valorCentavos: integer('valor_centavos').notNull(),
+    // Nulo = consultoria jurídica (honorário combinado diretamente).
+    valorCentavos: integer('valor_centavos'),
     duracaoMinutos: integer('duracao_minutos').notNull(),
     /** O assunto que o Cliente escreveu. Privado — ver a consulta de agenda. */
     descricao: varchar('descricao', { length: 1000 }).notNull(),
@@ -281,7 +282,7 @@ export const consultoriaAgendamentos = pgTable(
     ),
     valorPositivo: check(
       'consultoria_agendamentos_valor_positivo',
-      sql`valor_centavos > 0`,
+      sql`valor_centavos is null or valor_centavos > 0`,
     ),
   }),
 )

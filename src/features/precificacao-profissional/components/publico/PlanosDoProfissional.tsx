@@ -31,6 +31,7 @@ import { ConfiguradorDaEmpresa } from './ConfiguradorDaEmpresa'
 export function PlanosDoProfissional({
   tabela,
   nome,
+  responsavel = null,
   primeiroNome,
   prestadorId,
   autenticado = false,
@@ -40,6 +41,8 @@ export function PlanosDoProfissional({
 }: {
   tabela: TabelaPrecificacao
   nome: string
+  /** Pessoa responsável quando `nome` é um escritório. */
+  responsavel?: string | null
   primeiroNome: string
   /**
    * De quem é esta tabela. Ausente na prévia do painel, que não cria nada.
@@ -60,6 +63,15 @@ export function PlanosDoProfissional({
   const [respostas, setRespostas] = useState<RespostasPrecificacao>(() =>
     respostasIniciais(tabela),
   )
+  /**
+   * Contador "Contratação pela Vincis": a contabilidade mensal é contratada em
+   * /precos, pela tabela central da Vincis, escolhendo o contador. A tabela
+   * desta página é referência — não abre contratação nem proposta recorrente
+   * (proposta recorrente é exclusiva do Autônomo). Por isso, nesse modelo, a
+   * página fala em "referência" e aponta para os planos da Vincis.
+   */
+  const referenciaVincis = modeloContratacao === 'vincis' && !demonstracao
+  const quemEscolher = responsavel ? `${responsavel} (${nome})` : nome
 
   return (
     <main className={demonstracao ? '' : 'min-h-screen bg-background'}>
@@ -79,11 +91,29 @@ export function PlanosDoProfissional({
               Planos e preços
             </p>
             <h1 className="mt-3 max-w-3xl text-3xl leading-[1.1] font-bold text-foreground sm:text-5xl">
-              Quanto {primeiroNome} cobra para cuidar da sua contabilidade
+              {referenciaVincis
+                ? `Valores de referência de ${primeiroNome}`
+                : `Quanto ${primeiroNome} cobra para cuidar da sua contabilidade`}
             </h1>
+            {responsavel ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Responsável técnico: <span className="font-semibold text-foreground">{responsavel}</span>
+              </p>
+            ) : null}
             <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Responda sobre a empresa e o valor mensal aparece na hora. Os
-              preços são definidos por {nome} — não são a tabela da Vincis.
+              {referenciaVincis ? (
+                <>
+                  Simule o valor mensal que {nome} usa como referência para o
+                  perfil da sua empresa. A contratação mensal pela Vincis é feita
+                  nos planos da Vincis, com o preço da tabela da Vincis — lá você
+                  pode escolher {quemEscolher} como contador responsável.
+                </>
+              ) : (
+                <>
+                  Responda sobre a empresa e o valor mensal aparece na hora. Os
+                  preços são definidos por {nome} — não são a tabela da Vincis.
+                </>
+              )}
             </p>
           </div>
         </section>
@@ -132,7 +162,14 @@ export function PlanosDoProfissional({
                   Profissional está vendo a **própria** tabela — não há a quem
                   se dirigir, e o botão seria uma armadilha.
                 */
-                demonstracao || !prestadorId ? null : (
+                demonstracao || !prestadorId ? null : referenciaVincis ? (
+                  <Link
+                    href="/precos"
+                    className="flex w-full items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Contratar pelos planos da Vincis
+                  </Link>
+                ) : (
                   <BotaoDeInteresse
                     prestadorId={prestadorId}
                     primeiroNome={primeiroNome}
@@ -145,8 +182,11 @@ export function PlanosDoProfissional({
             />
 
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Preço calculado com base nas informações fornecidas.{' '}
-              {demonstracao || !prestadorId
+              {referenciaVincis
+                ? 'Valor de referência calculado com base nas informações fornecidas. O valor contratado é o do plano escolhido nos planos da Vincis.'
+                : null}
+              {referenciaVincis ? null : <>Preço calculado com base nas informações fornecidas.{' '}</>}
+              {referenciaVincis ? null : demonstracao || !prestadorId
                 ? `A proposta final é confirmada por ${primeiroNome} após a análise dos documentos da empresa.`
                 : 'Demonstrar interesse não é contratação: o contato e a negociação são realizados diretamente com o profissional.'}
             </p>

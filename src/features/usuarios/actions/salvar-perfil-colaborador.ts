@@ -113,6 +113,8 @@ export async function salvarPerfilColaborador(dados: PerfilColaboradorDTO) {
     certificacoes: listaDeTexto(valor.certificacoes),
     valorHoraCentavos: Math.round(valor.valorHora * 100),
     disponivelAtendimento: valor.disponivelAtendimento,
+    // Prestador público só por escolha explícita do colaborador.
+    vitrinePublica: valor.vitrinePublica,
     regimesAtendidos: valor.regimesAtendidos,
     telefoneContato: valor.telefoneContato,
     emailProfissional: valor.emailProfissional,

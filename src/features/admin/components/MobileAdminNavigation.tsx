@@ -83,6 +83,7 @@ const DEMAIS = [
     label: 'Meus preços',
     icon: BadgeDollarSign,
     rota: ROTA_MEUS_PRECOS,
+    exigeMensalidade: true,
   },
   { id: 'achievements', label: 'Conquistas', icon: Award },
 ] as const
@@ -112,6 +113,7 @@ export function MobileAdminNavigation({
   ehPrestador = true,
   podeVerDocumentosFiscais = false,
   contadorParceiroVincis = false,
+  ofereceMensalidade = false,
 }: {
   /**
    * A sessão é do Gestor da Plataforma — resolvido pelo `AdminShell` a partir
@@ -124,6 +126,8 @@ export function MobileAdminNavigation({
   podeVerDocumentosFiscais?: boolean
   /** Contador parceiro Vincis — mostra "Meus clientes Vincis". */
   contadorParceiroVincis?: boolean
+  /** Prestador Profissional: mostra "Meus preços". Ver `AdminShell`. */
+  ofereceMensalidade?: boolean
 }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -133,6 +137,7 @@ export function MobileAdminNavigation({
   // seção — a gaveta "Mais" precisa refletir os dois.
   const demais = DEMAIS.filter((item) => !('exigeFiscal' in item) || podeVerDocumentosFiscais)
     .filter((item) => !('exigeParceiroVincis' in item) || contadorParceiroVincis)
+    .filter((item) => !('exigeMensalidade' in item) || ofereceMensalidade)
     // Módulos com dados fictícios ficam fora do menu em produção.
     .filter((item) => !moduloDemonstracaoOculto(item.id))
   const paginaNoMais = DEMAIS.some((item) =>

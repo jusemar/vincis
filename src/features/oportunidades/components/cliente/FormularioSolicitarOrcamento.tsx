@@ -41,6 +41,9 @@ const CLASSE_AJUDA = 'text-[11px] leading-snug text-muted-foreground'
  * advogado um trabalho contábil por engano, e o servidor confere a mesma coisa
  * contra o cadastro real antes de gravar.
  */
+/** Quantas especialidades a lista compacta mostra antes de "Ver mais". */
+const LIMITE_ESPECIALIDADES_COMPACTO = 8
+
 export type DestinatarioDaSolicitacao = {
   id: string
   nome: string
@@ -50,6 +53,12 @@ export type DestinatarioDaSolicitacao = {
    * Vincis. O campo de anexos sai do formulário (o servidor também recusa).
    */
   documentosPorEmail?: boolean
+  /**
+   * Especialidades que este destinatário oferece, por categoria (resolvidas do
+   * cadastro no servidor). Ausente = vocabulário da categoria. Lista vazia =
+   * campo omitido. O Assistente Contábil oferece só a própria atuação.
+   */
+  especialidadesPorCategoria?: Partial<Record<CategoriaOportunidade, string[]>>
 }
 
 /**
@@ -110,6 +119,20 @@ export function FormularioSolicitarOrcamento({
     categoriasOferecidas[0] ?? 'contabilidade',
   )
   const [especialidades, setEspecialidades] = useState<string[]>([])
+  // As do destinatário quando houver (mesma lista que o servidor aceita);
+  // sem destinatário, o vocabulário da categoria, como sempre.
+  const especialidadesOferecidas: readonly string[] =
+    destinatario?.especialidadesPorCategoria?.[categoria] ??
+    CATEGORIA_OPORTUNIDADE[categoria].especialidades
+  // Lista compacta: as primeiras opções e as já escolhidas; o resto abre em
+  // "Ver mais especialidades". Quebra em linhas — nunca rolagem horizontal.
+  const [mostrarTodas, setMostrarTodas] = useState(false)
+  const visiveis = mostrarTodas
+    ? especialidadesOferecidas
+    : especialidadesOferecidas.filter(
+        (item, indice) => indice < LIMITE_ESPECIALIDADES_COMPACTO || especialidades.includes(item),
+      )
+  const ocultas = especialidadesOferecidas.length - visiveis.length
   const [descricao, setDescricao] = useState(descricaoInicial)
   const [anexos, setAnexos] = useState<File[]>([])
   const [enviando, iniciarTransicao] = useTransition()
@@ -123,9 +146,18 @@ export function FormularioSolicitarOrcamento({
   }
 
   /** Trocar de categoria zera as especialidades: elas pertencem à categoria. */
+  /**
+   * Trocar de categoria remove só as especialidades que não existem na nova
+   * (os catálogos são próprios de cada categoria); descrição, abrangência,
+   * valor e anexos continuam como estavam.
+   */
   function trocarCategoria(nova: CategoriaOportunidade) {
+    const daNova =
+      destinatario?.especialidadesPorCategoria?.[nova] ??
+      CATEGORIA_OPORTUNIDADE[nova].especialidades
     setCategoria(nova)
-    setEspecialidades([])
+    setEspecialidades((atual) => atual.filter((item) => daNova.includes(item)))
+    setMostrarTodas(false)
   }
 
   function enviar(evento: React.FormEvent<HTMLFormElement>) {
@@ -234,12 +266,13 @@ export function FormularioSolicitarOrcamento({
         </div>
       </div>
 
+      {especialidadesOferecidas.length ? (
       <div className="space-y-1.5">
         <Label className="text-xs">Especialidades (opcional)</Label>
         {/* Visíveis, não escondidas em dropdown: são o que ajuda o Cliente a
             reconhecer o próprio caso, e ele precisa vê-las para reconhecer. */}
         <div className="flex flex-wrap gap-1.5">
-          {CATEGORIA_OPORTUNIDADE[categoria].especialidades.map((item) => {
+          {visiveis.map((item) => {
             const escolhida = especialidades.includes(item)
             return (
               <button
@@ -257,8 +290,19 @@ export function FormularioSolicitarOrcamento({
               </button>
             )
           })}
+          {ocultas > 0 || mostrarTodas ? (
+            <button
+              type="button"
+              aria-expanded={mostrarTodas}
+              onClick={() => setMostrarTodas((atual) => !atual)}
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-foreground underline-offset-2 hover:underline"
+            >
+              {mostrarTodas ? 'Ver menos' : `Ver mais especialidades (${ocultas})`}
+            </button>
+          ) : null}
         </div>
       </div>
+      ) : null /* Sem opção adequada: campo opcional omitido; a descrição livre segue. */}
 
       <div className="space-y-1.5">
         <div className="flex items-baseline justify-between gap-3">
@@ -331,7 +375,10 @@ export function FormularioSolicitarOrcamento({
             type="file"
             multiple
             accept=".txt,.pdf,.jpg,.jpeg,.png,text/plain,application/pdf,image/jpeg,image/png"
-            className="sr-only"
+            /* `sr-only` sozinho perdia para o `w-full` do Input: o campo escondido
+               ficava com a largura do card e passava 2px da tela no celular,
+               abrindo rolagem horizontal. 1×1px, sem padding e borda. */
+            className="sr-only h-px w-px border-0 p-0"
             onChange={(e) => setAnexos(Array.from(e.target.files ?? []))}
           />
           <p className={CLASSE_AJUDA}>

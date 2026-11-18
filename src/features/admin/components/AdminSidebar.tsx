@@ -81,6 +81,8 @@ interface SidebarProps {
    * em que completar o cadastro, sem nenhuma mudança de código.
    */
   ehPrestador?: boolean;
+  /** Prestador Profissional: oferece "Meus preços" (mensalidade). Colaborador não. */
+  ofereceMensalidade?: boolean;
 }
 
 /**
@@ -126,7 +128,7 @@ const navItems = [
   // referência e a configuração no servidor, e transformá-la numa seção do
   // painel faria `/admin` carregar as duas em toda visita — inclusive para
   // quem foi ver a Agenda.
-  { id: "meus-precos", label: "Meus preços", icon: BadgeDollarSign, rota: ROTA_MEUS_PRECOS },
+  { id: "meus-precos", label: "Meus preços", icon: BadgeDollarSign, rota: ROTA_MEUS_PRECOS, exigeMensalidade: true },
   { id: "profile", label: "Meu Perfil", icon: User },
   { id: "achievements", label: "Conquistas", icon: Award },
 ];
@@ -156,6 +158,7 @@ export default function AdminSidebar({
   ehPrestador = true,
   podeVerDocumentosFiscais = false,
   contadorParceiroVincis = false,
+  ofereceMensalidade = false,
 }: SidebarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -208,6 +211,7 @@ export default function AdminSidebar({
           navItems
             .filter((item) => !("exigeFiscal" in item) || podeVerDocumentosFiscais)
             .filter((item) => !("exigeParceiroVincis" in item) || contadorParceiroVincis)
+            .filter((item) => !("exigeMensalidade" in item) || ofereceMensalidade)
             // Módulos com dados fictícios ficam fora do menu em produção.
             .filter((item) => !moduloDemonstracaoOculto(item.id))
             .map((item) => {

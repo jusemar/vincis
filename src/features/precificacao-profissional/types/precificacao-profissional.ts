@@ -67,6 +67,8 @@ export type ConfiguracaoDoProfissional = {
 export type PrecificacaoPublicaDoProfissional = {
   prestadorId: string
   nome: string
+  /** Pessoa responsável quando `nome` é um escritório; nulo no individual. */
+  responsavel: string | null
   primeiroNome: string
   tabela: TabelaPrecificacao
   publicadoEm: Date | null

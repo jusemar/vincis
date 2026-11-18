@@ -5,6 +5,22 @@ export const CATEGORIAS_PROFISSIONAIS = [
   "especialista_fiscal",
   "advocacia",
 ] as const;
+/**
+ * Resumo do perfil (o parágrafo do topo do perfil público).
+ *
+ * Opcional: o perfil público pode ficar sem resumo, e o cabeçalho então não
+ * reserva espaço para ele. Preenchido, mantém os limites de sempre (30 a 1000
+ * caracteres). Uma regra só para o cadastro profissional, o do colaborador e a
+ * edição da vitrine — o campo é o mesmo nos três.
+ */
+export const apresentacaoDoPerfil = z
+  .string()
+  .trim()
+  .max(1000, "A apresentação deve ter no máximo 1000 caracteres.")
+  .refine((texto) => texto === "" || texto.length >= 30, {
+    message: "A apresentação deve ter pelo menos 30 caracteres (ou ficar em branco).",
+  });
+
 export const REGIMES_TRIBUTARIOS = [
   "mei",
   "simples_nacional",
@@ -26,11 +42,7 @@ const camposPerfilProfissional = z
       .trim()
       .min(3, "Informe pelo menos uma área de atuação.")
       .max(500, "As áreas de atuação devem ter no máximo 500 caracteres."),
-    apresentacao: z
-      .string()
-      .trim()
-      .min(30, "A apresentação deve ter pelo menos 30 caracteres.")
-      .max(1000, "A apresentação deve ter no máximo 1000 caracteres."),
+    apresentacao: apresentacaoDoPerfil,
     nomeAtuacao: z.string().trim().max(255).optional().default(""),
     modalidadeAtuacao: z.enum(["individual", "escritorio"]),
     cep: z.string().regex(/^\d{8}$/, "Informe um CEP válido com 8 números."),

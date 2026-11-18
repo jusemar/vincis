@@ -70,6 +70,12 @@ export function AdminShell({
   // Contador parceiro Vincis (sessão): oferece "Meus clientes Vincis". A rota
   // confere de novo no servidor — Autônomo não recebe a área.
   const contadorParceiroVincis = Boolean(usuario?.contadorParceiroVincis);
+  // Mensalidade própria ("Meus preços") é do prestador Profissional. O
+  // Colaborador oferece só serviços avulsos e agenda; rota e actions conferem
+  // de novo no servidor (`autorizarPrestador`).
+  const ofereceMensalidade = usuario
+    ? tipoPrestadorDoPerfil(usuario.perfilTipo) === "profissional"
+    : false;
 
   useEffect(() => {
     // Sem sessão e sem erro de conferência: a pessoa realmente não está
@@ -136,6 +142,7 @@ export function AdminShell({
           ehPrestador={ehPrestador}
           podeVerDocumentosFiscais={podeVerDocumentosFiscais}
           contadorParceiroVincis={contadorParceiroVincis}
+          ofereceMensalidade={ofereceMensalidade}
         />
       </div>
 
@@ -151,6 +158,7 @@ export function AdminShell({
         ehPrestador={ehPrestador}
         podeVerDocumentosFiscais={podeVerDocumentosFiscais}
         contadorParceiroVincis={contadorParceiroVincis}
+        ofereceMensalidade={ofereceMensalidade}
       />
     </div>
   );

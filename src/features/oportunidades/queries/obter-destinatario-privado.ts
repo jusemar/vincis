@@ -5,7 +5,10 @@ import { obterReputacaoDoPrestador } from '@/features/avaliacoes/queries/reputac
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
 import { condicaoPrestadorHabilitado } from '@/features/usuarios/lib/prestador'
 import type { CategoriaOportunidade } from '../constants/oportunidade'
-import { categoriasCompativeisDoPrestador } from '../lib/compatibilidade'
+import {
+  categoriasParaSolicitacaoPrivada,
+  especialidadesParaSolicitacaoPrivada,
+} from '../lib/compatibilidade'
 
 /**
  * O Profissional a quem uma solicitação privada pode ser dirigida.
@@ -38,6 +41,12 @@ export type DestinatarioPrivadoDTO = {
   totalAvaliacoes: number
   /** Categorias públicas que este Profissional pode atender. Nunca vazia. */
   categorias: CategoriaOportunidade[]
+  /**
+   * Especialidades que o formulário privado oferece em cada categoria — e as
+   * únicas que o servidor aceita para este destinatário. Lista vazia omite o
+   * campo (opcional).
+   */
+  especialidadesPorCategoria: Partial<Record<CategoriaOportunidade, string[]>>
 }
 
 export async function obterDestinatarioPrivado(
@@ -55,6 +64,7 @@ export async function obterDestinatarioPrivado(
       tipoPrestador: perfisProfissionais.tipoPrestador,
       tipoProfissional: perfisProfissionais.tipoProfissional,
       statusAnalise: perfisProfissionais.statusAnalise,
+      vitrinePublica: perfisProfissionais.vitrinePublica,
     })
     .from(usuarios)
     .innerJoin(
@@ -73,7 +83,8 @@ export async function obterDestinatarioPrivado(
 
   if (!linha) return null
 
-  const categorias = categoriasCompativeisDoPrestador(linha)
+  // Inclui a porta privada do Assistente Contábil (só pedido dirigido a ele).
+  const categorias = categoriasParaSolicitacaoPrivada(linha)
   if (!categorias.length) return null
 
   const reputacao = await obterReputacaoDoPrestador(prestadorId)
@@ -90,5 +101,6 @@ export async function obterDestinatarioPrivado(
       reputacao.mediaEmDecimos != null ? reputacao.mediaEmDecimos / 10 : null,
     totalAvaliacoes: reputacao.total,
     categorias,
+    especialidadesPorCategoria: especialidadesParaSolicitacaoPrivada(linha),
   }
 }
