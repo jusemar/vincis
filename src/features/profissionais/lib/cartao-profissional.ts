@@ -22,6 +22,7 @@ export function paraCartaoProfissional(item: ResultadoPesquisaProfissional): Pro
     tipoProfissional: item.profissao,
     ehEscritorio: Boolean(item.escritorioNome),
     photo: item.avatarUrl ?? null,
+    slugPublico: item.slugPublico,
     profession: (item.profissao === "advocacia"
       ? "advogado"
       : item.profissao === "contabilidade"

@@ -25,6 +25,7 @@ import {
   UsersRound,
   type LucideIcon,
   Handshake,
+  PenLine,
 } from 'lucide-react'
 import { recursosPermitidos } from '../constants/recursos'
 import { ROTA_MEUS_PRECOS } from '@/features/precificacao-profissional/constants/precificacao-profissional'
@@ -36,6 +37,7 @@ import {
   ROTA_DOCUMENTOS_FISCAIS,
   ROTULO_DOCUMENTOS_FISCAIS,
 } from '@/features/documentos-fiscais/constants/rotas'
+import { ROTA_MEUS_ARTIGOS, ROTULO_MEUS_ARTIGOS } from '@/features/conhecimento/constants/rotas'
 import {
   Drawer,
   DrawerContent,
@@ -85,6 +87,8 @@ const DEMAIS = [
     rota: ROTA_MEUS_PRECOS,
     exigeMensalidade: true,
   },
+  // Rota própria — ver o comentário em `AdminSidebar`.
+  { id: 'meus-artigos', label: ROTULO_MEUS_ARTIGOS, icon: PenLine, rota: ROTA_MEUS_ARTIGOS },
   { id: 'achievements', label: 'Conquistas', icon: Award },
 ] as const
 

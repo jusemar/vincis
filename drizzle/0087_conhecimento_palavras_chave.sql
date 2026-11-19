@@ -1,0 +1,1 @@
+ALTER TABLE "conhecimento_artigo_versoes" ADD COLUMN "palavras_chave" text[] DEFAULT '{}' NOT NULL;

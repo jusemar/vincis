@@ -2,7 +2,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
 import { condicaoContaVerificada } from '@/features/usuarios/lib/condicao-verificacao'
-import { condicaoPrestadorPublico } from '@/features/usuarios/lib/prestador'
+import { condicaoVitrinePublica } from '../lib/vitrine-publica'
 
 /**
  * As localizações que o filtro público de `/profissionais` oferece.
@@ -24,8 +24,8 @@ export async function listarLocalizacoesPublicas(): Promise<string[]> {
       and(
         eq(usuarios.status, 'ativo'),
         condicaoContaVerificada(),
-        // Público: profissional habilitado ou colaborador com vitrine pública.
-        condicaoPrestadorPublico(),
+        // Mesma regra da vitrine: público, não ocultado e com foto.
+        condicaoVitrinePublica(),
         sql`length(btrim(${perfisProfissionais.cidade})) > 0`,
       ),
     )

@@ -23,6 +23,8 @@ export async function obterIdentidadePublica(prestadorId: string) {
       // O identificador que o cliente pode citar. É o mesmo que aparece no
       // card do negócio em Parceiros — um profissional, um código.
       codigoPublico: perfisProfissionais.codigoPublico,
+      // Endereço amigável (`/profissionais/<slug>`), estável depois de criado.
+      slugPublico: perfisProfissionais.slugPublico,
       apresentacao: perfisProfissionais.apresentacao,
       experienciaAnos: perfisProfissionais.tempoExperiencia,
       // Campos já persistidos no cadastro, expostos aqui para o perfil público

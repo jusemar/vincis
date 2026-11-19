@@ -21,6 +21,7 @@ export const ROTAS_RESERVADAS_VINCIS = [
   'cliente',
   'como-funciona',
   'confirmar-email',
+  'conhecimento',
   'contato',
   'llms.txt',
   'p',

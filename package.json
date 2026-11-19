@@ -19,6 +19,8 @@
     "db:local:contas-teste": "node --env-file=.env.local --import tsx scripts/banco-local/preparar-contas-teste.ts",
     "db:local:senhas": "node --env-file=.env.local --import tsx scripts/banco-local/redefinir-senhas-locais.ts",
     "db:local:clientes-recorrentes": "node --env-file=.env.local --import tsx scripts/banco-local/clientes-recorrentes.ts",
+    "db:local:senha-conta": "node --env-file=.env.local --import tsx scripts/banco-local/redefinir-senha-conta.ts",
+    "db:local:vitrine": "node --env-file=.env.local --import tsx scripts/banco-local/preparar-vitrine.ts",
     "db:online:migrar": "VINCIS_BANCO_ONLINE=1 drizzle-kit migrate",
     "publicar:homologacao": "node --env-file=.env -e \"require('child_process').execFileSync('bash',['scripts/publicar-homologacao.sh'],{stdio:'inherit',env:process.env})\""
   },
@@ -51,6 +53,8 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/extension-table": "^3.32.0",
     "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
     "@vercel/blob": "^2.6.1",

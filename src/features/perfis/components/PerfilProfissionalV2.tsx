@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -343,6 +343,16 @@ export type FaqPublico = {
 };
 
 type PerfilProfissionalV2Props = {
+  /**
+   * Aviso só para o dono (perfil fora da vitrine). Montado no servidor; o
+   * componente só decide onde desenhar.
+   */
+  avisoDono?: ReactNode;
+  /**
+   * Seção "Artigos deste profissional", montada no servidor a partir da
+   * Central de Conhecimento. Ausente na vitrine de demonstração.
+   */
+  secaoArtigos?: ReactNode;
   identidade?: IdentidadePublica;
   /** Endereço que o botão Compartilhar entrega. Já resolvido no servidor. */
   linkCompartilhavel?: string | null;
@@ -419,6 +429,8 @@ type PerfilProfissionalV2Props = {
 };
 
 export default function PerfilProfissionalV2({
+  avisoDono,
+  secaoArtigos,
   identidade,
   linkCompartilhavel,
   servicos,
@@ -956,6 +968,7 @@ export default function PerfilProfissionalV2({
         <div className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-8">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-8">
+              {avisoDono}
               {/* Breadcrumb */}
               <div className="flex items-center justify-between gap-3 mb-4">
                 <motion.nav
@@ -2032,6 +2045,9 @@ export default function PerfilProfissionalV2({
             )}
           </section>
           </motion.div>
+
+          {/* Artigos deste profissional (Central de Conhecimento). */}
+          {secaoArtigos}
         </div>
 
         {/* Sticky Sidebar (4 cols) */}

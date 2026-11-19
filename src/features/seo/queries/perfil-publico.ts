@@ -38,6 +38,7 @@ export const obterSeoDoPerfil = cache(async (prestadorId: string | undefined): P
 
     const dados: DadosSeoPerfil = {
       prestadorId,
+      slug: identidade.slugPublico,
       nome: identidade.nome,
       escritorioNome: identidade.escritorioNome,
       tipoProfissional: identidade.tipoProfissional,

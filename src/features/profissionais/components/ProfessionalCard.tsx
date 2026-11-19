@@ -10,6 +10,7 @@ import { tituloDoEscritorio } from "@/features/empresas/lib/titulo-escritorio";
 import { identificacaoProfissional } from "../lib/identificacao-profissional";
 import { SeloModeloContratacao } from "./SeloModeloContratacao";
 import type { Professional } from "../types/profissionais";
+import { caminhoDoPerfilPublico } from "@/features/perfis/constants/rotas-perfil";
 
 /** Iniciais para o avatar de quem ainda não enviou foto. */
 function iniciais(nome: string) {
@@ -292,7 +293,8 @@ const ProfessionalCard = ({
             onClick={(e) => {
               e.stopPropagation();
               if (!professional.isAvailable) return;
-              router.push(`/perfil-profissional?prestador=${professional.id}`);
+              // Endereço amigável quando existe; o antigo redireciona para ele.
+              router.push(caminhoDoPerfilPublico(professional.id, professional.slugPublico));
             }}
           >
             {professional.isAvailable ? "VER PERFIL" : "INDISPONÍVEL NO MOMENTO"}

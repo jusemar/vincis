@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BadgeDollarSign,
+  BookOpenText,
   CalendarClock,
   ClipboardList,
   FileText,
@@ -48,6 +49,7 @@ const ICONE_DO_MODULO: Record<string, LucideIcon> = {
   'integracao-pix': QrCode,
   precificacao: BadgeDollarSign,
   cms: FileText,
+  conhecimento: BookOpenText,
 }
 
 export function CentralVincisShell({ children }: { children: React.ReactNode }) {

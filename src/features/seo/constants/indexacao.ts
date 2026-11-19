@@ -1,4 +1,5 @@
 import { DADOS_INSTITUCIONAIS } from '@/features/institucional/constants/dados'
+import { caminhoDoPerfilPublico } from '@/features/perfis/constants/rotas-perfil'
 
 /**
  * Domínio canônico de tudo que é anunciado a buscadores.
@@ -32,11 +33,16 @@ export const ROTAS_INSTITUCIONAIS_INDEXAVEIS = [
   '/parceiros',
   '/suporte',
   '/contato',
+  '/conhecimento',
 ] as const
 
-/** Rota do perfil público real — o único formato aceito pela página. */
-export function caminhoPerfilPublico(prestadorId: string): string {
-  return `/perfil-profissional?prestador=${encodeURIComponent(prestadorId)}`
+/**
+ * Rota canônica do perfil público: `/profissionais/<slug>`. Sem slug (cadastro
+ * que ainda não ganhou um), o formato antigo — que redireciona assim que o slug
+ * existir.
+ */
+export function caminhoPerfilPublico(prestadorId: string, slug: string | null): string {
+  return caminhoDoPerfilPublico(prestadorId, slug)
 }
 
 /**
@@ -57,4 +63,6 @@ export const CAMINHOS_NAO_RASTREAVEIS = [
   '/redefinir-senha',
   '/api/',
   '/p/',
+  // Prévia privada de artigos (exige sessão; a página também é noindex).
+  '/conhecimento/previa/',
 ] as const

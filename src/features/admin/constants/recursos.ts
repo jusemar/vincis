@@ -168,6 +168,18 @@ export const RECURSOS_ADMIN: readonly RecursoAdmin[] = [
     noMenuPrincipal: false,
     naCentral: true,
   },
+  {
+    // Central de Conhecimento: fila de moderação dos artigos enviados pelos
+    // profissionais, artigos institucionais e categorias. Decisão editorial é
+    // da Vincis — exclusivo do Gestor em rota, menu e guarda de servidor.
+    id: 'conhecimento',
+    rota: '/admin/conhecimento',
+    rotulo: 'Central de Conhecimento',
+    rotuloNaCentral: 'Conhecimento',
+    exclusivoDoGestor: true,
+    noMenuPrincipal: false,
+    naCentral: true,
+  },
 ]
 
 /** Raiz da Central Vincis — a área global de gestão da plataforma. */

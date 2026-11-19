@@ -24,6 +24,7 @@ import type { ItemMenuPublico } from "@/features/cms/nucleo/lib/arvore-navegacao
 const navLinks = [
   { name: "Início", href: "/", type: "route" },
   { name: "Profissionais", href: "/profissionais", type: "route" },
+  { name: "Conhecimento", href: "/conhecimento", type: "route" },
   { name: "Parceiros", href: "/parceiros", type: "route" },
   { name: "Preços", href: "/precos", type: "route" },
 ];
@@ -84,7 +85,8 @@ export default function NavigationNext({ menuCms = [] }: NavigationNextProps) {
 
   const isLinkActive = (link: (typeof navLinks)[0]) => {
     if (link.type === "route") {
-      return pathname === link.href;
+      // Seções com páginas filhas (artigo, perfil amigável) seguem acesas.
+      return link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
     }
     return false; // Uma âncora não representa a página inteira como ativa.
   };

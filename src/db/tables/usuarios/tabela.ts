@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm'
 import {
+  check,
   pgTable,
   uuid,
   varchar,
@@ -43,6 +45,25 @@ export const usuarios = pgTable('usuarios', {
   ),
   ultimoLoginEm: timestamp('ultimo_login_em'),
   status: usuarioStatusEnum('status').notNull().default('pendente_email'),
+  /**
+   * Como a pessoa se apresenta em público (autoria de artigos, vitrine).
+   *
+   * - `pessoal` (padrão): pelo cadastro profissional — profissão, escritório,
+   *   especialidades e perfil público.
+   * - `equipe_vincis`: integrante da equipe da plataforma (só Gestor). Assina
+   *   como "Gestor da Plataforma Vincis · Equipe Vincis", não herda profissão
+   *   nem escritório do cadastro de prestador e fica fora da vitrine pública.
+   *
+   * **Não é permissão.** Perfis (`usuarios_perfis`), capacidades e acesso a
+   * áreas continuam vindo das mesmas tabelas de sempre: uma conta de Gestor que
+   * também testa os fluxos de prestador mantém tudo.
+   */
+  identidadePublica: varchar('identidade_publica', { length: 20 }).notNull().default('pessoal'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  identidadePublicaValida: check(
+    'usuarios_identidade_publica_valida',
+    sql`${t.identidadePublica} in ('pessoal', 'equipe_vincis')`,
+  ),
+}))

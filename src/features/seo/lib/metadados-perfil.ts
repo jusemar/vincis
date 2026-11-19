@@ -25,7 +25,7 @@ export const METADADOS_PERFIL_NAO_INDEXAVEL: Metadata = {
 export function montarMetadadosPerfil(dados: DadosSeoPerfil): Metadata {
   const titulo = montarTituloPerfil(dados)
   const descricao = montarDescricaoPerfil(dados)
-  const url = urlCanonicaPerfil(dados.prestadorId)
+  const url = urlCanonicaPerfil(dados.prestadorId, dados.slug)
   const imagem = imagemPublicaPerfil(dados)
   const nomeImagem = dados.escritorioNome ?? dados.nome
 

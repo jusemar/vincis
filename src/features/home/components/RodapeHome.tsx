@@ -14,6 +14,7 @@ export function RodapeHome() {
           </p>
           <nav aria-label="Navegação do rodapé">
             <Link href="/profissionais">Profissionais</Link>
+            <Link href="/conhecimento">Conhecimento</Link>
             <Link href="/precos">Planos e preços</Link>
             <Link href="/parceiros">Parceiros</Link>
             <Link href="/suporte">Fale com a Vincis</Link>

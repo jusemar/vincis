@@ -41,6 +41,7 @@ export const PAGINAS_PUBLICAS_LLMS: SecaoPaginasLlms[] = [
       { titulo: 'Profissionais de contabilidade', rota: ROTA_BUSCA_CONTABILIDADE, descricao: 'Busca já filtrada por contadores.' },
       { titulo: 'Profissionais da área jurídica', rota: ROTA_BUSCA_JURIDICA, descricao: 'Busca já filtrada por advogados.' },
       { titulo: 'Solicitar orçamento', rota: ROTA_SERVICOS_AVULSOS, descricao: 'Descrever uma necessidade e receber propostas de profissionais.' },
+      { titulo: 'Central de Conhecimento', rota: '/conhecimento', descricao: 'Artigos sobre MEI, Imposto de Renda, Reforma Tributária, Simples Nacional, direito empresarial e gestão, escritos por profissionais e revisados pela Vincis.' },
       { titulo: 'Planos e Preços', rota: '/precos', descricao: 'Planos contábeis e valores vigentes.' },
       { titulo: 'Programa de Parceiros', rota: '/parceiros', descricao: 'Programa de Parceiros Indicadores: como funciona, níveis e simulador de comissões.' },
       { titulo: 'Regras do Programa de Parceiros', rota: '/regras-do-programa-de-parceiros', descricao: 'Quem pode participar, registro da indicação, comissões, níveis e saque.' },

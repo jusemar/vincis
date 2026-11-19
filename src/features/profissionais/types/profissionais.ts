@@ -3,6 +3,8 @@ export interface Professional {
   name: string;
   /** `null` quando o profissional ainda não enviou foto — nunca string vazia. */
   photo: string | null;
+  /** Slug do endereço amigável (`/profissionais/<slug>`); nulo em cadastros sem slug. */
+  slugPublico?: string | null;
   /** `assistente` = Assistente Contábil (Colaborador na vitrine pública). */
   profession: "contador" | "advogado" | "tecnico" | "assistente";
   specialty: string;

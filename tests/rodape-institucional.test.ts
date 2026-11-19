@@ -69,7 +69,7 @@ describe('rodapé', () => {
     expect(GRUPOS_RODAPE.map((g) => [g.titulo, g.links.map((l) => l.texto)])).toEqual([
       ['Serviços', ['Contabilidade', 'Assistência Jurídica', 'Serviços Avulsos']],
       ['Empresa', ['Sobre Nós', 'Contato']],
-      ['Plataforma', ['Profissionais', 'Planos e Preços', 'Parceiros']],
+      ['Plataforma', ['Profissionais', 'Central de Conhecimento', 'Planos e Preços', 'Parceiros']],
       ['Suporte', ['Central de Ajuda', 'Termos de Uso', 'Política de Privacidade']],
     ])
   })

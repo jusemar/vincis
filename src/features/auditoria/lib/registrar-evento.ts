@@ -174,6 +174,30 @@ export const ACOES_AUDITORIA = {
   cmsNavegacaoAlterada: 'cms_navegacao_alterada',
   /** Card da Home criado, editado, ligado/desligado, reordenado ou excluído (lógico). */
   cmsCardHomeAlterado: 'cms_card_home_alterado',
+  /**
+   * Central de Conhecimento. Metadados: versão, slug e a observação da Gestão
+   * — nunca o texto do artigo, que está na própria versão.
+   */
+  conhecimentoArtigoCriado: 'conhecimento_artigo_criado',
+  conhecimentoArtigoEnviado: 'conhecimento_artigo_enviado',
+  conhecimentoArtigoEnvioCancelado: 'conhecimento_artigo_envio_cancelado',
+  conhecimentoArtigoAprovado: 'conhecimento_artigo_aprovado',
+  conhecimentoArtigoDevolvido: 'conhecimento_artigo_devolvido',
+  conhecimentoArtigoRejeitado: 'conhecimento_artigo_rejeitado',
+  conhecimentoArtigoDespublicado: 'conhecimento_artigo_despublicado',
+  conhecimentoArtigoRepublicado: 'conhecimento_artigo_republicado',
+  conhecimentoArtigoArquivado: 'conhecimento_artigo_arquivado',
+  conhecimentoArtigoDestaqueAlterado: 'conhecimento_artigo_destaque_alterado',
+  conhecimentoRevisaoDescartada: 'conhecimento_revisao_descartada',
+  conhecimentoImagemEnviada: 'conhecimento_imagem_enviada',
+  conhecimentoCategoriaAlterada: 'conhecimento_categoria_alterada',
+  /** Artigo escolhido (ou retirado) para um card da Home. O card original não muda. */
+  conhecimentoDestaqueHomeAlterado: 'conhecimento_destaque_home_alterado',
+  /** Gestão retirou (ou devolveu) um perfil da vitrine pública. Nada é apagado. */
+  perfilVitrineOcultado: 'perfil_vitrine_ocultado',
+  perfilVitrineReexibido: 'perfil_vitrine_reexibido',
+  /** Gestão trocou a identidade pública (pessoal × equipe Vincis). Não mexe em permissões. */
+  identidadePublicaAlterada: 'identidade_publica_alterada',
 } as const
 
 export type AcaoAuditoria =

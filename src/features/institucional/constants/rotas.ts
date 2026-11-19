@@ -58,6 +58,7 @@ export const GRUPOS_RODAPE: GrupoRodape[] = [
     titulo: 'Plataforma',
     links: [
       { texto: 'Profissionais', href: '/profissionais' },
+      { texto: 'Central de Conhecimento', href: '/conhecimento' },
       { texto: 'Planos e Preços', href: '/precos' },
       { texto: 'Parceiros', href: '/parceiros' },
     ],

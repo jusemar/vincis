@@ -54,9 +54,10 @@ beforeAll(async () => {
     .update(perfisProfissionais)
     .set({ tipoProfissional: 'advocacia' })
     .where(eq(perfisProfissionais.usuarioId, contas.advogado.id))
+  // Vitrine pública também exige foto (regra de `profissionais/lib/vitrine-publica`).
   await db
     .update(perfisProfissionais)
-    .set({ vitrinePublica: true })
+    .set({ vitrinePublica: true, avatarUrl: '/api/armazenamento-local/perfis-profissionais/teste/avatar/foto.webp' })
     .where(eq(perfisProfissionais.usuarioId, contas.publico.id))
 }, 120_000)
 

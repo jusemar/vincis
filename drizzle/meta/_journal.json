@@ -596,6 +596,34 @@
       "when": 1794953696099,
       "tag": "0084_consultoria_juridica_e_vitrine_colaborador",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795036146001,
+      "tag": "0085_central_conhecimento_e_slug_perfis",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795036158200,
+      "tag": "0086_conhecimento_categorias_iniciais",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795040782351,
+      "tag": "0087_conhecimento_palavras_chave",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795053817023,
+      "tag": "0088_identidade_publica_e_destaques_home",
+      "breakpoints": true
     }
   ]
 }

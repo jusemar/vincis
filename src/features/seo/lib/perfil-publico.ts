@@ -3,7 +3,7 @@ import { identificacaoProfissional } from '@/features/profissionais/lib/identifi
 import { URL_CANONICA_SITE, caminhoPerfilPublico } from '../constants/indexacao'
 
 /**
- * SEO do perfil público (`/perfil-profissional?prestador=<id>`).
+ * SEO do perfil público (`/profissionais/<slug>`).
  *
  * Funções puras: recebem só o que a identidade pública já expõe (a mesma que a
  * página desenha) e devolvem textos e JSON-LD. Nada aqui consulta banco nem
@@ -14,6 +14,8 @@ import { URL_CANONICA_SITE, caminhoPerfilPublico } from '../constants/indexacao'
 
 export type DadosSeoPerfil = {
   prestadorId: string
+  /** Slug do endereço amigável; canonical e Open Graph usam `/profissionais/<slug>`. */
+  slug: string | null
   nome: string
   escritorioNome: string | null
   tipoProfissional: string
@@ -39,8 +41,8 @@ function listarEmTexto(itens: string[]): string {
   return `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
 }
 
-export function urlCanonicaPerfil(prestadorId: string): string {
-  return new URL(caminhoPerfilPublico(prestadorId), URL_CANONICA_SITE).toString()
+export function urlCanonicaPerfil(prestadorId: string, slug: string | null): string {
+  return new URL(caminhoPerfilPublico(prestadorId, slug), URL_CANONICA_SITE).toString()
 }
 
 /** Nome como o perfil se apresenta: o escritório, quando houver; senão a pessoa. */
@@ -206,7 +208,7 @@ export function imagemPublicaPerfil(dados: DadosSeoPerfil): string | null {
  * só nome, profissão, cidade/UF, especialidades, apresentação e foto públicas.
  */
 export function montarDadosEstruturadosPerfil(dados: DadosSeoPerfil) {
-  const url = urlCanonicaPerfil(dados.prestadorId)
+  const url = urlCanonicaPerfil(dados.prestadorId, dados.slug)
   const nome = nomePublico(dados)
   const rotulo = profissao(dados)
   const imagem = imagemPublicaPerfil(dados)

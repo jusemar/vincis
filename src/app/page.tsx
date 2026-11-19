@@ -3,6 +3,7 @@ import { RedeVincis } from "@/features/home/components/rede/RedeVincis";
 import { HomeAntiga } from "@/features/home/components/HomeAntiga";
 import { DemonstracaoBuscaLazy } from "@/features/home/components/busca-demo/DemonstracaoBuscaLazy";
 import { listarCardsHomePublicos } from "@/features/cms/queries/cards-home";
+import { aplicarArtigosAosCards } from "@/features/conhecimento/queries/destaques-home";
 
 export const metadata: Metadata = {
   title: "Vincis | Orientação contábil e jurídica online",
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   // Cards de serviço administrados no CMS (cache etiquetado, invalidado a cada
   // alteração do Gestor). A leitura nunca lança: na falha, a seção não aparece.
-  const cardsServicos = await listarCardsHomePublicos();
+  // Artigos da Central escolhidos pela Gestão entram no lugar do conteúdo de
+  // um card (mesmo desenho); artigo fora do ar devolve o card original.
+  const cardsServicos = await aplicarArtigosAosCards(await listarCardsHomePublicos());
 
   // A demonstração atual ocupa uma única posição, imediatamente antes do Hero antigo.
   // A busca por profissionais, passo a passo, vem logo depois dela.

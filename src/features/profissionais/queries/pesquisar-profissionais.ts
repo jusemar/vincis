@@ -10,8 +10,9 @@ import { registroDoPrestadorVerificado } from "@/features/usuarios/lib/prestador
 import {
   condicaoPrestadorHabilitado,
   condicaoPrestadorHabilitadoDoTipo,
-  condicaoPrestadorPublico,
 } from "@/features/usuarios/lib/prestador";
+import { condicaoVitrinePublica, fotoDoCard } from "../lib/vitrine-publica";
+import { garantirSlugsDosPrestadores } from "@/features/perfis/lib/slug-perfil";
 import {
   PesquisaProfissionaisSchema,
   type PesquisaProfissionaisDTO,
@@ -28,7 +29,8 @@ export async function pesquisarProfissionaisReais(
     filtros.tipoPrestador === "todos"
       ? condicaoPrestadorHabilitado()
       : filtros.tipoPrestador === "publico"
-        ? condicaoPrestadorPublico()
+        ? // Vitrine: público, não ocultado pela Gestão e com foto (regra única).
+          condicaoVitrinePublica()
         : condicaoPrestadorHabilitadoDoTipo(filtros.tipoPrestador),
   ];
   if (filtros.busca) {
@@ -83,6 +85,8 @@ export async function pesquisarProfissionaisReais(
         id: usuarios.id,
         nome: usuarios.nome,
         avatarUrl: perfisProfissionais.avatarUrl,
+        fotoDestaqueUrl: perfisProfissionais.fotoDestaqueUrl,
+        slugPublico: perfisProfissionais.slugPublico,
         // Tipo da pessoa (Profissional/Colaborador), distinto da categoria.
         tipoPrestador: perfisProfissionais.tipoPrestador,
         profissao: perfisProfissionais.tipoProfissional,
@@ -134,16 +138,27 @@ export async function pesquisarProfissionaisReais(
   const escritorios = await nomesDosEscritoriosPublicos(
     registros.filter((r) => r.modalidade === "escritorio").map(({ id }) => id),
   );
+  // Endereço amigável do perfil: materializado uma vez, só para quem é
+  // público e ainda não tinha (cadastros anteriores ao slug).
+  const slugs =
+    filtros.tipoPrestador === "publico"
+      ? await garantirSlugsDosPrestadores(
+          registros.filter((r) => !r.slugPublico).map(({ id }) => id),
+        )
+      : new Map<string, string>();
   const situacoes = await situacoesDocumentos(
     db,
     registros.map(({ id }) => id),
   );
 
   return {
-    profissionais: registros.map(({ comprovanteRegistroChave, ...registro }) => {
+    profissionais: registros.map(({ comprovanteRegistroChave, fotoDestaqueUrl, ...registro }) => {
       const reputacao = reputacoes.get(registro.id);
       return {
         ...registro,
+        // Card usa o avatar; sem avatar, a imagem do perfil (logo do escritório).
+        avatarUrl: fotoDoCard(registro.avatarUrl, fotoDestaqueUrl),
+        slugPublico: registro.slugPublico ?? slugs.get(registro.id) ?? null,
         // Mesma regra do perfil público: o selo do card só com registro comprovado.
         registroVerificado: registroDoPrestadorVerificado(registro.tipoPrestador, comprovanteRegistroChave),
         // Honorário de advogado não é exibido publicamente: o valor fica no

@@ -89,4 +89,11 @@ export type CardHomePublicoDTO = {
   textoBotao: string
   estilo: EstiloCardHome
   href: string
+  /**
+   * Só quando o card exibe um artigo da Central com capa: a mesma URL e o mesmo
+   * texto alternativo da capa publicada (nada copiado). Card original: ausente.
+   */
+  imagem?: ImagemCardHome | null
 }
+
+export type ImagemCardHome = { url: string; alt: string }

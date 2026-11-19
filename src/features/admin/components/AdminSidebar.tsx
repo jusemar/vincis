@@ -23,6 +23,7 @@ import {
   FileText,
   type LucideIcon,
   Handshake,
+  PenLine,
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -40,6 +41,7 @@ import {
   ROTA_DOCUMENTOS_FISCAIS,
   ROTULO_DOCUMENTOS_FISCAIS,
 } from "@/features/documentos-fiscais/constants/rotas";
+import { ROTA_MEUS_ARTIGOS, ROTULO_MEUS_ARTIGOS } from "@/features/conhecimento/constants/rotas";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -129,6 +131,9 @@ const navItems = [
   // painel faria `/admin` carregar as duas em toda visita — inclusive para
   // quem foi ver a Agenda.
   { id: "meus-precos", label: "Meus preços", icon: BadgeDollarSign, rota: ROTA_MEUS_PRECOS, exigeMensalidade: true },
+  // Central de Conhecimento: os artigos do próprio prestador. Rota própria
+  // (lista e editor carregados no servidor), como Meus preços.
+  { id: "meus-artigos", label: ROTULO_MEUS_ARTIGOS, icon: PenLine, rota: ROTA_MEUS_ARTIGOS },
   { id: "profile", label: "Meu Perfil", icon: User },
   { id: "achievements", label: "Conquistas", icon: Award },
 ];

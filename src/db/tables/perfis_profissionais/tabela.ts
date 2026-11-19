@@ -125,12 +125,32 @@ export const perfisProfissionais = pgTable('perfis_profissionais', {
    * removido automaticamente. Ignorada em qualquer outro modelo.
    */
   capacidadeClientesRecorrentes: integer('capacidade_clientes_recorrentes'),
+  /**
+   * Endereço público amigável: `/profissionais/<slug_publico>`.
+   *
+   * Gerado uma única vez a partir dos dados públicos (nome ou escritório,
+   * profissão e cidade) e **nunca** recalculado: trocar de nome ou de cidade não
+   * quebra links já compartilhados. Nulo até a primeira vez que o perfil é
+   * publicado/aberto; o endereço antigo `/perfil-profissional?prestador=<id>`
+   * redireciona para cá. Regras em `features/perfis/lib/slug-perfil.ts`.
+   */
+  slugPublico: varchar('slug_publico', { length: 160 }),
+  /**
+   * Retirado da vitrine pública pela Gestão (perfil de teste, por exemplo).
+   *
+   * Não exclui nada: o cadastro, os atendimentos e o acesso do dono continuam.
+   * O perfil só deixa a busca, a Home, o sitemap e o índice dos buscadores.
+   * Voltar é zerar esta coluna (Gestão → Usuários). Nulo = visível.
+   */
+  ocultoVitrineEm: timestamp('oculto_vitrine_em'),
+  motivoOcultacaoVitrine: varchar('motivo_ocultacao_vitrine', { length: 255 }),
   enviadoEm: timestamp('enviado_em'),
   analisadoEm: timestamp('analisado_em'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({
   usuarioUnique: uniqueIndex('perfis_profissionais_usuario_unique').on(t.usuarioId),
+  slugPublicoUnico: uniqueIndex('perfis_profissionais_slug_publico_unique').on(t.slugPublico),
   statusIdx: index('perfis_profissionais_status_idx').on(t.statusAnalise),
   tipoIdx: index('perfis_profissionais_tipo_idx').on(t.tipoProfissional),
   // Toda listagem pública e toda pesquisa de convite filtram por tipo + status.

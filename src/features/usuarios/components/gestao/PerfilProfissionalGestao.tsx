@@ -11,6 +11,9 @@ import { analisarPerfilProfissional } from '../../actions/analisar-perfil-profis
 import { ResumoPerfilProfissional } from '../profissional/ResumoPerfilProfissional'
 import { CapacidadeClientesGestao } from '@/features/profissionais/components/admin/CapacidadeClientesGestao'
 import { ModeloContratacaoGestao } from '@/features/profissionais/components/admin/ModeloContratacaoGestao'
+import { VisibilidadeVitrineGestao } from '@/features/profissionais/components/admin/VisibilidadeVitrineGestao'
+import { IdentidadePublicaGestao } from './IdentidadePublicaGestao'
+import type { IdentidadePublica } from '../../constants/identidade-publica'
 import type { obterPerfilProfissionalGestao } from '../../queries/obter-perfil-profissional-gestao'
 type Dados = NonNullable<Awaited<ReturnType<typeof obterPerfilProfissionalGestao>>>
 type Decisao = 'aprovado' | 'correcao_solicitada' | 'rejeitado'
@@ -21,6 +24,10 @@ export function PerfilProfissionalGestao({ dados }: { dados: Dados }) {
   return <div className="mx-auto max-w-5xl"><Button asChild variant="ghost"><Link href="/admin/usuarios"><ArrowLeft/>Voltar</Link></Button>
     <div className="mt-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="font-serif text-3xl font-bold">Perfil profissional</h1><p className="mt-2 text-muted-foreground">Dados enviados para análise por {dados.usuario.nome}.</p></div>{p && <div className="text-sm sm:text-right"><p className="font-semibold">{STATUS[p.statusAnalise] ?? p.statusAnalise}</p><p className="text-muted-foreground">Enviado em {p.enviadoEm ? new Intl.DateTimeFormat('pt-BR').format(new Date(p.enviadoEm)) : 'não enviado'}</p>{p.analisadoEm && <p className="text-muted-foreground">Analisado em {new Intl.DateTimeFormat('pt-BR').format(new Date(p.analisadoEm))}</p>}</div>}</div>
     <div className="mt-6">{!p ? <Card><CardContent className="p-6">Este usuário ainda não possui cadastro profissional.</CardContent></Card> : <ResumoPerfilProfissional dados={{ ...p, ...dados.usuario }}/>}</div>
+    {/* Identidade pública: só contas de Gestor (equipe Vincis). Não mexe em permissões. */}
+    {dados.ehGestor && <div className="mt-6"><IdentidadePublicaGestao usuarioId={dados.usuario.id} atual={dados.usuario.identidadePublica as IdentidadePublica}/></div>}
+    {/* Vitrine pública: ocultar perfil de teste / recuperar. Nada é excluído. */}
+    {p && <div className="mt-6"><VisibilidadeVitrineGestao usuarioId={dados.usuario.id} ocultoEm={p.ocultoVitrineEm} motivo={p.motivoOcultacaoVitrine} avatarUrl={p.avatarUrl} fotoDestaqueUrl={p.fotoDestaqueUrl} slugPublico={p.slugPublico} identidadeEquipe={dados.usuario.identidadePublica === 'equipe_vincis'}/></div>}
     {/* Só contabilidade: o modelo comercial (Vincis × Autônomo) é definido aqui pelo Gestor. */}
     {p?.tipoProfissional === 'contabilidade' && <div className="mt-6"><ModeloContratacaoGestao usuarioId={dados.usuario.id} atual={p.modeloContratacao}/></div>}
     {/* Capacidade: só do contador parceiro Vincis (planos recorrentes da Vincis). */}

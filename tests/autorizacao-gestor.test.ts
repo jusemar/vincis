@@ -96,6 +96,8 @@ describe('registro de recursos administrativos', () => {
       '/admin/parceiros',
       // O CMS institucional: páginas e navegação do site são da Vincis.
       '/admin/cms',
+      // Central de Conhecimento: a decisão editorial (aprovar artigos) é da Vincis.
+      '/admin/conhecimento',
     ])
   })
 
@@ -141,6 +143,7 @@ describe('registro de recursos administrativos', () => {
       ['Precificação', '/admin/precificacao'],
       ['Parceiros', '/admin/parceiros'],
       ['Conteúdo', '/admin/cms'],
+      ['Conhecimento', '/admin/conhecimento'],
     ])
   })
 })
