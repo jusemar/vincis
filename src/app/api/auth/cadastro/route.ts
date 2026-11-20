@@ -13,6 +13,7 @@ import { gerarToken } from "@/features/usuarios/lib/gerar-token";
 import { enviarEmailConfirmacao } from "@/integracoes/email/enviar-confirmacao-email";
 import { COOKIE_INDICACAO } from "@/features/parceiros/constants/indicacao";
 import { associarIndicacaoAoCadastro } from "@/features/parceiros/lib/associar-cadastro";
+import { condicaoTelefoneIgual } from "@/features/usuarios/lib/telefone-sql";
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +33,9 @@ export async function POST(request: NextRequest) {
       .select({ email: usuarios.email, whatsapp: usuarios.whatsapp })
       .from(usuarios)
       .where(
-        or(eq(usuarios.email, email), eq(usuarios.whatsapp, whatsapp))
+        // Telefone comparado pelos dígitos: "(31) 99999-0000" e "31999990000"
+        // são o mesmo número e não podem pertencer a duas contas.
+        or(eq(usuarios.email, email), condicaoTelefoneIgual(whatsapp))
       )
       .limit(1);
 
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
         {
           sucesso: false,
           mensagem:
-            conflito.email === email
+            conflito.email?.toLowerCase() === email.toLowerCase()
               ? "E-mail já cadastrado"
               : "WhatsApp já cadastrado",
         },

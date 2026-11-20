@@ -30,7 +30,8 @@ export const clientes = pgTable(
     // diferentes em silêncio. Nulo para cliente cadastrado à mão pelo prestador.
     usuarioId: uuid('usuario_id').references(() => usuarios.id),
     nome: varchar('nome', { length: 255 }).notNull(),
-    email: varchar('email', { length: 255 }).notNull(),
+    // Nulo quando o cliente criou a conta só com celular (nada de e-mail inventado).
+    email: varchar('email', { length: 255 }),
     telefone: varchar('telefone', { length: 20 }).notNull(),
     empresaNome: varchar('empresa_nome', { length: 255 }),
     /**

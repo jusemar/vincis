@@ -25,7 +25,8 @@ export type ResultadoPadrao = {
 export type DadosUsuario = {
   id: string
   nome: string
-  email: string
+  /** Nulo nas contas criadas só com celular. */
+  email: string | null
   whatsapp: string | null
   status: UsuarioStatus
   perfilTipo: PerfilTipo
@@ -42,7 +43,8 @@ export type DadosToken = {
 export type DadosUsuarioAutenticado = {
   id: string
   nome: string
-  email: string
+  /** Nulo nas contas criadas só com celular. */
+  email: string | null
   whatsapp: string | null
   status: UsuarioStatus
   perfilTipo: PerfilTipo

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { VALIDADE_LINK_EMAIL_MINUTOS } from '@/features/usuarios/constants/recuperacao-senha'
 
 type DadosEmailRedefinicao = {
   destinatario: string
@@ -88,14 +89,14 @@ export async function enviarEmailRedefinicaoSenha({
                   Redefinir minha senha
                 </a>
                 <p style="font-size:13px;line-height:1.5;color:#667085;margin:28px 0 0">
-                  Este link é individual, pode ser utilizado uma única vez e expira em 1 hora. Se você não solicitou essa alteração, ignore este e-mail — sua senha continua a mesma.
+                  Este link é individual, pode ser utilizado uma única vez e expira em ${VALIDADE_LINK_EMAIL_MINUTOS} minutos. Se você não solicitou essa alteração, ignore este e-mail — sua senha continua a mesma.
                 </p>
               </div>
             </div>
           </body>
         </html>
       `,
-      text: `Olá, ${nome}. Recebemos uma solicitação para redefinir a senha da sua conta na Vincis. Se foi você, acesse: ${linkRedefinicao}. O link expira em 1 hora e pode ser usado uma única vez. Se não foi você, ignore este e-mail.`,
+      text: `Olá, ${nome}. Recebemos uma solicitação para redefinir a senha da sua conta na Vincis. Se foi você, acesse: ${linkRedefinicao}. O link expira em ${VALIDADE_LINK_EMAIL_MINUTOS} minutos e pode ser usado uma única vez. Se não foi você, ignore este e-mail.`,
     })
 
     if (error) {

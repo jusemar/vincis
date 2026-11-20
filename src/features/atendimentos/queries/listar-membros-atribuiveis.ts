@@ -12,7 +12,7 @@ import { obterAcessoAtendimento } from '../lib/autorizacao'
 export type MembroAtribuivelDTO = {
   usuarioId: string
   nome: string
-  email: string
+  email: string | null
   tipoProfissional: string | null
   avatarUrl: string | null
   /** A pessoa já participa deste Atendimento. */

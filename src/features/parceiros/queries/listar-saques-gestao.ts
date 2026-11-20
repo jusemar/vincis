@@ -31,7 +31,7 @@ export type SaqueParaGestao = {
   parceiroId: string
   parceiroCodigo: string
   parceiroNome: string
-  parceiroEmail: string
+  parceiroEmail: string | null
   valorCentavos: number
   status: StatusSaque
   solicitadoEm: Date

@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, not, ilike, type SQL } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db/connection'
 import { perfisProfissionais, usuarios } from '@/db/schema'
@@ -28,7 +28,9 @@ function condicaoPerfilIndexavel(): SQL {
     condicaoContaVerificada(),
     // Vitrine pública: prestador público, não ocultado e com foto.
     condicaoVitrinePublica(),
-    not(ilike(usuarios.email, `%@${DOMINIO_CONTAS_DEMONSTRACAO}`)),
+    // coalesce: conta criada só com celular (e-mail nulo) não é conta demo — sem
+    // ele, `not (NULL ilike …)` daria NULL e o perfil sumiria do índice.
+    sql`coalesce(${usuarios.email}, '') not ilike ${`%@${DOMINIO_CONTAS_DEMONSTRACAO}`}`,
   ) as SQL
 }
 

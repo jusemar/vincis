@@ -18,7 +18,9 @@ export type ContratacaoCliente = {
 
 export type DadosPortalCliente = {
   nome: string
-  email: string
+  email: string | null
+  /** E-mail adicionado e ainda não confirmado (conta criada pelo celular). */
+  emailPendente: string | null
   whatsapp: string | null
   emailVerificado: boolean
   whatsappVerificado: boolean

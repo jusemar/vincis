@@ -2,7 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { and, eq, isNull, like } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { db } from '@/db/connection'
-import { sessoesUsuario, tokensUsuario, usuarios } from '@/db/schema'
+import { eventosAuditoria, sessoesUsuario, tokensUsuario, usuarios } from '@/db/schema'
+import { MENSAGEM_RECUPERACAO_EMAIL } from '@/features/usuarios/constants/recuperacao-senha'
 import { gerarHash, compararHash } from '@/features/usuarios/lib/hash-senha'
 import { gerarTokenSessao } from '@/features/usuarios/lib/gerar-token-sessao'
 import { solicitarRedefinicaoSenha } from '@/features/usuarios/actions/solicitar-redefinicao-senha'
@@ -22,6 +23,8 @@ async function limpar() {
   const alvos = await db.select({ id: usuarios.id }).from(usuarios).where(like(usuarios.email, `%${SUFIXO}`))
   const ids = alvos.map(({ id }) => id)
   if (!ids.length) return
+  // O pedido de recuperação agora fica na auditoria, ligado à conta.
+  await db.delete(eventosAuditoria).where(eq(eventosAuditoria.usuarioId, ids[0]))
   await db.delete(sessoesUsuario).where(eq(sessoesUsuario.usuarioId, ids[0]))
   await db.delete(tokensUsuario).where(eq(tokensUsuario.usuarioId, ids[0]))
   await db.delete(usuarios).where(eq(usuarios.id, ids[0]))
@@ -66,7 +69,7 @@ describe('solicitarRedefinicaoSenha', () => {
   it('cria token e mostra mensagem genérica para usuário existente', async () => {
     const resultado = await solicitarRedefinicaoSenha({ emailOuWhatsapp: `conta${SUFIXO}` })
     expect(resultado.sucesso).toBe(true)
-    expect(resultado.mensagem).toMatch(/se existir uma conta/i)
+    expect(resultado.mensagem).toBe(MENSAGEM_RECUPERACAO_EMAIL)
 
     const [tokenCriado] = await db
       .select()
@@ -81,7 +84,7 @@ describe('solicitarRedefinicaoSenha', () => {
       emailOuWhatsapp: `naoexiste${SUFIXO}`,
     })
     expect(resultado.sucesso).toBe(true)
-    expect(resultado.mensagem).toMatch(/se existir uma conta/i)
+    expect(resultado.mensagem).toBe(MENSAGEM_RECUPERACAO_EMAIL)
   })
 })
 
@@ -103,7 +106,7 @@ describe('redefinirSenha', () => {
     // `createdAt` mais recente independentemente de já terem sido usados.
     await db.delete(tokensUsuario).where(eq(tokensUsuario.usuarioId, usuarioId))
 
-    const { token: tokenSessaoAntiga, hash: hashSessaoAntiga } = gerarTokenSessao()
+    const { token: _tokenSessaoAntiga, hash: hashSessaoAntiga } = gerarTokenSessao()
     await db.insert(sessoesUsuario).values({
       usuarioId,
       tokenHash: hashSessaoAntiga,

@@ -26,6 +26,7 @@ export { usuariosPerfisRelations } from './tables/usuarios_perfis/relacoes'
 
 export { tokensUsuario } from './tables/tokens_usuario/tabela'
 export { tokensUsuarioRelations } from './tables/tokens_usuario/relacoes'
+export { cadastrosCelular } from './tables/cadastros_celular/tabela'
 
 export { permissoes } from './tables/permissoes/tabela'
 export { permissoesRelations } from './tables/permissoes/relacoes'

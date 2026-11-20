@@ -43,11 +43,11 @@ type Colaboracao = {
   empresaOrigemNome: string | null;
   remetenteId: string;
   remetenteNome: string;
-  remetenteEmail: string;
+  remetenteEmail: string | null;
   remetenteProfissao: string | null;
   destinatarioId: string;
   destinatarioNome: string;
-  destinatarioEmail: string;
+  destinatarioEmail: string | null;
   destinatarioProfissao: string | null;
 };
 

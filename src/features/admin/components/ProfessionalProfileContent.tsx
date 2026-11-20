@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import {
@@ -39,6 +40,9 @@ import {
   REGIMES_TRIBUTARIOS,
   type PerfilProfissionalDTO,
 } from "@/features/usuarios/schemas/perfil-profissional";
+import { AdicionarEmailConta } from "@/features/usuarios/components/AdicionarEmailConta";
+import { VerificarCelularConta } from "@/features/usuarios/components/VerificarCelularConta";
+import { normalizarCelularBR } from "@/features/usuarios/lib/telefone";
 
 type Perfil = NonNullable<
   Awaited<ReturnType<typeof obterMeuPerfilProfissional>>
@@ -164,13 +168,18 @@ export function ProfessionalProfileContent({
   nome,
   email,
   whatsapp,
+  semEmailDaConta = false,
 }: {
   perfil: Perfil;
   nome: string;
   email: string;
   whatsapp: string | null | undefined;
+  /** Conta criada só com celular: oferece adicionar um e-mail (com confirmação). */
+  semEmailDaConta?: boolean;
 }) {
   const [arquivo, setArquivo] = useState<File | null>(null);
+  // Remonta o campo de arquivo depois de salvar (input file não é controlável).
+  const [versaoCampoArquivo, setVersaoCampoArquivo] = useState(0);
   // Permite chegar direto no catálogo vindo de Admin → Serviços.
   const router = useRouter();
   const parametros = useSearchParams();
@@ -188,7 +197,9 @@ export function ProfessionalProfileContent({
     control,
     handleSubmit,
     setValue,
-    formState: { errors, isSubmitting },
+    getValues,
+    reset,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<PerfilProfissionalDTO>({
     // Cadastro aprovado bloqueia endereço e experiência na tela; validar esses
     // campos impediria salvar qualquer outra coisa quando o dado legado é
@@ -241,6 +252,7 @@ export function ProfessionalProfileContent({
   const temAvaliacoes =
     perfil.totalAvaliacoes > 0 && perfil.avaliacaoMedia !== null;
   const perfilAprovado = perfil.statusAnalise === "aprovado";
+  const temAlteracoes = isDirty || arquivo !== null;
   const advogado = perfil.tipoProfissional === "advocacia";
   // Franquia de armazenamento: só o contador Autônomo tem.
   const autonomo =
@@ -280,12 +292,18 @@ export function ProfessionalProfileContent({
   }
 
   async function salvar(dados: PerfilProfissionalDTO) {
+    // Valores da tela no momento do envio (antes da transformação do schema).
+    const valoresEnviados = getValues();
     const formulario = new FormData();
     if (arquivo) formulario.set("comprovante", arquivo);
     const resultado = await salvarPerfilProfissional(dados, formulario);
     if (!resultado.sucesso) return toast.error(resultado.mensagem);
     toast.success("Perfil atualizado com sucesso.");
+    // O que foi salvo vira a nova referência: sem pendências, o botão volta a
+    // ficar desativado. `keepValues` preserva o que for digitado durante o envio.
+    reset(valoresEnviados, { keepValues: true });
     setArquivo(null);
+    setVersaoCampoArquivo((v) => v + 1);
     // Recarrega os dados do servidor para a tela refletir o que foi gravado.
     router.refresh();
   }
@@ -440,10 +458,16 @@ export function ProfessionalProfileContent({
                   <Label>Nome completo</Label>
                   <Input value={nome} disabled />
                 </div>
-                <div className="space-y-2">
-                  <Label>E-mail da conta</Label>
-                  <Input value={email} disabled />
-                </div>
+                {semEmailDaConta ? (
+                  <AdicionarEmailConta />
+                ) : (
+                  <div className="space-y-2">
+                    <Label>E-mail da conta</Label>
+                    <Input value={email} disabled />
+                  </div>
+                )}
+                {/* Celular da conta: status e verificação por código SMS. */}
+                <VerificarCelularConta key={normalizarCelularBR(whatsapp ?? '') ?? whatsapp ?? ''} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Telefone</Label>
@@ -613,6 +637,7 @@ export function ProfessionalProfileContent({
                     : "Nenhum comprovante enviado."}
                 </p>
                 <Input
+                  key={versaoCampoArquivo}
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                   onChange={(event) =>
@@ -812,10 +837,19 @@ export function ProfessionalProfileContent({
         acompanhar a rolagem, como no desktop já aprovado.
       */}
       <div className="flex justify-end rounded-2xl border border-amber-500/20 bg-card/95 p-3 shadow-card backdrop-blur lg:sticky lg:bottom-[calc(1rem+env(safe-area-inset-bottom))]">
+        {/*
+          Só habilita com alteração pendente (campo editado ou comprovante
+          escolhido). O dourado sai quando desativado: `.bg-gradient-gold` força
+          fundo e cor e esconderia o estado desativado.
+        */}
         <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-gradient-gold font-semibold text-on-gradient shadow-glow hover:shadow-glow-lg sm:w-auto"
+          disabled={isSubmitting || !temAlteracoes}
+          className={cn(
+            "w-full font-semibold sm:w-auto",
+            temAlteracoes &&
+              "bg-gradient-gold text-on-gradient shadow-glow hover:shadow-glow-lg",
+          )}
         >
           <Save />
           {isSubmitting ? "Salvando..." : "Salvar alterações"}

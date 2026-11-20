@@ -5,7 +5,7 @@ import { usuarios } from '@/db/schema'
 export type DadosUsuarioPorEmail = {
   id: string
   nome: string
-  email: string
+  email: string | null
   senhaHash: string
   status: string
 }

@@ -624,6 +624,13 @@
       "when": 1795053817023,
       "tag": "0088_identidade_publica_e_destaques_home",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795163369259,
+      "tag": "0089_cadastro_por_celular",
+      "breakpoints": true
     }
   ]
 }

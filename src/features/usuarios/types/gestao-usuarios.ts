@@ -3,7 +3,7 @@ import type { PerfilTipo, UsuarioStatus } from "../types";
 export type UsuarioGestao = {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
   perfil: PerfilTipo;
   status: UsuarioStatus;
   whatsapp: string | null;

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, or } from "drizzle-orm";
 import { db } from "@/db/connection";
-import { usuarios, sessoesUsuario } from "@/db/schema";
+import { sessoesUsuario } from "@/db/schema";
 import { LoginSchema } from "@/features/usuarios/schemas/login";
 import { compararHash } from "@/features/usuarios/lib/hash-senha";
 import { gerarTokenSessao } from "@/features/usuarios/lib/gerar-token-sessao";
@@ -9,6 +8,7 @@ import { COOKIE_SESSAO } from "@/features/usuarios/constants/sessao";
 import { contaVerificada } from "@/features/usuarios/lib/verificacao-conta";
 import { resolverAcessoUsuario } from "@/features/usuarios/queries/obter-destino-apos-login";
 import { montarUsuarioAutenticado } from "@/features/usuarios/lib/dados-usuario-autenticado";
+import { buscarUsuarioPorLogin } from "@/features/usuarios/queries/buscar-usuario-por-login";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,25 +24,10 @@ export async function POST(request: NextRequest) {
 
     const { emailOuWhatsapp, senha } = validated.data;
 
-    const [usuario] = await db
-      .select({
-        id: usuarios.id,
-        nome: usuarios.nome,
-        email: usuarios.email,
-        whatsapp: usuarios.whatsapp,
-        senhaHash: usuarios.senhaHash,
-        status: usuarios.status,
-        emailVerificado: usuarios.emailVerificado,
-        whatsappVerificado: usuarios.whatsappVerificado,
-      })
-      .from(usuarios)
-      .where(
-        or(
-          eq(usuarios.email, emailOuWhatsapp),
-          eq(usuarios.whatsapp, emailOuWhatsapp)
-        )
-      )
-      .limit(1);
+    // Mesma regra de identificação do resto da Vincis: e-mail sem diferenciar
+    // maiúsculas ou celular em qualquer máscara (número em duas contas não
+    // identifica ninguém).
+    const usuario = await buscarUsuarioPorLogin(emailOuWhatsapp);
 
     if (!usuario) {
       return NextResponse.json(

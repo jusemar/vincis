@@ -52,7 +52,8 @@ export function OnboardingColaborador({
   modo = "cadastro",
 }: {
   nome: string;
-  email: string;
+  /** Nulo em conta criada só com celular. */
+  email: string | null;
   whatsapp?: string | null;
   dadosIniciais?: Partial<PerfilColaboradorDTO>;
   /**
@@ -97,7 +98,7 @@ export function OnboardingColaborador({
       vitrinePublica: dadosIniciais.vitrinePublica ?? false,
       regimesAtendidos: dadosIniciais.regimesAtendidos ?? [],
       telefoneContato: dadosIniciais.telefoneContato ?? whatsapp ?? "",
-      emailProfissional: dadosIniciais.emailProfissional ?? email,
+      emailProfissional: dadosIniciais.emailProfissional ?? email ?? '',
     },
   });
   const cep = useWatch({ control, name: "cep" });
@@ -201,7 +202,7 @@ export function OnboardingColaborador({
             </div>
             <div>
               <Label>E-mail da conta</Label>
-              <p className="mt-1 break-all text-sm font-medium">{email}</p>
+              <p className="mt-1 break-all text-sm font-medium">{email ?? "Não informado (conta criada pelo celular)"}</p>
             </div>
             <div>
               <Label>WhatsApp</Label>

@@ -59,7 +59,8 @@ export function OnboardingProfissional({
 }: {
   usuarioId: string;
   nome: string;
-  email: string;
+  /** Nulo em conta criada só com celular. */
+  email: string | null;
   whatsapp?: string | null;
   dadosIniciais?: DadosIniciais;
   bloquearModalidadeAtuacao?: boolean;
@@ -109,7 +110,7 @@ export function OnboardingProfissional({
       disponivelAtendimento: dadosIniciais.disponivelAtendimento ?? true,
       regimesAtendidos: dadosIniciais.regimesAtendidos ?? [],
       telefoneContato: dadosIniciais.telefoneContato ?? whatsapp ?? "",
-      emailProfissional: dadosIniciais.emailProfissional ?? email,
+      emailProfissional: dadosIniciais.emailProfissional ?? email ?? '',
     },
   });
   const categoria = useWatch({ control, name: "tipoProfissional" });
@@ -318,7 +319,7 @@ export function OnboardingProfissional({
             </div>
             <div>
               <Label>E-mail da conta</Label>
-              <p className="mt-1 break-all text-sm font-medium">{email}</p>
+              <p className="mt-1 break-all text-sm font-medium">{email ?? "Não informado (conta criada pelo celular)"}</p>
             </div>
             <div>
               <Label>WhatsApp</Label>
@@ -641,7 +642,7 @@ export function OnboardingProfissional({
                     <b>Profissional:</b> {nome}
                   </p>
                   <p>
-                    <b>E-mail:</b> {email}
+                    <b>E-mail:</b> {email ?? "não informado"}
                   </p>
                   <p>
                     <b>Atuação:</b>{" "}

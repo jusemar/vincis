@@ -30,7 +30,7 @@ export type PlanoGestao = {
   valorMensalCentavos: number
   status: StatusAssinatura
   contratadoEm: string
-  cliente: { nome: string; email: string }
+  cliente: { nome: string; email: string | null }
   contador: { id: string; nome: string } | null
   escolhaContador: EscolhaContador | null
   historico: AlocacaoHistorico[]

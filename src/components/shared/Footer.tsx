@@ -1,7 +1,7 @@
 "use client";
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
-import { ContatoProtegido } from '@/features/institucional/components/ContatoProtegido';
+import { ContatoJaaa } from '@/features/suporte/components/ContatoJaaa';
 import { DADOS_INSTITUCIONAIS } from '@/features/institucional/constants/dados';
 import { GRUPOS_RODAPE, type GrupoRodape } from '@/features/institucional/constants/rotas';
 
@@ -13,8 +13,8 @@ import { GRUPOS_RODAPE, type GrupoRodape } from '@/features/institucional/consta
  * localhost outras, e havia links `#`, telefone e endereço fictícios, redes
  * sociais sem perfil e um selo "LGPD Compliant" sem verificação. Tudo isso saiu.
  *
- * Os contatos usam `ContatoProtegido`: o endereço só é montado no navegador e o
- * link só nasce no clique, o que dificulta a coleta automática por robôs simples.
+ * O contato público é a conversa com o Junior no Jaaa (`ContatoJaaa`), no lugar
+ * de e-mail e WhatsApp: um link direto, sem endereço exposto a robôs de spam.
  */
 
 function ColunaLinks({ grupo }: { grupo: GrupoRodape }) {
@@ -61,10 +61,7 @@ export default function Footer() {
               Plataforma digital que conecta clientes a profissionais independentes das áreas contábil e jurídica.
             </p>
 
-            <div className="space-y-3">
-              <ContatoProtegido canal="email" />
-              <ContatoProtegido canal="whatsapp" />
-            </div>
+            <ContatoJaaa />
 
             {/* Dados institucionais: discretos, abaixo dos contatos. Sem endereço completo. */}
             <dl className="mt-6 space-y-1 text-xs text-muted-foreground">

@@ -101,6 +101,11 @@ export function RedefinirSenhaPage({ token }: RedefinirSenhaPageProps) {
                     {mensagem || 'Link inválido ou expirado. Solicite uma nova recuperação de senha.'}
                   </AlertDescription>
                 </Alert>
+                {/* Expirado (10 min), já usado ou substituído por um mais novo:
+                    a saída é pedir outro em "Esqueci minha senha". */}
+                <Button asChild variant="outline" className="mt-4 h-11 w-full rounded-xl">
+                  <Link href="/?entrar=1">Solicitar novo link</Link>
+                </Button>
               </div>
             )}
 

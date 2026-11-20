@@ -11,6 +11,7 @@ export async function obterDadosCliente(
     .select({
       nome: usuarios.nome,
       email: usuarios.email,
+      emailPendente: usuarios.emailPendente,
       whatsapp: usuarios.whatsapp,
       emailVerificado: usuarios.emailVerificado,
       whatsappVerificado: usuarios.whatsappVerificado,

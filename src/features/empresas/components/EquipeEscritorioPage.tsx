@@ -65,7 +65,7 @@ type Membro = {
   empresaId: string;
   usuarioId: string;
   nome: string;
-  email: string;
+  email: string | null;
   /** Papel exercido neste escritório. */
   funcao: string | null;
   /** Papel efetivo já resolvido (absorve o vínculo legado sem `funcao`). */
@@ -99,7 +99,7 @@ type ConviteEnviado = {
   empresaId: string;
   empresaNome: string;
   destinatarioNome: string;
-  destinatarioEmail: string;
+  destinatarioEmail: string | null;
   destinatarioTipoPrestador: string | null;
   destinatarioProfissao: string | null;
   funcao: string;

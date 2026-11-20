@@ -47,6 +47,7 @@ export async function reenviarConfirmacaoEmail(
       // continua podendo confirmá-lo depois. Conta bloqueada nunca reenvia.
       if (
         !usuario ||
+        !usuario.email ||
         usuario.status === 'bloqueado' ||
         usuario.emailVerificado
       ) {

@@ -11,6 +11,7 @@ import { cookies } from 'next/headers'
 import { COOKIE_INDICACAO } from '@/features/parceiros/constants/indicacao'
 import { associarIndicacaoAoCadastro } from '@/features/parceiros/lib/associar-cadastro'
 import type { ResultadoPadrao, DadosToken } from '../types'
+import { condicaoTelefoneIgual } from '../lib/telefone-sql'
 
 export type ResultadoCadastro = ResultadoPadrao & {
   dados?: DadosToken
@@ -34,6 +35,19 @@ export async function cadastrarUsuario(dados: CadastroUsuarioDTO): Promise<Resul
     return {
       sucesso: false,
       mensagem: 'E-mail já cadastrado',
+    }
+  }
+
+  // Mesmo número com outra máscara também conta como já cadastrado.
+  const [telefoneEmUso] = await db
+    .select({ id: usuarios.id })
+    .from(usuarios)
+    .where(condicaoTelefoneIgual(whatsapp))
+    .limit(1)
+  if (telefoneEmUso) {
+    return {
+      sucesso: false,
+      mensagem: 'Celular já cadastrado',
     }
   }
 

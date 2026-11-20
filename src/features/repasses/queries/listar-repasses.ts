@@ -17,8 +17,8 @@ export type RepasseGestao = {
   id: string
   origem: OrigemRepasse
   descricao: string
-  profissional: { id: string; nome: string; email: string } | null
-  cliente: { nome: string; email: string }
+  profissional: { id: string; nome: string; email: string | null } | null
+  cliente: { nome: string; email: string | null }
   referenciaPagamento: string | null
   pagoEm: string | null
   valorBrutoCentavos: number

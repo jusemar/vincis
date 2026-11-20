@@ -97,6 +97,7 @@ export default function ProfilePage() {
       nome={usuario?.nome ?? "Profissional"}
       email={usuario?.email ?? perfil.emailProfissional}
       whatsapp={usuario?.whatsapp}
+      semEmailDaConta={Boolean(usuario) && !usuario?.email}
     />
   );
 }

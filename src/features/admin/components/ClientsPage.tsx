@@ -66,7 +66,8 @@ type ClienteLista = {
   id: string;
   codigo: string;
   nome: string;
-  email: string;
+  /** Nulo quando o cliente criou a conta só com celular. */
+  email: string | null;
   telefone: string;
   empresaNome: string | null;
   tipoIdentificacaoFiscal?: string | null;
@@ -289,7 +290,7 @@ export default function ClientsPage() {
     setClienteEditadoId(cliente.id);
     reset({
       nome: cliente.nome,
-      email: cliente.email,
+      email: cliente.email ?? "",
       telefone: formatarTelefone(cliente.telefone),
       empresaNome: cliente.empresaNome ?? "",
       tipoIdentificacaoFiscal:
@@ -548,7 +549,7 @@ export default function ClientsPage() {
                 <div className="mb-4 space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="size-4 shrink-0" />
-                    <span className="truncate">{cliente.email}</span>
+                    <span className="truncate">{cliente.email ?? "Sem e-mail (conta pelo celular)"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="size-4 shrink-0" />
@@ -666,12 +667,16 @@ export default function ClientsPage() {
                 {clienteDetalhe.area !== "juridico" && (
                   <div>
                     <p className="text-xs text-muted-foreground">E-mail</p>
-                    <a
-                      href={`mailto:${clienteDetalhe.email}`}
-                      className="mt-1 block break-all text-sm hover:text-primary"
-                    >
-                      {clienteDetalhe.email}
-                    </a>
+                    {clienteDetalhe.email ? (
+                      <a
+                        href={`mailto:${clienteDetalhe.email}`}
+                        className="mt-1 block break-all text-sm hover:text-primary"
+                      >
+                        {clienteDetalhe.email}
+                      </a>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">Sem e-mail (conta pelo celular)</p>
+                    )}
                   </div>
                 )}
                 {clienteDetalhe.area !== "juridico" && (

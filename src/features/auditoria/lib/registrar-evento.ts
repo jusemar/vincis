@@ -198,6 +198,22 @@ export const ACOES_AUDITORIA = {
   perfilVitrineReexibido: 'perfil_vitrine_reexibido',
   /** Gestão trocou a identidade pública (pessoal × equipe Vincis). Não mexe em permissões. */
   identidadePublicaAlterada: 'identidade_publica_alterada',
+  // Pedido de recuperação de senha (e-mail ou SMS): auditoria e base dos limites por IP/identificador.
+  recuperacaoSenhaSolicitada: 'recuperacao_senha_solicitada',
+  // Código de recuperação por SMS: erro (base do limite de tentativas) e acerto.
+  recuperacaoSenhaCodigoIncorreto: 'recuperacao_senha_codigo_incorreto',
+  recuperacaoSenhaCodigoValidado: 'recuperacao_senha_codigo_validado',
+  // Cadastro por celular (código por SMS) e e-mail adicionado depois.
+  cadastroCelularSolicitado: 'cadastro_celular_solicitado',
+  cadastroCelularCodigoIncorreto: 'cadastro_celular_codigo_incorreto',
+  cadastroCelularCodigoValidado: 'cadastro_celular_codigo_validado',
+  contaCriadaPorCelular: 'conta_criada_por_celular',
+  emailAdicionalSolicitado: 'email_adicional_solicitado',
+  emailAdicionalConfirmado: 'email_adicional_confirmado',
+  // Verificação do celular pelo próprio usuário (código por SMS na área logada).
+  verificacaoCelularSolicitada: 'verificacao_celular_solicitada',
+  verificacaoCelularCodigoIncorreto: 'verificacao_celular_codigo_incorreto',
+  celularVerificadoPorSms: 'celular_verificado_por_sms',
 } as const
 
 export type AcaoAuditoria =

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { AuthContextType, DadosUsuarioAutenticado, ResultadoLogin, ResultadoPadrao } from '../types'
 import type { LoginDTO } from '../schemas/login'
 import { recuperarSessao, salvarSessao, removerSessao } from '../lib/sessao-storage'
+import { useHidratado } from '@/hooks/useHidratado'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -111,13 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [aplicarConferencia])
 
   const login = useCallback(async (dados: LoginDTO): Promise<ResultadoLogin> => {
+    let res: Response
     try {
-      const res = await fetch('/api/auth/login', {
+      res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados),
       })
-      const data = await res.json()
+    } catch {
+      // Só falha de rede de verdade chega aqui.
+      return { sucesso: false, mensagem: 'Erro de conexão. Tente novamente.' }
+    }
+    try {
+      // Resposta que não é JSON (ex.: página 404/500 do servidor) não é
+      // "erro de conexão": mostra o código para o problema não ficar escondido.
+      const data = await res.json().catch(() => {
+        throw new Error(`HTTP ${res.status}`)
+      })
       if (data.sucesso && data.dados) {
         setUsuario(data.dados.usuario)
         setTokenSessao(data.dados.tokenSessao)
@@ -137,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return {
         sucesso: false,
-        mensagem: 'Erro de conexão. Tente novamente.',
+        mensagem: `O servidor não respondeu como esperado (HTTP ${res.status}). Recarregue a página e tente de novo.`,
       }
     }
   }, [])
@@ -184,10 +195,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Sessão como o servidor a vê: ele não lê o `localStorage`, então sempre
+ * renderiza "carregando, sem usuário".
+ */
+const ESTADO_DO_SERVIDOR = {
+  usuario: null,
+  tokenSessao: null,
+  estaCarregando: true,
+  estaAutenticado: false,
+  erroSessao: false,
+} as const satisfies Partial<AuthContextType>
+
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext)
+  // Corrige o "Hydration failed" do cabeçalho público. A sessão é conferida num
+  // efeito do `AuthProvider`, e partes da página hidratam DEPOIS dele — o
+  // `NavigationNext` fica num `<Suspense>` (usa `useSearchParams`). Quando a
+  // conferência terminava antes, esse trecho hidratava já com o usuário
+  // (menu da conta) sobre o HTML de visitante (Entrar/Criar conta) que o
+  // servidor mandou. Enquanto o componente hidrata, ele recebe o mesmo estado
+  // do servidor; logo em seguida o React o redesenha com a sessão real.
+  // Ações (login, logout, refreshSession) e a lógica de sessão não mudam.
+  const hidratado = useHidratado()
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
-  return context
+  return hidratado ? context : { ...context, ...ESTADO_DO_SERVIDOR }
 }

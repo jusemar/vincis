@@ -26,12 +26,24 @@ import { usuarioStatusEnum } from '../../enums'
  *
  * Confirmar pelo WhatsApp nunca marca o e-mail como verificado — isso seria
  * afirmar um fato que não ocorreu.
+ *
+ * **Cadastro por celular** (código por SMS): a conta nasce sem e-mail
+ * (`email` nulo — nada de e-mail inventado) e com o celular verificado
+ * (`whatsapp_verificado`, sem `whatsapp_verificado_por_id`: a posse foi
+ * provada pelo próprio código). Toda conta tem e-mail OU celular.
  */
 export const usuarios = pgTable('usuarios', {
   id: uuid('id').primaryKey().defaultRandom(),
   empresaId: uuid('empresa_id').references(() => empresas.id),
   nome: varchar('nome', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  /** Nulo nas contas criadas só com celular. Único entre as que têm e-mail. */
+  email: varchar('email', { length: 255 }).unique(),
+  /**
+   * E-mail que a conta pediu para adicionar e ainda não confirmou. Só vira
+   * `email` quando o link de confirmação é aberto — assim ninguém "reserva" o
+   * endereço de outra pessoa.
+   */
+  emailPendente: varchar('email_pendente', { length: 255 }),
   whatsapp: varchar('whatsapp', { length: 20 }).unique(),
   senhaHash: varchar('senha_hash', { length: 255 }).notNull(),
   emailVerificado: boolean('email_verificado').default(false).notNull(),
@@ -66,4 +78,6 @@ export const usuarios = pgTable('usuarios', {
     'usuarios_identidade_publica_valida',
     sql`${t.identidadePublica} in ('pessoal', 'equipe_vincis')`,
   ),
+  // Toda conta é alcançável: tem e-mail, celular ou os dois.
+  temEmailOuCelular: check('usuarios_email_ou_celular', sql`${t.email} is not null or ${t.whatsapp} is not null`),
 }))

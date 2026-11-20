@@ -29,7 +29,7 @@ import type { DadosUsuarioAutenticado } from '../types'
 export type ContaAutenticada = {
   id: string
   nome: string
-  email: string
+  email: string | null
   whatsapp: string | null
   status: DadosUsuarioAutenticado['status']
 }

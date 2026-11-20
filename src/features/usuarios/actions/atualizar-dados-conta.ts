@@ -7,6 +7,8 @@ import { usuarios } from '@/db/schema'
 import { obterSessaoServidor } from '../lib/sessao-servidor'
 import { DadosContaSchema } from '../schemas/dados-conta'
 import type { ResultadoPadrao } from '../types'
+import { normalizarCelularBR } from '../lib/telefone'
+import { condicaoTelefoneIgual } from '../lib/telefone-sql'
 
 /**
  * Atualiza os dados pessoais da própria conta.
@@ -39,7 +41,7 @@ export async function atualizarDadosConta(
     const [emUso] = await db
       .select({ id: usuarios.id })
       .from(usuarios)
-      .where(and(eq(usuarios.whatsapp, whatsapp), ne(usuarios.id, sessao.id)))
+      .where(and(condicaoTelefoneIgual(whatsapp), ne(usuarios.id, sessao.id)))
       .limit(1)
 
     if (emUso) {
@@ -59,7 +61,10 @@ export async function atualizarDadosConta(
       .where(eq(usuarios.id, sessao.id))
       .limit(1)
 
-    const trocouNumero = atual?.whatsapp !== whatsapp
+    // Compara o NÚMERO, não a máscara: regravar o mesmo celular no formato novo
+    // não pode derrubar a verificação que a conta já tinha.
+    const numeroAtual = atual?.whatsapp ? (normalizarCelularBR(atual.whatsapp) ?? atual.whatsapp) : null
+    const trocouNumero = numeroAtual !== whatsapp
     const perdeVerificacao = trocouNumero && atual?.whatsappVerificado
 
     // Se o WhatsApp é o único método que comprova a identidade, trocar o número
@@ -93,7 +98,7 @@ export async function atualizarDadosConta(
     return {
       sucesso: true,
       mensagem: perdeVerificacao
-        ? 'Dados atualizados. O novo WhatsApp precisa ser confirmado novamente pela Vincis.'
+        ? 'Dados atualizados. Confirme o novo celular em Minha conta → "Verificar celular".'
         : 'Dados atualizados com sucesso.',
     }
   } catch (error) {

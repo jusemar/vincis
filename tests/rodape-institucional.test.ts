@@ -12,6 +12,7 @@ import {
   montarEmailVincis,
   montarWhatsappVincisExibicao,
 } from '@/features/institucional/constants/contatos'
+import { CONTATO_OFICIAL_JAAA } from '@/features/suporte/lib/canal-suporte'
 import { GRUPOS_RODAPE, PAGINAS_CMS_INSTITUCIONAIS } from '@/features/institucional/constants/rotas'
 import { montarLlmsTxt, PAGINAS_PUBLICAS_LLMS } from '@/features/institucional/lib/llms'
 import { lerAbrirOrcamento, lerAreaBusca, profissaoDaArea } from '@/features/profissionais/constants/busca-url'
@@ -58,8 +59,22 @@ describe('contatos oficiais', () => {
       expect(html).not.toContain('mailto:')
       expect(html).not.toContain('wa.me')
       expect(html).not.toContain('99252')
-      // Botões nativos: teclado e leitor de tela funcionam sem nada a mais.
-      expect(html).toContain('<button type="button"')
+    }
+  })
+
+  it('rodapé e Contato mostram só "Clique e fale conosco." e o contato Junior, que abre a conversa no Jaaa', () => {
+    expect(CONTATO_OFICIAL_JAAA.href).toBe('https://jaaa.com.br/@junior')
+    for (const componente of [Footer, PaginaContato]) {
+      const html = htmlDoServidor(componente)
+      expect(html).toContain('Clique e fale conosco.')
+      // Foto e nome ficam dentro do mesmo link: os dois abrem a conversa.
+      expect(html).toMatch(
+        /<a href="https:\/\/jaaa\.com\.br\/@junior" target="_blank" rel="noopener noreferrer"[^>]*>\s*<img[^>]*junior-jaaa\.webp[^>]*>\s*<span[^>]*>Junior<\/span>\s*<\/a>/,
+      )
+      // Sem botão "Conversar", formulário ou busca.
+      expect(html).not.toContain('Conversar</')
+      expect(html).not.toContain('<form')
+      expect(html).not.toContain('<input')
     }
   })
 })

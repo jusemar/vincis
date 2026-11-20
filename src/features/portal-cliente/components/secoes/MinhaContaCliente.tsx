@@ -10,6 +10,9 @@ import { atualizarDadosConta } from '@/features/usuarios/actions/atualizar-dados
 import { rotuloVerificacao } from '@/features/usuarios/lib/verificacao-conta'
 import type { DadosPortalCliente } from '../../types/portal'
 import { CabecalhoSecao, Dado, Pilula, Superficie } from '../ui/primitivos'
+import { AdicionarEmailConta } from '@/features/usuarios/components/AdicionarEmailConta'
+import { VerificarCelularConta } from '@/features/usuarios/components/VerificarCelularConta'
+import { normalizarCelularBR } from '@/features/usuarios/lib/telefone'
 
 /**
  * Dados da conta do Cliente.
@@ -77,7 +80,7 @@ export function MinhaContaCliente({ dados }: { dados: DadosPortalCliente }) {
             valor={
               <span className="flex items-center gap-1.5">
                 <Mail className="size-3.5 text-muted-foreground" aria-hidden />
-                <span className="truncate">{dados.email}</span>
+                <span className="truncate">{dados.email ?? 'sem e-mail (conta pelo celular)'}</span>
               </span>
             }
           />
@@ -97,6 +100,12 @@ export function MinhaContaCliente({ dados }: { dados: DadosPortalCliente }) {
             )}
           />
         </dl>
+
+        {/* Verificação do celular pelo próprio usuário (código por SMS).
+            `key` pelo número normalizado: trocar de número recarrega o cartão; regravar o mesmo número em outro formato, não. */}
+        <div className="mt-5">
+          <VerificarCelularConta key={normalizarCelularBR(dados.whatsapp ?? '') ?? dados.whatsapp ?? ''} />
+        </div>
       </Superficie>
 
       <Superficie className="p-5">
@@ -138,15 +147,21 @@ export function MinhaContaCliente({ dados }: { dados: DadosPortalCliente }) {
               required
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="conta-email" className="text-xs">
-              E-mail
-            </Label>
-            <Input id="conta-email" value={dados.email} disabled readOnly />
-            <p className="text-[11px] text-muted-foreground">
-              Para alterar seu e-mail, fale com a Vincis.
-            </p>
-          </div>
+          {dados.email ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="conta-email" className="text-xs">
+                E-mail
+              </Label>
+              <Input id="conta-email" value={dados.email} disabled readOnly />
+              <p className="text-[11px] text-muted-foreground">
+                Para alterar seu e-mail, fale com a Vincis.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 sm:col-span-2">
+              <AdicionarEmailConta emailPendente={dados.emailPendente} />
+            </div>
+          )}
           <div>
             <Button type="submit" size="sm" disabled={salvando}>
               {salvando ? 'Salvando...' : 'Salvar alterações'}

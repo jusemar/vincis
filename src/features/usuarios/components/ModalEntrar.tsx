@@ -4,7 +4,7 @@ import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react'
 import { CampoSenha } from '@/components/shared/CampoSenha'
 import { ModalResponsivo } from '@/components/shared/ModalResponsivo'
 import { useAuth } from '../hooks/useAuth'
-import { solicitarRedefinicaoSenha } from '../actions/solicitar-redefinicao-senha'
+import { RecuperacaoSenha } from './RecuperacaoSenha'
 
 interface ModalEntrarProps {
   aberto: boolean
@@ -16,7 +16,6 @@ type View = 'login' | 'esqueci-senha'
 
 /** Mesmo motivo do cadastro: a ação vive na barra inferior, fora da rolagem. */
 const ID_FORM_LOGIN = 'form-login-vincis'
-const ID_FORM_RECUPERACAO = 'form-recuperacao-vincis'
 
 /** `text-base` no celular evita o zoom automático do iOS ao focar o campo. */
 const CLASSES_CAMPO =
@@ -32,9 +31,6 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
   const [carregando, setCarregando] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
   const senhaRef = useRef<HTMLInputElement>(null)
-  const recuperacaoRef = useRef<HTMLInputElement>(null)
-  const [mensagemRecuperacao, setMensagemRecuperacao] = useState<string | null>(null)
-  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false)
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
@@ -80,21 +76,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
     setCarregando(false)
   }
 
-  async function handleEsqueciSenha(e: FormEvent) {
-    e.preventDefault()
-    setMensagemRecuperacao(null)
-
-    const emailOuWhatsapp = recuperacaoRef.current?.value ?? ''
-    if (!emailOuWhatsapp) return
-
-    setEnviandoRecuperacao(true)
-    const resultado = await solicitarRedefinicaoSenha({ emailOuWhatsapp })
-    setMensagemRecuperacao(resultado.mensagem)
-    setEnviandoRecuperacao(false)
-  }
-
   function abrirRecuperacao() {
-    setMensagemRecuperacao(null)
     setView('esqueci-senha')
   }
 
@@ -109,7 +91,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
       descricao={
         ehLogin
           ? 'Acesse sua conta para continuar'
-          : 'Informe seu e-mail ou WhatsApp e enviaremos um link'
+          : 'Escolha como receber: código por SMS ou link por e-mail.'
       }
       acaoCabecalho={
         ehLogin ? undefined : (
@@ -140,16 +122,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
               </button>
             </p>
           </div>
-        ) : (
-          <button
-            type="submit"
-            form={ID_FORM_RECUPERACAO}
-            disabled={enviandoRecuperacao}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {enviandoRecuperacao ? 'Enviando...' : 'Enviar link de recuperação'}
-          </button>
-        )
+        ) : undefined
       }
     >
       {ehLogin ? (
@@ -157,7 +130,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
           <div className="space-y-2">
             <label htmlFor="login-identificador" className="flex items-center gap-2 text-sm text-foreground/80">
               <Mail className="h-4 w-4 text-primary" />
-              E-mail ou WhatsApp
+              E-mail ou celular
             </label>
             <input
               id="login-identificador"
@@ -225,29 +198,7 @@ export function ModalEntrar({ aberto, onFechar, onAbrirCadastro }: ModalEntrarPr
           </button>
         </form>
       ) : (
-        <form id={ID_FORM_RECUPERACAO} onSubmit={handleEsqueciSenha} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="recuperacao-identificador" className="flex items-center gap-2 text-sm text-foreground/80">
-              <Mail className="h-4 w-4 text-primary" />
-              E-mail ou WhatsApp
-            </label>
-            <input
-              id="recuperacao-identificador"
-              ref={recuperacaoRef}
-              type="text"
-              required
-              autoComplete="username"
-              placeholder="seu@email.com ou (00) 00000-0000"
-              className={CLASSES_CAMPO}
-            />
-          </div>
-
-          {mensagemRecuperacao && (
-            <p className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center text-sm text-foreground">
-              {mensagemRecuperacao}
-            </p>
-          )}
-        </form>
+        <RecuperacaoSenha onVoltarAoLogin={() => setView('login')} />
       )}
     </ModalResponsivo>
   )

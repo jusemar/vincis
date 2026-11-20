@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UserPlus, Briefcase, HandHeart, ArrowRight, ArrowLeft, User, Mail, Phone, Lock, RefreshCw, Pencil, MailCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { UserPlus, Briefcase, HandHeart, ArrowRight, ArrowLeft, User, Mail, Phone, Lock, RefreshCw, Pencil, MailCheck, AlertCircle, CheckCircle2, Smartphone } from 'lucide-react'
 import { CampoSenha } from '@/components/shared/CampoSenha'
 import { ModalResponsivo } from '@/components/shared/ModalResponsivo'
 import { reenviarConfirmacaoEmail } from '../actions/reenviar-confirmacao-email'
 import { CadastroUsuarioSchema, type CadastroUsuarioDTO } from '../schemas/cadastro'
+import { useAuth } from '../hooks/useAuth'
+import { CadastroPorCelular } from './CadastroPorCelular'
 
 interface ModalCadastroProps {
   aberto: boolean
@@ -12,7 +15,8 @@ interface ModalCadastroProps {
   onAbrirEntrar: () => void
 }
 
-type Step = 'papel' | 'formulario' | 'confirmacao'
+/** `canal`: e-mail (fluxo de sempre) ou celular (código por SMS, sem e-mail). */
+type Step = 'papel' | 'canal' | 'formulario' | 'celular' | 'confirmacao'
 
 /**
  * Tipo da pessoa escolhido na criação da conta. Profissional e Colaborador são
@@ -75,11 +79,28 @@ export function ModalCadastro({ aberto, onFechar, onAbrirEntrar }: ModalCadastro
   const [carregando, setCarregando] = useState(false)
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null)
   const [reenviando, setReenviando] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const { login } = useAuth()
 
   function handleSelecionarPapel(role: Papel) {
     setPapel(role)
-    setStep('formulario')
+    setStep('canal')
     setErro(null)
+  }
+
+  /** Conta criada pelo celular: já entra, como no login (mesmo destino por perfil). */
+  async function handleCelularConcluido({ celular, senha }: { celular: string; senha: string }) {
+    const resultado = await login({ emailOuWhatsapp: celular, senha })
+    if (!resultado.sucesso) {
+      setErro('Sua conta foi criada. Entre com seu celular e a senha.')
+      onAbrirEntrar()
+      return
+    }
+    handleFechar()
+    const destino = resultado.destino ?? '/'
+    if (destino === '/cliente' && !pathname.startsWith('/cliente')) router.refresh()
+    else router.replace(destino)
   }
 
   function handleVoltarPapel() {
@@ -201,11 +222,16 @@ export function ModalCadastro({ aberto, onFechar, onAbrirEntrar }: ModalCadastro
   }
 
   const titulo = step === 'confirmacao' ? 'Verifique seu e-mail' : 'Criar conta'
+  const tipoConta = papel === 'cliente' ? 'Cliente' : papel === 'colaborador' ? 'Colaborador' : 'Profissional'
 
   const descricao =
     step === 'papel'
       ? 'Selecione o tipo de conta que deseja criar'
-      : step === 'formulario'
+      : step === 'canal'
+        ? `Conta de ${tipoConta} — como você quer se cadastrar?`
+        : step === 'celular'
+          ? `Conta de ${tipoConta} com celular, confirmada por SMS`
+          : step === 'formulario'
         ? papel === 'cliente'
           ? 'Preencha seus dados para começar'
           : papel === 'colaborador'
@@ -264,10 +290,10 @@ export function ModalCadastro({ aberto, onFechar, onAbrirEntrar }: ModalCadastro
       descricao={descricao}
       rodape={rodape}
       acaoCabecalho={
-        step === 'formulario' ? (
+        step === 'formulario' || step === 'celular' || step === 'canal' ? (
           <button
             type="button"
-            onClick={handleVoltarPapel}
+            onClick={() => (step === 'canal' ? handleVoltarPapel() : (setStep('canal'), setErro(null)))}
             className="-ml-2 inline-flex h-9 items-center gap-2 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" /> Voltar
@@ -315,6 +341,57 @@ export function ModalCadastro({ aberto, onFechar, onAbrirEntrar }: ModalCadastro
                 Entrar
               </button>
             </p>
+          </motion.div>
+        )}
+
+        {step === 'canal' && (
+          <motion.div
+            key="canal"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="grid gap-3"
+            role="group"
+            aria-label="Forma de cadastro"
+          >
+            {(
+              [
+                { valor: 'formulario', titulo: 'Cadastrar com e-mail', texto: 'Confirmação pelo link que enviamos ao seu e-mail', Icone: Mail },
+                { valor: 'celular', titulo: 'Cadastrar com celular', texto: 'Código de 6 números por SMS — sem precisar de e-mail', Icone: Smartphone },
+              ] as const
+            ).map(({ valor, titulo: rotulo, texto, Icone }) => (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => {
+                  setErro(null)
+                  setStep(valor)
+                }}
+                className="glass group flex items-center gap-4 rounded-2xl border border-border/40 p-4 text-left transition-all hover:border-primary/50 sm:gap-5 sm:p-5"
+              >
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 sm:h-14 sm:w-14">
+                  <Icone className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="mb-0.5 block text-base font-semibold text-foreground">{rotulo}</span>
+                  <span className="block text-sm leading-relaxed text-muted-foreground">{texto}</span>
+                </div>
+                <ArrowRight className="h-5 w-5 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+              </button>
+            ))}
+          </motion.div>
+        )}
+
+        {step === 'celular' && papel && (
+          <motion.div
+            key="celular"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <CadastroPorCelular papel={papel} onConcluido={handleCelularConcluido} />
           </motion.div>
         )}
 
